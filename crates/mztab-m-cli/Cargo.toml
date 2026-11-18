@@ -9,6 +9,9 @@ repository.workspace = true
 license.workspace = true
 keywords = ["cli", "mass-spectrometry", "metabolomics", "mztab", "validator"]
 categories = ["command-line-utilities", "science"]
+# Sources only: the tests read the pinned spec and corpora from the
+# repository (third_party/), which a package cannot carry.
+include = ["/src", "/README.md"]
 
 [[bin]]
 name = "mztab-m"

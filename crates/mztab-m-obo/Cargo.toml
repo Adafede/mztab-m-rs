@@ -9,6 +9,9 @@ repository.workspace = true
 license.workspace = true
 keywords = ["mass-spectrometry", "metabolomics", "mztab", "obo", "ontology"]
 categories = ["no-std", "parser-implementations", "science", "wasm"]
+# Sources only: the tests read the pinned spec and corpora from the
+# repository (third_party/), which a package cannot carry.
+include = ["/src", "/README.md"]
 
 [dependencies]
 mztab-m = { path = "../mztab-m", version = "0.1.0" }

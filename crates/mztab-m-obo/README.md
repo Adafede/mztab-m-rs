@@ -3,7 +3,7 @@
 [OBO 1.4](https://owlcollab.github.io/oboformat/doc/GO.format.obo-1_4.html)
 vocabularies (such as `psi-ms.obo`) as a
 [`TermLookup`](https://docs.rs/mztab-m/latest/mztab_m/cv/trait.TermLookup.html)
-for the semantic validation of [`mztab-m`](../mztab-m).
+for the semantic validation of [`mztab-m`](https://crates.io/crates/mztab-m).
 
 - `#![no_std]` + `alloc`, no dependencies besides `mztab-m`, no `unsafe`.
 - Pure: parses text you supply; never downloads anything.

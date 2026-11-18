@@ -9,6 +9,9 @@ repository.workspace = true
 license.workspace = true
 keywords = ["mass-spectrometry", "metabolomics", "mztab", "parser", "validator"]
 categories = ["no-std", "parser-implementations", "science", "wasm"]
+# Sources only: the tests read the pinned spec and corpora from the
+# repository (third_party/), which a package cannot carry.
+include = ["/src", "/README.md"]
 
 # Test-only: property tests (round trips, no panics). Native targets only: on
 # wasm32-unknown-unknown proptest needs a JS-backed RNG; the wasm gate runs

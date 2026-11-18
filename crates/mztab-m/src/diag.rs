@@ -113,6 +113,17 @@ impl fmt::Display for Layer {
     }
 }
 
+/// The path of a specification document: [`SpecDoc::path`] and the
+/// generated docs of each [`Code`].
+macro_rules! spec_path {
+    (Format) => {
+        "specification_documents/mzTab_format_specification_2_1-M.adoc"
+    };
+    (FieldReference) => {
+        "specification_documents/mzTab_m_2_1_schema.adoc"
+    };
+}
+
 /// A specification document at the pinned commit
 /// ([`SPEC_COMMIT`](crate::SPEC_COMMIT)).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -128,8 +139,8 @@ impl SpecDoc {
     #[must_use]
     pub const fn path(self) -> &'static str {
         match self {
-            Self::Format => "specification_documents/mzTab_format_specification_2_1-M.adoc",
-            Self::FieldReference => "specification_documents/mzTab_m_2_1_schema.adoc",
+            Self::Format => spec_path!(Format),
+            Self::FieldReference => spec_path!(FieldReference),
         }
     }
 }
@@ -175,11 +186,21 @@ macro_rules! codes {
         /// A stable finding code.
         ///
         /// Each code knows its id, layer, RFC 2119 level, the spec section
-        /// that states its rule, and the equivalent jmzTab-m codes.
+        /// that states its rule, and the equivalent jmzTab-m codes. Each
+        /// variant's documentation links the section at the pinned commit.
         #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
         #[non_exhaustive]
         pub enum Code {
-            $( $(#[$doc])* $name, )+
+            $(
+                $(#[$doc])*
+                ///
+                #[doc = concat!(
+                    "`", $id, "`, ", stringify!($layer), " layer, ", stringify!($req),
+                    ". Rule: [", $anchor, "](https://github.com/HUPO-PSI/mzTab-M/blob/",
+                    crate::spec_commit!(), "/", spec_path!($docf), "#", $anchor, ")."
+                )]
+                $name,
+            )+
         }
 
         impl Code {

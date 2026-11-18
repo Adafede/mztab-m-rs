@@ -1,6 +1,6 @@
 # Status and what is left
 
-Last updated: 2026-11-19, after M8. Milestones are defined in
+Last updated: 2026-11-19, after M9. Milestones are defined in
 [PLAN.md §8](PLAN.md); decisions are in [DECISIONS.md](../DECISIONS.md).
 
 ## Done
@@ -15,7 +15,8 @@ Last updated: 2026-11-19, after M8. Milestones are defined in
 | M5 | Semantic validator, CV rules, `mztab-m-obo` | `b969cec` | D-067–D-070 |
 | M6 | JSON (feature `json`) | `c5b7c29` | D-071 |
 | M7 | CLI (`mztab-m`) and browser demo | `8b5439c` | D-072 |
-| M8 | Benchmarks ([BENCHMARKS.md](BENCHMARKS.md)) | (pending commit) | D-073 |
+| M8 | Benchmarks ([BENCHMARKS.md](BENCHMARKS.md)) | `570c987` | D-073 |
+| M9 | Docs and release preparation | (pending commit) | D-074 |
 
 All gates pass at each commit: 100% line coverage, no surviving mutants
 in the milestone's diff, and wasm32 tests for `mztab-m` and `mztab-m-obo`.
@@ -24,10 +25,9 @@ in the milestone's diff, and wasm32 tests for `mztab-m` and `mztab-m-obo`.
 
 ### Milestones
 
-- **M9: Docs and release prep.** Crate quickstart (the README is still a
-  placeholder); every rule's rustdoc links to its spec section; `DESIGN.md`;
-  the README links the gates that enforce zero dependencies, purity and
-  WASM; dry-run publish only (**nothing is published without approval**).
+All milestones are done. **Publishing is not**: `cargo publish --dry-run`
+passes for `mztab-m`, `mztab-m-obo` and `mztab-m-cli` (D-074), and the
+real publish waits for approval.
 
 ### Open items carried from earlier milestones
 
@@ -53,8 +53,6 @@ in the milestone's diff, and wasm32 tests for `mztab-m` and `mztab-m-obo`.
   what JSON cannot carry; there is no option to drop it instead.
 - **Demo hosting.** `./mk local:demo` builds the page; it is not
   published anywhere (that would need approval).
-- **The README of `mztab-m`** says "under construction". To be replaced in
-  M9.
 
 ### Local environment notes (not in CI)
 

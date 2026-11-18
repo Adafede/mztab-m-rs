@@ -3,6 +3,15 @@
 
 extern crate alloc;
 
+/// The pinned specification commit, as a literal for generated docs (see
+/// [`SPEC_COMMIT`]).
+macro_rules! spec_commit {
+    () => {
+        "e66c19e1d5c2e61cd721cb3bd6134389184cf778"
+    };
+}
+pub(crate) use spec_commit;
+
 pub mod cv;
 mod diag;
 mod id;
@@ -62,7 +71,7 @@ pub use write::{WriteError, to_string, write};
 /// ```
 /// assert_eq!(mztab_m::SPEC_COMMIT.len(), 40, "full git SHA expected");
 /// ```
-pub const SPEC_COMMIT: &str = "e66c19e1d5c2e61cd721cb3bd6134389184cf778";
+pub const SPEC_COMMIT: &str = spec_commit!();
 
 /// The newest mzTab-M version this crate implements (draft, see `DECISIONS.md`).
 ///
