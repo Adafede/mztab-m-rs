@@ -1,6 +1,37 @@
 #![doc = include_str!("../README.md")]
 #![no_std]
 
+extern crate alloc;
+
+mod diag;
+mod id;
+mod model;
+mod param;
+mod value;
+mod vocab;
+
+pub use diag::{
+    Code, Detail, Finding, Findings, Layer, Location, Path, Requirement, Segment, Severity,
+    SpecDoc, SpecRef,
+};
+pub use id::{
+    AssayId, ContactId, CvId, DatabaseId, IdConfidenceMeasureId, IndexMap, InstrumentId, Ix,
+    MsRunId, ProtocolId, PublicationId, SampleId, SoftwareId, StudyVariableGroupId,
+    StudyVariableId,
+};
+pub use model::{
+    AbundanceColumn, Assay, ColUnit, ColUnitError, Column, Contact, Cv, Database, Field, Header,
+    Instrument, List, Metadata, MsRun, MzTab, OptColumn, OptTarget, Protocol, Sample, SmeColumn,
+    SmeId, SmeRow, SmfColumn, SmfId, SmfRow, SmlColumn, SmlId, SmlRow, Software, SpectraRef,
+    SpectraRefError, StudyVariable, StudyVariableGroup, Table,
+};
+pub use param::{Accession, Param, ParamError, ParamErrorKind, ParamText, ParamTextError};
+pub use value::{Cell, Decimal, DecimalKind, NULL, NumberError, Raw, Text, TextError};
+pub use vocab::{
+    AmbiguityCode, Profile, ProhibitedProfile, PublicationItem, PublicationItemError,
+    PublicationKind, RuleSet, Section, Version, VersionError,
+};
+
 /// The mzTab-M specification commit this crate implements.
 ///
 /// The rules and spec references in this crate are checked against the

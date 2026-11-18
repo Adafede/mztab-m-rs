@@ -239,6 +239,33 @@ Abbreviations used for the sources:
   INFO, as SPEC requires. Declaring `M+S+F` = ERROR, since it is not in the
   enum.
 
+## jmzTab-m deviations
+
+The spec wins over jmzTab-m. Every deviation is listed here, and the
+differential test harness expects each one. Item numbers point to
+`docs/recon/jmztab-m-rules.md` §Quirks.
+
+| ID | jmzTab-m behaviour | Spec | Proposal | Status |
+|---|---|---|---|---|
+| J-01 | Trims whitespace around cells and drops trailing empty cells (q1). | Tab is the only delimiter. | Values are kept verbatim. Leading/trailing whitespace → WARN. Trailing empty cells on a table row → ERROR (empty cell). Trailing tabs on MTD lines → INFO (corpus). | PROPOSED |
+| J-02 | Accepts `1e5`, `Infinity`, `INF`, hex floats, and the `d`/`f` suffixes (q2). | xs:decimal + `NaN` + `null`. No scientific notation, no infinity. | ERROR. Each disagreement in the differential tests is tagged J-02. | PROPOSED |
+| J-03 | `NULL` passes as null (q3). | `null` (case-sensitive by §5.18 "case sensitivity"). | Only the exact string `null` is null. | PROPOSED |
+| J-04 | Section prefixes are case-insensitive, long names are accepted, and MTD keys are lowercased (q4). | "All column labels and field names are case-sensitive." | Case-sensitive. A case-insensitive match → ERROR with a fix-it hint. | PROPOSED |
+| J-05 | Uses `find()` partial regex matching (q5). | Full match is implied. | Full match. | PROPOSED |
+| J-06 | Lenient `parseParam` (q6). | `[label, accession, name, value]` | Strict grammar. Recovery hints are given in the error. | PROPOSED |
+| J-07 | Crashes on `assay[n]-custom[m]` and similar inputs (q7). | `assay[n]-custom[m]` is a valid spec field. | Parse it. Never panic (fuzzed). | DECIDED (hard constraint) |
+| J-08 | Skips model-level checks once any Error is raised. | — | Collect all findings. Layers run independently on a partial model. | DECIDED (requirement) |
+| J-09 | Table presence comes from rows, so a header-only table counts as absent (q9). | SPEC §5.18: empty table ≠ omitted. | A present header means the section is present. Header-only in 2.1 → see D-019. | OPEN |
+| J-10 | No SMF→SME reference check in M+F+E files (q10). | M+F+E: SME_ID_REFS MUST resolve. | Always check. | PROPOSED |
+| J-11 | assay, cv, software, scan_polarity and SV are required under profile `M` (q11). | Some MTD fields are profile-conditional. | Follow the spec. `scan_polarity` is optional in 2.1 (D-014). | OPEN |
+| J-12 | Profile rules apply to 2.0.0-M files (q12). | Profiles were introduced in 2.1. | 2.0 files: profile inferred, INFO only. No ERROR for rules that exist only in 2.1. | PROPOSED |
+| J-13 | A UTF-8 BOM gives a fatal 1000 (q13). | "parsers should be able to recognize commonly used encodings" | Strip the BOM and emit INFO. Record it for round-trip. Only UTF-8 is supported (core is `&str`/`&[u8]`). | PROPOSED |
+| J-14 | All stable columns are required; column order is free. | FREF: "All MANDATORY", "order MUST". | See D-010. | OPEN |
+| J-15 | Does not check uniqueness of SML/SMF/SME_ID, the ambiguity-code range, or duplicate indexed MTD keys. | IDs are "within file unique"; JSCH min 1 / max 3. | ERROR for each. | PROPOSED |
+| J-16 | Adduct regex is not applied to SME `adduct_ion`. | JSCH has the pattern on SME. | Apply it. | PROPOSED |
+| J-17 | Uses its own error codes (1000–3023). | No normative code registry exists in the spec repo. | Our own stable codes. Each one maps to its jmzTab-m code(s) where one exists, so differential tests can compare. | PROPOSED (adopted in M1: `Code::jmztab`) |
+| J-18 | A parameter with a label but no accession (or the reverse) is accepted as a CV parameter. | `[CV label, accession, name, value]`; the spec does not define half-CV parameters. | Rejected by the grammar (D-050); the cell is kept as `Invalid` and reported (`MZT-S002`). The corpus has no such parameter. | PROPOSED |
+
 ## Licensing
 
 ### T6: License — DECIDED (2026-11-17)
@@ -294,3 +321,83 @@ Abbreviations used for the sources:
   used during development cannot write it.
 - **`CITATION.cff` and `codemeta.json`:** deferred to M9. They need author
   metadata, which only the maintainer can supply.
+
+## Model and grammars (M1)
+
+### D-050: Parameter grammar details — PROPOSED (M1)
+
+- **SPEC §6 "Params"** fixes the four-field shape, says unavailable fields
+  are empty, and says a name containing commas MUST be quoted. It says
+  nothing about escaping, whitespace, or half-CV parameters. Its own example
+  uses typographic quotes (`“…”`); only ASCII `"` is treated as a quote.
+- **Grammar adopted:** see the `Param` rustdoc. In short: exact `[`…`]`;
+  four comma-separated fields, commas inside `"…"` do not split; spaces
+  around a field are insignificant; field text cannot contain `"`, tab or
+  line break; `name` is required; label and accession are both present (CV)
+  or both absent (user).
+- **Corpus check (e66c19e):** about 35 000 bracketed cells. Every one with
+  more than three commas uses quotes; none is half-CV; none has a quote inside a
+  field.
+- **Writer form:** `[label, accession, name, value]` with `", "` separators,
+  absent fields empty, quotes only when the text has a comma or a
+  leading/trailing space. jmzTab-m writes the same shape.
+- **Open consequence (M3):** the corpus mixes spacing styles (`[,,x,]`,
+  `[, , x, x]`, `[x,x,x,]`). The typed `Param` does not keep them, so a
+  byte-exact round trip of non-canonical files needs the lexeme kept
+  elsewhere. Decided in M3 together with `SourceLayout` (D-054).
+
+### D-051: Row ids are non-negative 32-bit integers — PROPOSED (M1)
+
+- **FREF:** `SML_ID`, `SMF_ID`, `SME_ID` are "Integer", unique within the
+  file. No range is given. JSCH gives `minimum: 1` on several indices but not
+  on these ids.
+- **Choice:** `u32`. A negative or larger value is kept as `Invalid` and
+  reported. `0` is accepted by the type; whether it is legal is left to the
+  validator (pending, no corpus file uses it).
+
+### D-052: `proptest` is a native-only dev-dependency — PROPOSED (M1)
+
+- **What:** property tests (round trips, totality of the grammars) in
+  `crates/mztab-m/tests/properties.rs`.
+- **Why not hand-rolled:** shrinking and regex-driven string strategies
+  would cost more code than the tests themselves.
+- **Cost:** 12 crates, dev-only, never in the user's graph
+  (`default-features = false, features = ["std"]`; no fork/timeout).
+- **wasm:** on `wasm32-unknown-unknown`, `getrandom` needs a JS backend. The
+  property tests are therefore `cfg(not(target_arch = "wasm32"))`. Unit and
+  other integration tests run on wasm; doctests run natively only, as for
+  any crate.
+
+### D-053: The model follows the field reference types literally — PROPOSED (M1)
+
+- Every metadata field FREF types as "Parameter List" or "… List" is a
+  `|`-separated list in the model, even where the corpus only ever has one
+  item (`sample[n]-species[m]`, `id_confidence_measure[n]`). This is a
+  lossless superset; the validator can narrow it.
+- List items are cells, so `null|HMDB:1` is kept item by item.
+- The two fields removed in 2.1 (`ms_run[n]-usi_identifier`,
+  `study_variable[n]-factors`) are kept so 2.0 files read losslessly.
+- Unknown metadata keys are kept in source order. The corpus has several
+  (`mzTab-id`, `study_variable[n]_refs`, `instrument[n]-analyzer` without an
+  index), which the validator will report.
+
+### D-054: Deferred from M1 — PROPOSED (M1)
+
+These §3 items depend on the reader's design and land with it:
+
+- comment anchors and `SourceLayout` (line endings, BOM, blank lines, MTD
+  and column order, parameter spacing): M2 (record) and M3 (honour);
+- `MzTab::into_owned`: M2, together with the borrowed reader;
+- byte ranges in `Location::Text`: dropped. Line, column and cell number
+  locate every finding. Adding a byte range later is a breaking change,
+  acceptable before 1.0 if it is ever needed.
+
+### D-055: `allow-expect-in-tests` in `clippy.toml` — PROPOSED (M1)
+
+- **Template:** `expect_used` is warned workspace-wide and CI denies
+  warnings, so tests must avoid `.expect()`.
+- **Problem:** the alternative, `.unwrap_or_else(|_| unreachable!())`, leaves
+  the closure as an uncovered line, which the 100% line-coverage gate
+  rejects.
+- **Change:** `clippy.toml` sets `allow-expect-in-tests = true`. Library code
+  is unaffected: `expect_used` still fires outside `#[test]` / `cfg(test)`.

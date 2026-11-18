@@ -10,6 +10,12 @@ license.workspace = true
 keywords = ["mass-spectrometry", "metabolomics", "mztab", "parser", "validator"]
 categories = ["no-std", "parser-implementations", "science", "wasm"]
 
+# Test-only: property tests (round trips, no panics). Native targets only: on
+# wasm32-unknown-unknown proptest needs a JS-backed RNG; the wasm gate runs
+# the unit, doc-free integration and corpus tests instead (DECISIONS D-052).
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+proptest = { version = "1", default-features = false, features = ["std"] }
+
 # Test-only: runs the core's unit and integration tests on wasm32-unknown-unknown
 # (Node, through wasm-bindgen-test-runner). Never a runtime dependency.
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]

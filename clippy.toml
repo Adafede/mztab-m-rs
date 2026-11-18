@@ -1,2 +1,5 @@
 # MSRV comes from `rust-version` in Cargo.toml; do not duplicate it here.
 avoid-breaking-exported-api = true
+# Tests use `.expect("why")` on fixtures; an `unreachable!()` closure instead would
+# be an uncovered line under the 100% coverage gate (DECISIONS D-055).
+allow-expect-in-tests = true
