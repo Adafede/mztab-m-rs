@@ -1,0 +1,78 @@
+MTD	mzTab-version	2.1.0-M
+MTD	mzTab-ID	SYNTHETIC
+MTD	mzTab-profile	M+S+F+E
+MTD	title	Synthetic benchmark document
+MTD	software[1]	[MS, MS:1002879, Progenesis QI, 3.0]
+MTD	quantification_method	[MS, MS:1001834, LC-MS label-free quantitation analysis, ]
+MTD	ms_run[1]-location	file:///data/run1.mzML
+MTD	ms_run[1]-format	[MS, MS:1000584, mzML format, ]
+MTD	ms_run[1]-id_format	[MS, MS:1000774, multiple peak list nativeID format, ]
+MTD	ms_run[1]-scan_polarity[1]	[MS, MS:1000130, positive scan, ]
+MTD	ms_run[2]-location	file:///data/run2.mzML
+MTD	ms_run[2]-format	[MS, MS:1000584, mzML format, ]
+MTD	ms_run[2]-id_format	[MS, MS:1000774, multiple peak list nativeID format, ]
+MTD	ms_run[2]-scan_polarity[1]	[MS, MS:1000130, positive scan, ]
+MTD	ms_run[3]-location	file:///data/run3.mzML
+MTD	ms_run[3]-format	[MS, MS:1000584, mzML format, ]
+MTD	ms_run[3]-id_format	[MS, MS:1000774, multiple peak list nativeID format, ]
+MTD	ms_run[3]-scan_polarity[1]	[MS, MS:1000130, positive scan, ]
+MTD	ms_run[4]-location	file:///data/run4.mzML
+MTD	ms_run[4]-format	[MS, MS:1000584, mzML format, ]
+MTD	ms_run[4]-id_format	[MS, MS:1000774, multiple peak list nativeID format, ]
+MTD	ms_run[4]-scan_polarity[1]	[MS, MS:1000130, positive scan, ]
+MTD	ms_run[5]-location	file:///data/run5.mzML
+MTD	ms_run[5]-format	[MS, MS:1000584, mzML format, ]
+MTD	ms_run[5]-id_format	[MS, MS:1000774, multiple peak list nativeID format, ]
+MTD	ms_run[5]-scan_polarity[1]	[MS, MS:1000130, positive scan, ]
+MTD	assay[1]	assay 1
+MTD	assay[1]-ms_run_ref	ms_run[1]
+MTD	assay[2]	assay 2
+MTD	assay[2]-ms_run_ref	ms_run[2]
+MTD	assay[3]	assay 3
+MTD	assay[3]-ms_run_ref	ms_run[3]
+MTD	assay[4]	assay 4
+MTD	assay[4]-ms_run_ref	ms_run[4]
+MTD	assay[5]	assay 5
+MTD	assay[5]-ms_run_ref	ms_run[5]
+MTD	study_variable[1]	group 1
+MTD	study_variable[1]-assay_refs	assay[1]|assay[3]|assay[5]
+MTD	study_variable[1]-description	group 1
+MTD	study_variable[2]	group 2
+MTD	study_variable[2]-assay_refs	assay[2]|assay[4]
+MTD	study_variable[2]-description	group 2
+MTD	study_variable_group[1]	[STATO, STATO:0000087, independent variable, ]
+MTD	study_variable_group[1]-study_variable_refs	study_variable[1]|study_variable[2]
+MTD	cv[1]-label	MS
+MTD	cv[1]-full_name	PSI-MS controlled vocabulary
+MTD	cv[1]-version	4.1.0
+MTD	cv[1]-uri	https://purl.obolibrary.org/obo/ms.obo
+MTD	cv[2]-label	STATO
+MTD	cv[2]-full_name	Statistics Ontology
+MTD	cv[2]-version	RC1.4
+MTD	cv[2]-uri	http://purl.obolibrary.org/obo/stato.owl
+MTD	cv[3]-label	PRIDE
+MTD	cv[3]-full_name	PRIDE Controlled Vocabulary
+MTD	cv[3]-version	2023
+MTD	cv[3]-uri	https://github.com/PRIDE-Utilities/pride-ontology
+MTD	database[1]	[, , HMDB, ]
+MTD	database[1]-prefix	hmdb
+MTD	database[1]-version	5.0
+MTD	database[1]-uri	https://hmdb.ca
+MTD	small_molecule-quantification_unit	[PRIDE, PRIDE:0000330, Arbitrary quantification unit, ]
+MTD	small_molecule_feature-quantification_unit	[PRIDE, PRIDE:0000330, Arbitrary quantification unit, ]
+MTD	id_confidence_measure[1]	[MS, MS:1002890, fragmentation score, ]
+
+SMH	SML_ID	SMF_ID_REFS	database_identifier	chemical_formula	smiles	inchi	chemical_name	uri	theoretical_neutral_mass	adduct_ions	reliability	best_id_confidence_measure	best_id_confidence_value	abundance_assay[1]	abundance_assay[2]	abundance_assay[3]	abundance_assay[4]	abundance_assay[5]	abundance_study_variable[1]	abundance_study_variable[2]	abundance_variation_study_variable[1]	abundance_variation_study_variable[2]
+SML	1	1	HMDB:HMDB0000001	C6H12O6	null	null	compound 1	null	101.4583	[M+H]1+	2	[MS, MS:1002890, fragmentation score, ]	0.9373	810739.8574	172905.6725	219459.1258	362220.3358	527643.6857	367647.4083	67430.9126	22.4982	12.4764
+SML	2	2	HMDB:HMDB0000002	C6H12O6	null	null	compound 2	null	649.5904	[M+H]1+	2	[MS, MS:1002890, fragmentation score, ]	0.0934	547643.2156	191.9382	953040.1509	934817.9240	586417.2026	634931.4689	658249.9892	37.7072	71.7071
+SML	3	3	HMDB:HMDB0000003	C6H12O6	null	null	compound 3	null	447.6044	[M+H]1+	2	[MS, MS:1002890, fragmentation score, ]	0.1407	862871.5894	503163.3108	658102.9237	101476.1999	989859.6595	513978.5194	175150.5209	99.5179	13.2139
+
+SFH	SMF_ID	SME_ID_REFS	SME_ID_REF_ambiguity_code	adduct_ion	isotopomer	exp_mass_to_charge	charge	retention_time_in_seconds	retention_time_in_seconds_start	retention_time_in_seconds_end	abundance_assay[1]	abundance_assay[2]	abundance_assay[3]	abundance_assay[4]	abundance_assay[5]
+SMF	1	1	null	[M+H]1+	null	58.6805	1	123.0766	123.0766	123.0766	621178.1052	738237.2247	813134.7128	493713.1485	265328.6110
+SMF	2	2	null	[M+H]1+	null	748.0994	1	35.1477	35.1477	35.1477	535448.2958	279059.6052	523654.0999	67118.4683	695669.4109
+SMF	3	3	null	[M+H]1+	null	493.6590	1	340.4444	340.4444	340.4444	191312.6244	199911.1318	694952.1879	218318.0300	761603.0548
+
+SEH	SME_ID	evidence_input_id	database_identifier	chemical_formula	smiles	inchi	chemical_name	uri	derivatized_form	adduct_ion	exp_mass_to_charge	charge	theoretical_mass_to_charge	spectra_ref	identification_method	ms_level	id_confidence_measure[1]	rank
+SME	1	input 1	HMDB:HMDB0000001	C6H12O6	null	null	compound 1	null	null	[M+H]1+	58.6805	1	58.6805	ms_run[1]:index=1	[MS, MS:1001477, SpectraST, ]	[MS, MS:1000511, ms level, 2]	0.0766	1
+SME	2	input 2	HMDB:HMDB0000002	C6H12O6	null	null	compound 2	null	null	[M+H]1+	748.0994	1	748.0994	ms_run[2]:index=2	[MS, MS:1001477, SpectraST, ]	[MS, MS:1000511, ms level, 2]	0.1477	1
+SME	3	input 3	HMDB:HMDB0000003	C6H12O6	null	null	compound 3	null	null	[M+H]1+	493.6590	1	493.6590	ms_run[3]:index=3	[MS, MS:1001477, SpectraST, ]	[MS, MS:1000511, ms level, 2]	0.4444	1

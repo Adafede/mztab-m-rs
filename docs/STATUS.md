@@ -1,6 +1,6 @@
 # Status and what is left
 
-Last updated: 2026-11-18, after M7. Milestones are defined in
+Last updated: 2026-11-19, after M8. Milestones are defined in
 [PLAN.md §8](PLAN.md); decisions are in [DECISIONS.md](../DECISIONS.md).
 
 ## Done
@@ -14,7 +14,8 @@ Last updated: 2026-11-18, after M7. Milestones are defined in
 | M4 | Structure validator, oracle harness | `95bd5c4` | D-064–D-066 |
 | M5 | Semantic validator, CV rules, `mztab-m-obo` | `b969cec` | D-067–D-070 |
 | M6 | JSON (feature `json`) | `c5b7c29` | D-071 |
-| M7 | CLI (`mztab-m`) and browser demo | (pending commit) | D-072 |
+| M7 | CLI (`mztab-m`) and browser demo | `8b5439c` | D-072 |
+| M8 | Benchmarks ([BENCHMARKS.md](BENCHMARKS.md)) | (pending commit) | D-073 |
 
 All gates pass at each commit: 100% line coverage, no surviving mutants
 in the milestone's diff, and wasm32 tests for `mztab-m` and `mztab-m-obo`.
@@ -23,9 +24,6 @@ in the milestone's diff, and wasm32 tests for `mztab-m` and `mztab-m-obo`.
 
 ### Milestones
 
-- **M8: Benchmarks.** PLAN §7: criterion and dhat in a bench crate, and
-  `docs/BENCHMARKS.md`. This includes the deferred `memchr` comparison (PLAN
-  §5).
 - **M9: Docs and release prep.** Crate quickstart (the README is still a
   placeholder); every rule's rustdoc links to its spec section; `DESIGN.md`;
   the README links the gates that enforce zero dependencies, purity and
@@ -38,6 +36,9 @@ in the milestone's diff, and wasm32 tests for `mztab-m` and `mztab-m-obo`.
   and every disagreement has to be reviewed into
   `tests/oracle/expected-disagreements.tsv`. Until then the comparison
   passes vacuously.
+- **jmzTab-m comparison and oracle outputs.** A JDK 25 is installed
+  (`~/.jenv/versions/25.0.4`), so both could run locally, but building the
+  jmzTab-m CLI downloads Maven and its dependencies: needs approval.
 - **Real vocabularies (M5).** The semantic layer has only been run with the
   test stand-in (`tests/support/terms.rs`). A run of the corpus against the
   real `psi-ms.obo` (and UO and others) needs those files downloaded, which

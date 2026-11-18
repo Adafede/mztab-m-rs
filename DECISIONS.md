@@ -795,3 +795,26 @@ place in `validate/` to change if you decide otherwise.
   for the semantic layer, and downloads the JSON or TSV form;
   `./mk local:demo` builds `www/pkg` (not committed) and runs in CI. The
   crate is tested natively and on wasm32.
+
+## Benchmarks (M8)
+
+### D-073: Benchmark crate and what the numbers say — PROPOSED (M8)
+
+- **`benches/` (`mztab-m-bench`, `publish = false`).** It holds a seeded
+  synthetic generator (valid 2.1 `M+S+F+E` documents of any size, produced
+  line by line), a criterion throughput bench and a dhat heap bench.
+  `criterion`, `dhat` and `memchr` are dev-dependencies of this crate only.
+- **`criterion` is pinned to 0.5.** 0.8 builds the `alloca` crate's C
+  object, which this toolchain (Xcode clang 21) fails to link ("invalid
+  value for 'frame-pointer' attribute"). Revisit when either side moves.
+  `criterion_group!` is not used, because its generated function has no
+  docs; the bench writes its `main` instead.
+- **No `memchr` feature in the core (PLAN §5 asked to measure first).** A
+  `memchr` scan is 1.3–1.8× faster than the std split. But the scan is
+  under a fifth of parse time, which goes to typing cells and recording the
+  layout, so the feature would gain a few percent at the cost of the core's
+  first dependency. Recorded in `docs/BENCHMARKS.md`.
+- **The streaming bound is enforced:** the heap bench asserts a peak under
+  64 MB while streaming a ~1 GB synthetic document. It measured 0.87 MB.
+- **The jmzTab-m comparison is not done.** It needs the jmzTab-m CLI built
+  (a Maven download, not approved yet) and hyperfine.

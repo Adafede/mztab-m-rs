@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
+  "benches",
   "crates/mztab-m",
   "crates/mztab-m-cli",
   "crates/mztab-m-obo",

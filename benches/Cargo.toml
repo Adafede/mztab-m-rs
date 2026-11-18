@@ -1,0 +1,32 @@
+[package]
+name = "mztab-m-bench"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Benchmarks and the synthetic document generator for mztab-m (not published)."
+repository.workspace = true
+license.workspace = true
+publish = false
+
+[[bench]]
+harness = false
+name = "throughput"
+
+[[bench]]
+harness = false
+name = "heap"
+
+[dependencies]
+mztab-m = { path = "../crates/mztab-m", features = ["json"] }
+
+[dev-dependencies]
+# Measurement only (PLAN §5): timing, heap profiling, and a SIMD line-scan
+# baseline to compare the reader's own scanning with (D-073).
+# 0.5, not 0.8: 0.8 builds the `alloca` crate's C object, which this
+# toolchain (Xcode clang 21) cannot link (D-073).
+criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }
+dhat = "0.3"
+memchr = "2"
+
+[lints]
+workspace = true
