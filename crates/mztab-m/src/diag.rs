@@ -366,6 +366,40 @@ codes! {
     /// A study variable value does not match the `datatype` of its group.
     StudyVariableDatatype = "MZT-T035", Structure, Must, FieldReference # "study_variable_group1-n-datatype",
         jmztab [], "study variable value does not match its group datatype";
+    /// A CV parameter's label is not declared by any `cv[n]-label`.
+    CvUndeclared = "MZT-X001", Semantic, Should, FieldReference # "cv1-n-label",
+        jmztab [3013], "CV label is not declared";
+    /// A declared CV is not used by any parameter or column.
+    CvUnused = "MZT-X002", Semantic, May, FieldReference # "cv1-n-label",
+        jmztab [3014], "declared CV is not used";
+    /// An accession has no `PREFIX:` part. (The prefix need not equal the
+    /// CV label: the spec's own example is `[MIRIAM, MIR:00100079, HMDB, ]`.)
+    AccessionPrefix = "MZT-X003", Semantic, Should, Format # "format-specification",
+        jmztab [1035, 3016], "accession has no `PREFIX:` part";
+    /// A vocabulary the lookup holds has no term with this accession.
+    UnknownTerm = "MZT-X004", Semantic, Must, Format # "the-psi-mass-spectrometry-controlled-vocabulary-cv",
+        jmztab [], "unknown CV term";
+    /// A parameter's name differs from its term's name.
+    TermName = "MZT-X005", Semantic, Should, Format # "the-psi-mass-spectrometry-controlled-vocabulary-cv",
+        jmztab [], "parameter name differs from the CV term name";
+    /// A parameter uses an obsolete term.
+    ObsoleteTerm = "MZT-X006", Semantic, Should, Format # "the-psi-mass-spectrometry-controlled-vocabulary-cv",
+        jmztab [], "obsolete CV term";
+    /// A CV parameter is not allowed by its field's CV-mapping rule. The
+    /// finding's severity is the rule's level.
+    CvRule = "MZT-X007", Semantic, Must, Format # "format-specification",
+        jmztab [3005, 3006, 3007, 3008, 3009, 3010, 3011], "CV term not allowed by the CV-mapping rule";
+    /// A term that the CV-mapping rule does not let repeat appears twice in
+    /// one element or row.
+    CvRuleRepeat = "MZT-X008", Semantic, Should, Format # "format-specification",
+        jmztab [], "CV term repeated where the CV-mapping rule forbids it";
+    /// A CV parameter matches more than one term of an `XOR` CV-mapping rule.
+    CvRuleXor = "MZT-X009", Semantic, Must, Format # "format-specification",
+        jmztab [], "CV term matches several exclusive terms of the CV-mapping rule";
+    /// A declared CV version differs from the version of the vocabulary
+    /// used for checking.
+    CvVersion = "MZT-X010", Semantic, May, FieldReference # "cv1-n-version",
+        jmztab [], "declared CV version differs from the checked vocabulary";
 }
 
 impl fmt::Display for Code {
@@ -561,6 +595,16 @@ pub enum Detail {
     Profile(Profile),
     /// The prohibited combination the tables form.
     Prohibited(ProhibitedProfile),
+    /// A CV term: its accession, the name its vocabulary gives it, and the
+    /// CV-mapping rule it was checked against.
+    Term {
+        /// The accession.
+        accession: Cow<'static, str>,
+        /// The vocabulary's name for the term, when it differs.
+        name: Option<Cow<'static, str>>,
+        /// The CV-mapping rule's id.
+        rule: Option<&'static str>,
+    },
 }
 
 impl fmt::Display for Detail {
@@ -582,6 +626,17 @@ impl fmt::Display for Detail {
             Self::Label(label) => write!(f, "`{label}`"),
             Self::Profile(profile) => write!(f, "profile `{profile}`"),
             Self::Prohibited(tables) => write!(f, "tables `{tables}`"),
+            Self::Term {
+                accession,
+                name,
+                rule,
+            } => {
+                write!(f, "`{accession}`")?;
+                if let Some(name) = name {
+                    write!(f, " is `{name}`")?;
+                }
+                rule.map_or(Ok(()), |rule| write!(f, " (rule `{rule}`)"))
+            }
         }
     }
 }

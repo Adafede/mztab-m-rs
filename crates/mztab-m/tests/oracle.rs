@@ -14,6 +14,7 @@ extern crate alloc;
 use alloc::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
+use mztab_m::cv::NoTerms;
 use mztab_m::{Location, validate};
 
 fn root() -> PathBuf {
@@ -124,17 +125,18 @@ fn disagreements_with_jmztab_are_explained() {
         .expect("an oracle output names a corpus file or fixture");
         let input = std::fs::read(&source).expect("source");
         let text = String::from_utf8_lossy(&input);
-        let ours: Vec<(Vec<u16>, i64)> = validate::all(&text, &validate::Config::default())
-            .iter()
-            .filter(|f| !f.code.jmztab().is_empty())
-            .map(|f| {
-                let line = match f.location {
-                    Location::Text { line, .. } => i64::from(line),
-                    Location::Json(_) | Location::Model(_) | Location::Document => -1,
-                };
-                (f.code.jmztab().to_vec(), line)
-            })
-            .collect();
+        let ours: Vec<(Vec<u16>, i64)> =
+            validate::all(&text, &validate::Config::default(), &NoTerms)
+                .iter()
+                .filter(|f| !f.code.jmztab().is_empty())
+                .map(|f| {
+                    let line = match f.location {
+                        Location::Text { line, .. } => i64::from(line),
+                        Location::Json(_) | Location::Model(_) | Location::Document => -1,
+                    };
+                    (f.code.jmztab().to_vec(), line)
+                })
+                .collect();
         let theirs = jmztab_reports(&std::fs::read_to_string(&output).expect("output"));
         for &(code, line) in &theirs {
             let matched = ours

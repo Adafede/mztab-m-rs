@@ -10,8 +10,12 @@
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_test::wasm_bindgen_test as test;
 
+#[path = "support/terms.rs"]
+mod terms;
+
 use mztab_m::validate::{self, Config};
 use mztab_m::{Code, Section, parse_bytes};
+use terms::Mini;
 
 /// A valid mzTab-M 2.1 document (M+S+F+E) using every key and column kind.
 const BASE: &str = include_str!("golden/full.canonical.mztab");
@@ -165,14 +169,17 @@ impl Doc {
     }
 }
 
-/// Every code the reader and the structure validator report on `input`.
+/// Every code the reader and the structure and semantic validators (with
+/// the test vocabulary) report on `input`.
 fn codes(input: &[u8]) -> Vec<Code> {
     let parsed = parse_bytes(input);
     let structure = validate::structure(&parsed.mztab, &Config::default());
+    let semantic = validate::semantic(&parsed.mztab, &Config::default(), &Mini);
     parsed
         .findings
         .iter()
         .chain(&structure)
+        .chain(&semantic)
         .map(|f| f.code)
         .collect()
 }
@@ -357,6 +364,65 @@ fn cases() -> Vec<(Code, Vec<u8>)> {
             d().set("study_variable_group[1]-datatype", "xsd:integer")
                 .bytes(),
         ),
+        (
+            Code::CvUndeclared,
+            d().set("quantification_method", "[NEW, NEW:1, new method, ]")
+                .bytes(),
+        ),
+        (
+            Code::CvUnused,
+            d().add_mtd(&[
+                "MTD\tcv[13]-label\tFOO",
+                "MTD\tcv[13]-full_name\tFoo",
+                "MTD\tcv[13]-version\t1",
+                "MTD\tcv[13]-uri\thttps://example.org/foo",
+            ])
+            .bytes(),
+        ),
+        (
+            Code::AccessionPrefix,
+            d().set(
+                "quantification_method",
+                "[MS, 1001834, LC-MS label-free quantitation analysis, ]",
+            )
+            .bytes(),
+        ),
+        (
+            Code::UnknownTerm,
+            d().set("quantification_method", "[MS, MS:9999999, nothing, ]")
+                .bytes(),
+        ),
+        (
+            Code::TermName,
+            d().set("quantification_method", "[MS, MS:1001834, label free, ]")
+                .bytes(),
+        ),
+        (
+            Code::ObsoleteTerm,
+            d().set("quantification_method", "[MS, MS:1009999, old term, ]")
+                .bytes(),
+        ),
+        (
+            Code::CvRule,
+            d().set("quantification_method", "[MS, MS:1002883, median, ]")
+                .bytes(),
+        ),
+        (
+            Code::CvRuleRepeat,
+            d().add_mtd(&["MTD\tms_run[1]-scan_polarity[2]\t[MS, MS:1000130, positive scan, ]"])
+                .bytes(),
+        ),
+        (
+            Code::CvRuleXor,
+            d().cell(
+                sme,
+                1,
+                "identification_method",
+                "[MS, MS:1009998, search software, ]",
+            )
+            .bytes(),
+        ),
+        (Code::CvVersion, d().set("cv[1]-version", "4.0.0").bytes()),
     ]
 }
 
@@ -530,6 +596,16 @@ fn more_cases() -> Vec<(Code, Vec<u8>)> {
         Code::AdductIon,
         d().cell(sme, 1, "adduct_ion", "M+H").bytes(),
     ));
+    cases.push((
+        Code::CvUndeclared,
+        d().add_column(sml, "opt_global_cv_NEW:1_flag", "null")
+            .bytes(),
+    ));
+    cases.push((
+        Code::UnknownTerm,
+        d().add_column(sml, "opt_global_cv_MS:9999999_flag", "null")
+            .bytes(),
+    ));
     for (datatype, value) in [("xsd:boolean", "yes"), ("Parameter", "Control")] {
         let typed = d()
             .set("study_variable_group[1]-datatype", datatype)
@@ -574,6 +650,23 @@ fn clean_cases() -> Vec<(Code, Vec<u8>)> {
         ),
         // Without SMF, SME rows need no reference.
         (Code::CrossReference, d().drop_table(smf, true).bytes()),
+        // User parameters are allowed in every field; a vocabulary the
+        // lookup does not hold cannot be judged.
+        (
+            Code::CvRule,
+            d().set("quantification_method", "[,, my method, ]").bytes(),
+        ),
+        (
+            Code::CvRule,
+            d().set("quantification_method", "[UO, UO:0000001, x, ]")
+                .bytes(),
+        ),
+        // Two different terms may fill a non-repeatable field's list.
+        (
+            Code::CvRuleRepeat,
+            d().add_mtd(&["MTD\tms_run[1]-scan_polarity[2]\t[MS, MS:1000129, negative scan, ]"])
+                .bytes(),
+        ),
     ]
 }
 

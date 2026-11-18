@@ -213,7 +213,10 @@ fn metadata_keys_hold_one_value_of_their_kind() {
         assert_eq!(metadata.insert(key, value), again, "{key}: second value");
         checked += 1;
     }
-    assert_eq!(checked, 79, "all 78 key forms, one colunit twice");
+    assert_eq!(
+        checked, 123,
+        "all 78 key forms, one colunit twice, eleven more CVs (four keys each)"
+    );
 }
 
 #[test]
@@ -262,8 +265,9 @@ mod native {
     }
 
     /// Every file reads (see [`check`]), and the finding codes per file (the
-    /// reader's and the structure validator's) match `tests/golden/corpus.txt`. Set `BLESS=1` to rewrite the golden file
-    /// after an intended change.
+    /// reader's, the structure validator's and the semantic validator's with
+    /// no vocabulary) match `tests/golden/corpus.txt`. Set `BLESS=1` to
+    /// rewrite the golden file after an intended change.
     #[test]
     fn every_corpus_file_reads_as_recorded() {
         let files = corpus();
@@ -280,10 +284,11 @@ mod native {
             };
             let findings = check(&name(&path), &input, sizes);
             let model = mztab_m::parse_bytes(&input).mztab;
-            let structure =
-                mztab_m::validate::structure(&model, &mztab_m::validate::Config::default());
+            let config = mztab_m::validate::Config::default();
+            let structure = mztab_m::validate::structure(&model, &config);
+            let semantic = mztab_m::validate::semantic(&model, &config, &mztab_m::cv::NoTerms);
             let mut codes = BTreeMap::<&str, usize>::new();
-            for finding in findings.iter().chain(&structure) {
+            for finding in findings.iter().chain(&structure).chain(&semantic) {
                 *codes.entry(finding.code.id()).or_default() += 1;
             }
             write!(report, "{}:", name(&path)).expect("writing to a String");

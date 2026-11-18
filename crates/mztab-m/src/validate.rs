@@ -1,27 +1,30 @@
-//! Validation: [`syntax`], [`structure`] and [`all`], configured by
-//! [`Config`].
+//! Validation: [`syntax`], [`structure`], [`semantic()`] and [`all`],
+//! configured by [`Config`].
 //!
 //! The layers are independent. [`syntax`] reads text and reports what the
 //! reader finds. [`structure`] checks a typed model, never re-parsing it:
 //! mandatory fields, profiles, references, columns and value rules, with
-//! the rule set chosen by the model's `mzTab-version`. [`all`] runs both on
-//! a text.
+//! the rule set chosen by the model's `mzTab-version`. [`semantic()`] checks
+//! the model's controlled vocabulary: declarations, terms (against a
+//! [`TermLookup`]) and the CV-mapping rules of [`cv::rules`](crate::cv::rules).
+//! [`all`] runs the three on a text.
 //!
-//! Every finding of [`structure`] on a model read from text is located by
-//! line, column and cell (through the model's
+//! Every finding of [`structure`] and [`semantic()`] on a model read from
+//! text is located by line, column and cell (through the model's
 //! [`SourceLayout`](crate::SourceLayout)); on a model built in code it
 //! carries a model path instead.
 //!
 //! ```
-//! use mztab_m::{Code, validate};
+//! use mztab_m::{Code, cv::NoTerms, validate};
 //!
 //! let input = "MTD\tmzTab-version\t2.1.0-M\n";
-//! let findings = validate::all(input, &validate::Config::default());
+//! let findings = validate::all(input, &validate::Config::default(), &NoTerms);
 //! let missing = findings.iter().filter(|f| f.code == Code::MissingField).count();
 //! assert!(missing > 0, "mzTab-ID, assays, study variables, cv, ... are missing");
 //! ```
 
 mod metadata;
+mod semantic;
 mod tables;
 
 use alloc::borrow::Cow;
@@ -29,6 +32,7 @@ use alloc::collections::BTreeMap;
 use alloc::string::ToString as _;
 use alloc::vec::Vec;
 
+use crate::cv::TermLookup;
 use crate::diag::{Code, Detail, Finding, Findings, Location, Path, Severity};
 use crate::meta::MtdKey;
 use crate::model::{LineContent, MzTab};
@@ -111,27 +115,48 @@ pub fn structure(mztab: &MzTab<'_>, config: &Config) -> Findings {
     config.apply(report.findings)
 }
 
-/// [`syntax`] and [`structure`] on a text. Values that failed to type are
-/// reported once, by the reader, not again as [`Code::InvalidValue`].
+/// Checks a typed model's controlled vocabulary against `terms`. See the
+/// [module documentation](self).
 ///
 /// # Examples
 ///
 /// ```
-/// use mztab_m::validate::{self, Config};
+/// use mztab_m::{Code, cv::NoTerms, parse, validate};
 ///
-/// let findings = validate::all("MTD\tmzTab-version\t2.1\n", &Config::default());
+/// let model = parse("MTD\tquantification_method\t[MS, MS:1001834, LC-MS label-free, ]\n").mztab;
+/// let findings = validate::semantic(&model, &validate::Config::default(), &NoTerms);
+/// assert!(findings.iter().any(|f| f.code == Code::CvUndeclared), "no cv[1]-label MS");
+/// ```
+#[must_use]
+pub fn semantic(mztab: &MzTab<'_>, config: &Config, terms: &dyn TermLookup) -> Findings {
+    let mut report = Report::new(mztab);
+    semantic::check(mztab, terms, &mut report);
+    config.apply(report.findings)
+}
+
+/// [`syntax`], [`structure`] and [`semantic()`] on a text. Values that failed
+/// to type are reported once, by the reader, not again as
+/// [`Code::InvalidValue`].
+///
+/// # Examples
+///
+/// ```
+/// use mztab_m::{cv::NoTerms, validate::{self, Config}};
+///
+/// let findings = validate::all("MTD\tmzTab-version\t2.1\n", &Config::default(), &NoTerms);
 /// let codes: Vec<_> = findings.iter().map(|f| f.code.id()).collect();
 /// assert!(codes.contains(&"MZT-S006"));
 /// assert!(!codes.contains(&"MZT-T028"));
 /// ```
 #[must_use]
-pub fn all(input: &str, config: &Config) -> Findings {
+pub fn all(input: &str, config: &Config, terms: &dyn TermLookup) -> Findings {
     let parsed = crate::read::parse(input);
     let mut findings = parsed.findings.into_vec();
     let mut report = Report::new(&parsed.mztab);
     let rules = report.rule_set;
     metadata::check(&parsed.mztab, rules, &mut report);
     tables::check(&parsed.mztab, rules, &mut report);
+    semantic::check(&parsed.mztab, terms, &mut report);
     findings.extend(
         report
             .findings

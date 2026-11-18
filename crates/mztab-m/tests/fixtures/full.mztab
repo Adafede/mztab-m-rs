@@ -4,7 +4,7 @@ MTD	mzTab-ID	FULL-1
 MTD	mzTab-profile	M+S+F+E
 MTD	title	Everything
 MTD	description	A fixture that uses every key.
-MTD	sample_processing[1]	[MS, MS:1000544, Conversion to mzML, ]|[MS, MS:1000035, peak picking, ]
+MTD	sample_processing[1]	[MSIO, MSIO:0000146, centrifugation, ]|[MSIO, MSIO:0000141, metabolite extraction, ]
 MTD	instrument[1]-name	[MS, MS:1000483, Thermo Fisher Scientific instrument model, ]
 MTD	instrument[1]-source	[MS, MS:1000073, electrospray ionization, ]
 MTD	instrument[1]-analyzer[1]	[MS, MS:1000484, orbitrap, ]
@@ -65,6 +65,50 @@ MTD	cv[1]-label	MS
 MTD	cv[1]-full_name	PSI-MS controlled vocabulary
 MTD	cv[1]-version	4.1.0
 MTD	cv[1]-uri	https://purl.obolibrary.org/obo/ms.obo
+MTD	cv[2]-label	BTO
+MTD	cv[2]-full_name	BRENDA tissue ontology
+MTD	cv[2]-version	2021-10-26
+MTD	cv[2]-uri	http://purl.obolibrary.org/obo/bto.obo
+MTD	cv[3]-label	CL
+MTD	cv[3]-full_name	Cell Ontology
+MTD	cv[3]-version	2024-01-04
+MTD	cv[3]-uri	http://purl.obolibrary.org/obo/cl.obo
+MTD	cv[4]-label	DOID
+MTD	cv[4]-full_name	Human Disease Ontology
+MTD	cv[4]-version	2024-01-31
+MTD	cv[4]-uri	http://purl.obolibrary.org/obo/doid.obo
+MTD	cv[5]-label	MIRIAM
+MTD	cv[5]-full_name	MIRIAM Registry
+MTD	cv[5]-version	2024-01-01
+MTD	cv[5]-uri	https://registry.identifiers.org
+MTD	cv[6]-label	MSIO
+MTD	cv[6]-full_name	Metabolomics Standards Initiative Ontology
+MTD	cv[6]-version	1.0.1
+MTD	cv[6]-uri	https://github.com/MSI-Metabolomics-Standards-Initiative/MSIO
+MTD	cv[7]-label	NCBITaxon
+MTD	cv[7]-full_name	NCBI organismal classification
+MTD	cv[7]-version	2023-06-20
+MTD	cv[7]-uri	http://purl.obolibrary.org/obo/ncbitaxon.obo
+MTD	cv[8]-label	OBI
+MTD	cv[8]-full_name	Ontology for Biomedical Investigations
+MTD	cv[8]-version	2023-09-20
+MTD	cv[8]-uri	http://purl.obolibrary.org/obo/obi.obo
+MTD	cv[9]-label	PRIDE
+MTD	cv[9]-full_name	PRIDE Controlled Vocabulary
+MTD	cv[9]-version	16:10:2023 11:38
+MTD	cv[9]-uri	https://github.com/PRIDE-Utilities/pride-ontology
+MTD	cv[10]-label	STATO
+MTD	cv[10]-full_name	Statistics Ontology
+MTD	cv[10]-version	RC1.4
+MTD	cv[10]-uri	http://purl.obolibrary.org/obo/stato.owl
+MTD	cv[11]-label	UO
+MTD	cv[11]-full_name	Unit Ontology
+MTD	cv[11]-version	2023-05-25
+MTD	cv[11]-uri	http://purl.obolibrary.org/obo/uo.obo
+MTD	cv[12]-label	XLMOD
+MTD	cv[12]-full_name	Cross-linker and derivatization agent ontology
+MTD	cv[12]-version	2019-10-28
+MTD	cv[12]-uri	https://raw.githubusercontent.com/HUPO-PSI/xlmod-CV/main/XLMOD.obo
 MTD	database[1]	[MIRIAM, MIR:00100079, HMDB, ]
 MTD	database[1]-prefix	HMDB
 MTD	database[1]-version	5.0

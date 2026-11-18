@@ -1,0 +1,21 @@
+[package]
+name = "mztab-m-obo"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "OBO 1.4 vocabularies as a term lookup for mztab-m's semantic validation. Pure, no_std + alloc."
+readme = "README.md"
+repository.workspace = true
+license.workspace = true
+keywords = ["mass-spectrometry", "metabolomics", "mztab", "obo", "ontology"]
+categories = ["no-std", "parser-implementations", "science", "wasm"]
+
+[dependencies]
+mztab-m = { path = "../mztab-m", version = "0.1.0" }
+
+# Test-only: runs the tests on wasm32-unknown-unknown (see crates/mztab-m).
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test = "0.3"
+
+[lints]
+workspace = true

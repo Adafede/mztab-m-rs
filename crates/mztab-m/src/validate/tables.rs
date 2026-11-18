@@ -236,7 +236,7 @@ impl Positions {
 
 /// The header position of a stable column (or the end of the header, for
 /// a value of a missing column).
-fn position<S: PartialEq>(header: &Header<'_, S>, column: &S) -> usize {
+pub(super) fn position<S: PartialEq>(header: &Header<'_, S>, column: &S) -> usize {
     header
         .columns
         .iter()

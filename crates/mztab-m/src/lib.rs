@@ -3,6 +3,7 @@
 
 extern crate alloc;
 
+pub mod cv;
 mod diag;
 mod id;
 mod meta;

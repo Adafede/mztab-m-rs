@@ -589,3 +589,98 @@ place in `validate/` to change if you decide otherwise.
   disagreements, is still to do. Until then the comparison test passes
   vacuously, and says so here. The seed rows of the disagreement list are
   the deviations already known from reading jmzTab-m (J-01, J-02, J-04).
+
+## Semantic validator and CV (M5)
+
+### D-067: Semantic checks, as built — PROPOSED (M5)
+
+- API (PLAN §2): `validate::semantic(&MzTab, &Config, &dyn TermLookup)`,
+  and `validate::all` now takes the lookup too. `cv::NoTerms` holds no
+  vocabulary; then only the checks that need no terms run.
+- `TermLookup` answers `covers(prefix)`, `term(accession)` (name,
+  obsolete), `is_descendant(accession, ancestor)` (strict) and, optionally,
+  `version(prefix)`. An accession whose prefix the lookup does not cover is
+  never judged: its term checks are skipped, and a rule that would need it
+  is skipped, not failed. Slices and arrays of lookups combine (the first
+  that covers a prefix answers). No network I/O anywhere: vocabularies come
+  from the caller.
+- Codes (layer `Semantic`, prefix `X`):
+  - `X001` a CV parameter's label is not declared by a `cv[n]-label`
+    (warning, once per label at its first use). The spec implies it ("the
+    labels of the controlled vocabularies/ontologies used in the mzTab
+    file") without a MUST.
+  - `X002` a declared CV is used by no parameter and no
+    `opt_..._cv_<accession>_...` column (information).
+  - `X003` an accession has no `PREFIX:` part (warning; jmzTab-m 1035).
+    **The prefix is not required to equal the label:** the field
+    reference's own example is `[MIRIAM, MIR:00100079, HMDB, ]`.
+  - `X004` unknown term in a covered vocabulary (error), `X005` name
+    differs from the vocabulary's, ignoring ASCII case (warning), `X006`
+    obsolete term (warning), `X010` declared `cv[n]-version` differs from
+    the lookup's (information).
+  - `X007` a CV parameter breaks its field's CV-mapping rule, at the rule's
+    level (MUST error, SHOULD warning, MAY information); `X008` a term the
+    rule does not let repeat appears twice in one element or row; `X009` a
+    value matches more than one term of an `XOR` rule.
+- **User parameters pass every rule:** the format specification ("Params")
+  allows a user parameter wherever a parameter is allowed.
+- **Repeats (`X008`) are the same accession twice**, not two different
+  children of a non-repeatable root: the field reference defines fields
+  such as `instrument[n]-analyzer[1-n]` and `sample[n]-species[1-n]` as
+  lists, which `isRepeatable="false"` read literally would forbid (D-002).
+- A rule's absence check (a MUST field with no value) is the structure
+  layer's (`T009`), not repeated here.
+- Not checked: unit (`has_units`) and value-type (`value-type`) qualifiers
+  of terms; `spectra_ref` against the `id_format` term (table-1).
+
+### D-068: CV-mapping rules: generated, with corrections — PROPOSED (M5)
+
+- `crates/mztab-m/src/cv/rules.rs` is generated from the pinned
+  `schema/mzTab_2_1-M_mapping.xml` by `tests/cv_rules.rs`, which fails when
+  the committed file is stale (`BLESS=1` rewrites it): 32 rules, one per
+  field, mapped from `cvElementPath` to `cv::Target`. `cvIdentifierRef` and
+  `scopePath` are not used (the scope is the element or row of the field;
+  `ms_level_must` names `smallMoleculeSummary` as its scope, a slip).
+  `useTerm="yes"` reads as true. An `AND` rule with several terms would
+  fail generation (none exists).
+- Corrections, each because the field reference says otherwise (D-002):
+  - `ms_level_must`: `MS:1000511` itself is allowed (`useTerm` false in the
+    mapping); the field reference's example is `[MS, MS:1000511, ms level,
+    2]`.
+  - `identification_method_must`: `MS:1000531` (software) and its
+    descendants are added; the field reference says "the name of software,
+    database or manual curation", with `[MS, MS:1001477, SpectraST,]` as
+    its example.
+- Not corrected: `best_id_confidence_measure_must` keeps "small molecule
+  confidence measure", which matches the field's description ("the best
+  confidence measure ... for this type of score"). Its example,
+  `[MS, MS:1001477, SpectraST,]`, therefore breaks the rule: a defect in
+  the example, reported as `X007` when the lookup holds PSI-MS.
+
+### D-069: `mztab-m-obo` — PROPOSED (M5)
+
+- A zero-dependency (besides `mztab-m`), `no_std + alloc`, zero-copy OBO
+  1.4 reader: `Ontology::parse(&str)` never fails. It keeps `[Term]`
+  stanzas' `id`, `name`, `is_obsolete`, `is_a` and `relationship:
+  part_of`, and the header's `data-version`; everything else is skipped.
+  A stanza without `id` is dropped; a repeated `id` keeps the first.
+- Ancestors follow `is_a` **and `part_of`**, as the PSI semantic validator
+  expands term subtrees; other relationships (`has_units`, ...) are not
+  followed. Cycles end (each term is visited once).
+- `version(prefix)` is the `data-version` for every prefix the file
+  covers.
+- The OBO files themselves are not vendored or downloaded by the crates
+  (PLAN: no network I/O); the CLI (M7) will take them as paths.
+
+### D-070: The base test document is semantically clean — PROPOSED (M5)
+
+- `tests/fixtures/full.mztab` now declares every CV it uses (eleven more
+  `cv[n]`), and its `sample_processing[1]` uses MSIO terms as the field
+  reference does. `tests/support/terms.rs` is a small PSI-MS stand-in
+  (`Mini`, the terms the document uses and their ancestors, plus made-up
+  terms for negative cases); the rule suite runs the semantic layer with
+  it, and the base document triggers nothing.
+- The corpus golden (`tests/golden/corpus.txt`) records semantic codes
+  with `NoTerms`: undeclared CVs in five files, and six `X007` in the
+  MS-DIAL GC-MS file, whose `scan_polarity` accessions are `MS: 1000130`
+  (with a space), which no allowed term matches.

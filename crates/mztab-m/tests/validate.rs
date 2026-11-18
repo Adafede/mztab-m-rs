@@ -3,6 +3,7 @@
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_test::wasm_bindgen_test as test;
 
+use mztab_m::cv::NoTerms;
 use mztab_m::validate::{self, Config};
 use mztab_m::{Cell, Code, Location, MzTab, Raw, Severity, SourceLayout, parse};
 
@@ -19,7 +20,7 @@ fn with(code: Code, findings: &mztab_m::Findings) -> Vec<String> {
 #[test]
 fn config_overrides_and_disables() {
     let input = "MTD\tmzTab-version\t2.2.0-M\nMTD\ttitle\t t\n";
-    let default = validate::all(input, &Config::default());
+    let default = validate::all(input, &Config::default(), &NoTerms);
     assert_eq!(
         default
             .iter()
@@ -31,7 +32,7 @@ fn config_overrides_and_disables() {
     let config = Config::default()
         .with_severity(Code::UnknownVersion, Severity::Error)
         .without(Code::CellWhitespace);
-    let configured = validate::all(input, &config);
+    let configured = validate::all(input, &config, &NoTerms);
     assert_eq!(
         configured
             .iter()
@@ -66,7 +67,7 @@ fn config_overrides_and_disables() {
 #[test]
 fn all_reports_invalid_values_once() {
     let input = BASE.replace("MTD\tmzTab-version\t2.1.0-M", "MTD\tmzTab-version\t2.1");
-    let findings = validate::all(&input, &Config::default());
+    let findings = validate::all(&input, &Config::default(), &NoTerms);
     assert_eq!(
         with(Code::VersionSyntax, &findings).len(),
         1,
@@ -96,7 +97,7 @@ fn findings_on_read_models_point_at_text() {
             "MTD\tprotocol[1]-type\t[OBI, OBI:0302884, extraction, ]\n",
             "",
         );
-    let findings = validate::all(&input, &Config::default());
+    let findings = validate::all(&input, &Config::default(), &NoTerms);
     assert_eq!(
         with(Code::Orcid, &findings),
         ["error[MZT-T034] line 17, column 22, cell 3: ORCID does not match `0000-0000-0000-000X`"],
@@ -273,7 +274,7 @@ fn version_two_files_skip_profile_errors() {
         .filter(|l| !l.starts_with("SFH\t") && !l.starts_with("SMF\t"))
         .flat_map(|l| [l, "\n"])
         .collect();
-    let findings = validate::all(&without_smf, &Config::default());
+    let findings = validate::all(&without_smf, &Config::default(), &NoTerms);
     let codes: Vec<Code> = findings.iter().map(|f| f.code).collect();
     assert!(
         !codes.contains(&Code::ProhibitedProfile),
@@ -311,6 +312,15 @@ fn details_render() {
         render(Detail::Key(mztab_m::MtdKey::Title)).ends_with(": `title`"),
         "key"
     );
+    assert!(
+        render(Detail::Term {
+            accession: "MS:1".into(),
+            name: Some("x".into()),
+            rule: Some("r"),
+        })
+        .ends_with(": `MS:1` is `x` (rule `r`)"),
+        "term"
+    );
 }
 
 /// Table findings on a read model point into the header and row lines
@@ -337,7 +347,7 @@ fn table_findings_on_read_models_point_at_text() {
         })
         .collect();
     let input = lines.join("\n") + "\n";
-    let findings = validate::all(&input, &Config::default());
+    let findings = validate::all(&input, &Config::default(), &NoTerms);
     let at = |code| -> Vec<Location> {
         findings
             .iter()
@@ -347,15 +357,43 @@ fn table_findings_on_read_models_point_at_text() {
     };
     assert_eq!(
         at(Code::DanglingReference),
-        [Location::text(85, 223).with_cell(14)],
+        [Location::text(129, 223).with_cell(14)],
         "SMF header column"
     );
     assert_eq!(
         at(Code::NullValue),
         [
-            Location::text(87, 27).with_cell(7),
-            Location::text(91, 90).with_cell(13),
+            Location::text(131, 27).with_cell(7),
+            Location::text(135, 90).with_cell(13),
         ],
         "SMF and SME cells"
     );
+}
+
+/// The semantic layer on a model built in code: a CV with no version is
+/// not compared, and the empty lookup judges nothing.
+#[test]
+fn semantic_on_models_built_in_code() {
+    use mztab_m::cv::{NoTerms, TermLookup, rules};
+    let mut model = MzTab::default();
+    let cv = mztab_m::Cv {
+        label: Some(Cell::Value(mztab_m::Text::new("MS").expect("valid"))),
+        ..mztab_m::Cv::default()
+    };
+    model
+        .metadata
+        .cv
+        .insert(mztab_m::CvId::new(1).expect("non-zero"), cv);
+    let findings = validate::semantic(&model, &Config::default(), &NoTerms);
+    let codes: Vec<Code> = findings.iter().map(|f| f.code).collect();
+    assert_eq!(codes, [Code::CvUnused], "only the unused CV");
+    assert_eq!(NoTerms.term("MS:1"), None, "no term");
+    assert!(!NoTerms.is_descendant("MS:1", "MS:2"), "no ancestors");
+    let names: Vec<String> = rules().iter().map(|r| r.target.to_string()).collect();
+    for (i, name) in names.iter().enumerate() {
+        assert!(
+            !name.is_empty() && !names.iter().skip(i + 1).any(|n| n == name),
+            "{name}: distinct field names"
+        );
+    }
 }
