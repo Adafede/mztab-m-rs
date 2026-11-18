@@ -261,6 +261,26 @@ codes! {
     /// are read without them.
     CellWhitespace = "MZT-S013", Syntax, Should, Format # "format-specification",
         jmztab [], "leading or trailing spaces";
+    /// The input is not JSON (RFC 8259). Feature `json`.
+    JsonSyntax = "MZT-S014", Syntax, Must, Format # "format-specification",
+        jmztab [], "not valid JSON";
+    /// A JSON value does not have the form its place in the JSON schema
+    /// requires. Feature `json`.
+    JsonShape = "MZT-S015", Syntax, Must, Format # "format-specification",
+        jmztab [], "JSON value of the wrong form";
+    /// A JSON member that the JSON schema does not define. It is ignored.
+    /// Feature `json`.
+    JsonUnknownKey = "MZT-S016", Syntax, Should, Format # "format-specification",
+        jmztab [], "unknown JSON member, ignored";
+    /// The JSON uses another dialect than the JSON schema's (`snake_case`
+    /// keys, as `MetaboScape` writes). Nothing is read. Feature `json`.
+    JsonDialect = "MZT-S017", Syntax, Must, Format # "format-specification",
+        jmztab [], "JSON dialect other than the JSON schema's";
+    /// A JSON string holds a tab or line feed (or ends a line with a
+    /// carriage return), which mzTab cannot carry. The line is dropped.
+    /// Feature `json`.
+    JsonText = "MZT-S018", Syntax, Must, Format # "format-specification",
+        jmztab [], "JSON string with a tab or line break";
     /// `mzTab-profile` is not one of the declared profiles.
     ProfileValue = "MZT-T001", Structure, Must, FieldReference # "mztab-profile",
         jmztab [1038], "invalid mzTab-profile";

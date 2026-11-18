@@ -6,6 +6,8 @@ extern crate alloc;
 pub mod cv;
 mod diag;
 mod id;
+#[cfg(feature = "json")]
+pub mod json;
 mod meta;
 mod model;
 mod owned;

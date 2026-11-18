@@ -218,7 +218,7 @@ pub(crate) fn reference<'a, I: ElementId>(
 
 /// Splits a list cell at `|`. With `brackets`, a `|` inside `[…]` or inside
 /// double quotes does not split (parameter lists).
-fn split_list(text: &str, brackets: bool) -> Vec<(usize, &str)> {
+pub(crate) fn split_list(text: &str, brackets: bool) -> Vec<(usize, &str)> {
     let mut items = Vec::new();
     let mut start = 0;
     let mut splitter = Splitter::new(brackets);

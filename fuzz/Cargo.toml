@@ -33,6 +33,13 @@ name = "roundtrip"
 path = "fuzz_targets/roundtrip.rs"
 test = false
 
+[[bin]]
+bench = false
+doc = false
+name = "json"
+path = "fuzz_targets/json.rs"
+test = false
+
 [dependencies]
 libfuzzer-sys = "0.4"
-mztab-m = { path = "../crates/mztab-m" }
+mztab-m = { path = "../crates/mztab-m", features = ["json"] }

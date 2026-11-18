@@ -319,3 +319,27 @@ proptest! {
         prop_assert!(again == model);
     }
 }
+
+#[cfg(feature = "json")]
+proptest! {
+    /// Any document JSON can carry reads back from JSON as from its
+    /// canonical TSV (which, for instance, fills a short row with `null`).
+    #[test]
+    fn json_agrees_with_canonical_tsv(input in document()) {
+        let mut model = parse_bytes(&input).mztab;
+        model.layout = mztab_m::SourceLayout::default();
+        if let Ok(text) = mztab_m::json::to_string(&model) {
+            let tsv = mztab_m::to_string(&model).expect("a JSON-writable model is TSV-writable");
+            let mut expected = mztab_m::parse(&tsv).mztab.into_owned();
+            expected.layout = mztab_m::SourceLayout::default();
+            let back = mztab_m::json::parse(&text);
+            prop_assert!(back.mztab == expected, "{}", text);
+        }
+    }
+
+    #[test]
+    fn json_parse_is_total(input in ".{0,64}|[\\[\\]{}\":,0-9a-z\\\\ ]{0,64}") {
+        let parsed = mztab_m::json::parse(&input);
+        prop_assert!(parsed.findings.len() <= input.len() + 1, "bounded findings");
+    }
+}

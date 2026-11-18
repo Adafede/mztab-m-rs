@@ -1,0 +1,21 @@
+2.0/LDA_v2.11.1_MTBLS3563.mzTab: same model
+2.0/LDA_v2.11.1_MTBLS396.mzTab: same model
+2.0/lipidcompass-script_226ea96_MTD_SML_LCS-00001-01.mztab: same up to column order
+2.0/manual_null_MTBLS263.mztab: refused: cannot write output line 187: metadata key has no JSON form
+2.0/manual_null_null_lipidomics.mztab: refused: cannot write output line 66: header repeats a column
+2.0/manual_null_null_minimal_example.mztab: refused: cannot write output line 74: metadata key has no JSON form
+2.0/masster_0.5.25_null.mztab: refused: cannot write output line 468: metadata key has no JSON form
+2.0/msdial_4_gcms_tms_height_mzTab.mztab: refused: cannot write output line 59: column has no JSON form
+2.0/msdial_5.5.251021GUI_Area_zenodo14263441.mztab: refused: cannot write output line 719: row has another number of cells than its header
+2.0/msdial_5.5.251021GUI_Height_zenodo14263441.mztab: refused: cannot write output line 719: row has another number of cells than its header
+2.0/msdial_5console_zenodo14263441.mztab: refused: cannot write output line 7219: row has another number of cells than its header
+2.1/example_study_variable_group.mztab: same model
+2.1/lipidcompass-script_226ea96_MTD_SML_LCS-00001-01_v2.1.mztab: same up to column order
+2.1/manual_null_MTD-only.mztab: refused: cannot write output line 37: metadata key has no JSON form
+2.1/manual_null_null_lipidomics_v2.1.mztab: refused: cannot write output line 64: header repeats a column
+2.1/xcms+MsIO_0.0.11_MTBLS1820_onlySMF.mztab: same model
+2.1/xcms+MsIO_0.0.11_MTBLS1820_onlySMF_v2.1.mztab: same model
+2.1/xcms+MsIO_0.0.11_MTBLS3563_onlySMF.mztab: same model
+2.1/xcms+MsIO_0.0.11_MTBLS4381_onlySMF.mztab: same model
+rikenlipidomics2mztabm_1.0_1_Mouse_Adrenal_gland_1.mztab: same model
+rikenlipidomics2mztabm_1.0_2_Mouse_Brain_1.mztab: same model

@@ -69,7 +69,7 @@ Abbreviations used for the sources:
   version such as `2.2.0-M` gets a warning and falls back to the newest known
   rule set. Accept CRLF and record it so the writer can round-trip it.
 
-### D-004: JSON representation has two incompatible dialects in the corpus — OPEN
+### D-004: JSON representation has two incompatible dialects in the corpus — DECIDED (M6, default; see D-071)
 
 - `progenesis_…json` follows JSCH keys (`mzTab-version`, `smallMoleculeSummary`,
   `small_molecule-quantification_unit`).
@@ -684,3 +684,76 @@ place in `validate/` to change if you decide otherwise.
   with `NoTerms`: undeclared CVs in five files, and six `X007` in the
   MS-DIAL GC-MS file, whose `scan_polarity` accessions are `MS: 1000130`
   (with a space), which no allowed term matches.
+
+## JSON (M6)
+
+### D-071: JSON through TSV text — PROPOSED (M6)
+
+- Feature `json` (off by default): `json::parse(&str) -> Parsed<'static>`,
+  `json::write` and `json::to_string`. JSCH dialect only (D-004); a
+  document with the snake_case table keys (MetaboScape) gets `S017` and
+  nothing is read. A hand-rolled RFC 8259 parser (nesting limit 128; a
+  leading BOM is skipped).
+- **One grammar.** The reader carries each JSON value into the TSV line
+  that holds it and lets the TSV reader type it; the writer writes the
+  model as canonical TSV and carries each line into JSON. So a document
+  reads the same from either format, and the TSV reader's findings are
+  relocated to JSON pointers (`Location::Json`, e.g.
+  `/smallMoleculeFeature/0/charge`). JSON syntax errors are located by
+  line and column. The model owns its text (escaped strings), hence
+  `'static`.
+- **Strings carry TSV text.** Where a structured value is expected
+  (parameter, reference, list, number), a JSON string is that value's TSV
+  text. The writer uses this for what it cannot put in JSON form (an
+  invalid cell, a number in scientific notation or infinity), so it reads
+  back unchanged.
+- **Nulls.** In metadata, JSON `null` (or a missing member) is an absent
+  key and the string `"null"` is a key whose value is `null` (as in
+  `database[2]-prefix null`); jmzTab-m writes `null` for absent members.
+  In table rows every column has a cell, so `null` is a `null` cell.
+- **Numbers.** JSON numbers with exponents are written out exactly in
+  plain notation (mzTab forbids exponents; jmzTab-m writes them); the
+  writer writes plain numbers as JSON numbers and anything else as a
+  string.
+- **Indexed keys.** `sample[1]-species[n]`, `instrument[1]-analyzer[n]`,
+  `custom[n]`, `derivatization_agent[n]`, `id_confidence_measure[n]`, ...
+  are arrays of `Parameter` objects whose `id` is `n` (JSCH has the
+  member); an item without `id` takes its position + 1. String arrays
+  (`software[n]-setting[m]`) are by position. So that an item that is not
+  a `Parameter` object (a string carrying an invalid value) keeps its
+  index, the writer pads the array with `null` items, which the reader
+  skips; more than 1024 padding items make the model unwritable. (Both
+  found by the `json` fuzz target, as was the rule that a key the reader
+  keeps as unknown metadata, such as `x[0]`, is refused. Also found by
+  fuzzing: a repeated member is read once, the first, with `S015`; a TSV
+  header that repeats a column is refused.) `MsRun.name` (JSCH, no TSV
+  key) is ignored; `ms_run[n]-usi_identifier` and
+  `study_variable[n]-factors` (TSV keys missing from JSCH 2.1) are
+  written under those names (the spec text wins, D-002).
+- **Tables.** A row's keys in order define the header (taken from the
+  first row; later rows' unknown keys are `S016`). The abundance arrays
+  (`abundance_assay`, `abundance_study_variable`,
+  `abundance_variation_study_variable`, SME `id_confidence_measure`) are
+  indexed by the metadata ids of their element, in ascending order; `opt`
+  items are columns `opt_<identifier>`. A table with no rows reads with
+  the standard header (spec order, one array column per metadata id).
+- **The writer refuses (`WriteError::Unwritable`) what JSON cannot
+  carry**, never dropping it silently: unknown or repeated metadata keys,
+  unknown columns, rows with more cells than their header, abundance
+  columns that are not exactly the metadata ids in ascending order, and a
+  table without rows whose header is not the standard one. The line
+  number is in the canonical TSV. A lossy conversion, if wanted, is the
+  CLI's (M7).
+- **Comments** are not carried: the writer writes `"comment": null` and
+  the reader ignores `comment` members (they are presentation, D-061).
+- **Corpus agreement** (`tests/golden/json-corpus.txt`): of the 21 TSV
+  files, 10 read back from JSON as the same model; the two LipidCompass
+  files as the same up to column order (they interleave
+  `abundance_study_variable[n]` and `abundance_variation_study_variable[n]`,
+  which JSON groups); 9 are refused (unknown keys such as
+  `instrument[1]-analyzer` without its index, unknown columns, rows with
+  an extra trailing cell). The jmzTab-m JSON example (Progenesis) reads
+  with no findings and is a fixed point of write-then-read.
+- Codes `S014`-`S018` (syntax layer): not JSON, wrong JSON form, unknown
+  member (warning, ignored), other dialect, a string with a tab or line
+  feed (or ending a line with a carriage return), which TSV cannot carry.

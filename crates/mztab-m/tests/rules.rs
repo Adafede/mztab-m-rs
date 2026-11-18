@@ -708,9 +708,43 @@ fn every_case_triggers_its_code() {
     }
 }
 
+/// One JSON input per JSON code (feature `json`).
+#[cfg(feature = "json")]
+const JSON_CASES: &[(Code, &str)] = &[
+    (Code::JsonSyntax, "{"),
+    (Code::JsonShape, "[]"),
+    (Code::JsonUnknownKey, r#"{"x": 1}"#),
+    (Code::JsonDialect, r#"{"small_molecule_summary": []}"#),
+    (Code::JsonText, r#"{"metadata": {"title": "a\tb"}}"#),
+];
+
+#[cfg(feature = "json")]
+#[test]
+fn json_cases_trigger_their_codes() {
+    for (code, input) in JSON_CASES {
+        let found: Vec<Code> = mztab_m::json::parse(input)
+            .findings
+            .iter()
+            .map(|f| f.code)
+            .collect();
+        assert_eq!(found, [*code], "{input}");
+    }
+}
+
 #[test]
 fn every_code_has_a_case() {
-    let covered: Vec<Code> = cases().into_iter().map(|(code, _)| code).collect();
+    let mut covered: Vec<Code> = cases().into_iter().map(|(code, _)| code).collect();
+    #[cfg(feature = "json")]
+    covered.extend(JSON_CASES.iter().map(|(code, _)| *code));
+    // Without the feature, the JSON codes cannot be triggered.
+    #[cfg(not(feature = "json"))]
+    covered.extend([
+        Code::JsonSyntax,
+        Code::JsonShape,
+        Code::JsonUnknownKey,
+        Code::JsonDialect,
+        Code::JsonText,
+    ]);
     for code in Code::ALL {
         assert!(
             covered.contains(code),
