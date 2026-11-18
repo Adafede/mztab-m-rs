@@ -1,0 +1,38 @@
+# Repository-specific settings for ./mk. Sourced by ./mk after mk.versions.
+# Everything here belongs to this repository; mk and mk.versions are standard
+# and kept in sync by the rusti-graben template's scripts/adopt.sh.
+#
+# LOCAL_CI_GATES=(task ...)       tasks added to ./mk ci (shown as local:task)
+# LOCAL_NIGHTLY_GATES=(task ...)  tasks added to ./mk ci-nightly
+# LOCAL_OVERRIDES=(gate=task ...) standard gates run as this repository's own task
+# LOCAL_CARGO_TOOLS=(crate@x.y.z) extra tools, installed and version-checked like mk.versions
+#                                 (`crate@x.y.z:binary` when the binary has another name)
+# MIRI_PACKAGES / MUTANTS_PACKAGES: crates scoped for miri / mutants (default: workspace)
+
+# Ratchet: may only go up (./mk ratchet).
+COVERAGE_FAIL_UNDER_LINES="100"
+
+# The standard wasm gate only runs `cargo check` on the whole workspace. This project's
+# contract is stronger: the core must build *and pass its tests* on wasm32-unknown-unknown,
+# with and without optional features. Crates with OS I/O (CLI) are not wasm targets.
+LOCAL_OVERRIDES=(wasm=wasm)
+# Must equal the wasm-bindgen version in Cargo.lock (task_wasm checks it).
+LOCAL_CARGO_TOOLS=(wasm-bindgen-cli@0.2.130:wasm-bindgen-test-runner)
+WASM_CRATES=(mztab-m)
+
+task_wasm() {
+    local locked runner
+    locked="$(awk '/^name = "wasm-bindgen"$/{getline; gsub(/version = |"/, ""); print}' Cargo.lock)"
+    runner="$(wasm-bindgen-test-runner --version 2>/dev/null | awk '{print $2}')" ||
+        die "wasm-bindgen-test-runner not found: run ./mk setup"
+    [ "$locked" = "$runner" ] ||
+        die "wasm-bindgen-test-runner $runner does not match wasm-bindgen $locked in Cargo.lock; bump LOCAL_CARGO_TOOLS"
+    rustup target add wasm32-unknown-unknown
+    local c
+    for c in "${WASM_CRATES[@]}"; do
+        cargo check -p "$c" --target wasm32-unknown-unknown --no-default-features --locked
+        cargo check -p "$c" --target wasm32-unknown-unknown --all-features --locked
+        CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner \
+            cargo test -p "$c" --target wasm32-unknown-unknown --all-features --locked --lib --tests
+    done
+}

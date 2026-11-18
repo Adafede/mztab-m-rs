@@ -1,0 +1,18 @@
+[files]
+extend-exclude = [
+  "*.svg",
+  "Cargo.lock",
+  "target/",
+  # Upstream spec and reference implementation (pinned submodules), not ours to spell-check.
+  "third_party/",
+]
+
+[default.extend-words]
+# mzTab-M section codes and spec vocabulary.
+SME = "SME"
+SMF = "SMF"
+SML = "SML"
+SEH = "SEH"
+SFH = "SFH"
+SMH = "SMH"
+masster = "masster"  # name of a metabolomics tool producing corpus files

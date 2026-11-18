@@ -1,0 +1,17 @@
+mztab-m-rs
+Licensed under either of Apache License, Version 2.0 (LICENSE-APACHE) or
+MIT license (LICENSE-MIT), at your option.
+
+Third-party material (git submodules under third_party/, used for tests,
+conformance checks and benchmarks only; not part of any published crate):
+
+- third_party/mzTab-M: HUPO-PSI mzTab-M specification, schemas and example
+  files. https://github.com/HUPO-PSI/mzTab-M
+  License: Creative Commons Attribution 4.0 International (CC-BY-4.0).
+
+- third_party/jmzTab-m: jmzTab-m reference implementation and its test
+  fixtures. https://github.com/lifs-tools/jmzTab-m
+  License: Apache License 2.0. Copyright 2017 Nils Hoffmann and contributors.
+
+Rules, codes and spec references in this crate are derived from the mzTab-M
+specification (CC-BY-4.0); error messages and code are original work.

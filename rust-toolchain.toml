@@ -1,0 +1,6 @@
+# Pinned so local and CI compile with the same compiler; bumped by Renovate.
+# The wasm32 target enables the wasm gate (see mk.local: it builds *and tests* the core).
+[toolchain]
+channel = "1.100.0"
+components = ["clippy", "rustfmt"]
+targets = ["wasm32-unknown-unknown"]

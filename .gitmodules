@@ -1,0 +1,6 @@
+[submodule "third_party/mzTab-M"]
+	path = third_party/mzTab-M
+	url = https://github.com/HUPO-PSI/mzTab-M.git
+[submodule "third_party/jmzTab-m"]
+	path = third_party/jmzTab-m
+	url = https://github.com/lifs-tools/jmzTab-m.git

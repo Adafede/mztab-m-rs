@@ -1,0 +1,38 @@
+name: Nightly
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  GITHUB_TOKEN: ${{ github.token }} # binstall rate limits
+
+jobs:
+  nightly:
+    name: ./mk ci-nightly
+    runs-on: ubuntu-latest
+    timeout-minutes: 360 # full mutation testing of a large workspace takes hours
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # semver compares with the last tag; commits, ratchet and mutants-diff with the base branch
+          persist-credentials: false
+          submodules: true # pinned spec + jmzTab-m test corpora (third_party/)
+
+      - name: Setup
+        uses: $/.github/actions/setup
+        with:
+          tier: nightly
+
+      - name: Run nightly gates
+        run: ./mk ci-nightly

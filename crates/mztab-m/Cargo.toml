@@ -1,0 +1,19 @@
+[package]
+name = "mztab-m"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Reader, writer, and validator for the mzTab-M metabolomics format. Pure, no_std + alloc, zero dependencies."
+readme = "README.md"
+repository.workspace = true
+license.workspace = true
+keywords = ["mass-spectrometry", "metabolomics", "mztab", "parser", "validator"]
+categories = ["no-std", "parser-implementations", "science", "wasm"]
+
+# Test-only: runs the core's unit and integration tests on wasm32-unknown-unknown
+# (Node, through wasm-bindgen-test-runner). Never a runtime dependency.
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test = "0.3"
+
+[lints]
+workspace = true

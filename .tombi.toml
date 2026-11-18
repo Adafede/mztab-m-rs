@@ -1,0 +1,9 @@
+toml-version = "v1.0.0"
+
+[files]
+# Upstream submodules are not ours to format.
+exclude = ["third_party/**"]
+
+[format.rules]
+indent-style = "space"
+indent-width = 2
