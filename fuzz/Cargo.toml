@@ -1,0 +1,31 @@
+[package]
+name = "mztab-m-fuzz"
+version = "0.0.0"
+edition = "2024"
+description = "cargo-fuzz targets for mztab-m (nightly only, outside the workspace)."
+license = "MIT OR Apache-2.0"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+# Keep this crate out of the parent workspace.
+[workspace]
+
+[[bin]]
+bench = false
+doc = false
+name = "parse_bytes"
+path = "fuzz_targets/parse_bytes.rs"
+test = false
+
+[[bin]]
+bench = false
+doc = false
+name = "stream_vs_whole"
+path = "fuzz_targets/stream_vs_whole.rs"
+test = false
+
+[dependencies]
+libfuzzer-sys = "0.4"
+mztab-m = { path = "../crates/mztab-m" }

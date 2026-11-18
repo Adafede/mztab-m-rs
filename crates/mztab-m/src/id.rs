@@ -27,6 +27,16 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::num::NonZeroU32;
 
+/// An index type for an `element[n]`, used by the reader to parse
+/// references such as `assay[3]` generically.
+pub(crate) trait ElementId: Copy {
+    /// The element name.
+    const ELEMENT: &'static str;
+
+    /// The id with index `n`, or `None` for `0`.
+    fn from_index(n: u32) -> Option<Self>;
+}
+
 macro_rules! ids {
     ($($(#[$doc:meta])* $name:ident => $element:literal;)+) => {$(
         $(#[$doc])*
@@ -53,6 +63,14 @@ macro_rules! ids {
             #[must_use]
             pub const fn get(self) -> u32 {
                 self.0.get()
+            }
+        }
+
+        impl ElementId for $name {
+            const ELEMENT: &'static str = $element;
+
+            fn from_index(n: u32) -> Option<Self> {
+                Self::new(n)
             }
         }
 
@@ -228,6 +246,61 @@ impl<K: Ord + Copy, V> IndexMap<K, V> {
     /// The values in increasing key order.
     pub fn values(&self) -> impl ExactSizeIterator<Item = &V> {
         self.entries.iter().map(|(_, v)| v)
+    }
+
+    /// The value at `key`, inserting `V::default()` first if there is none.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use mztab_m::{IndexMap, Ix};
+    ///
+    /// let one = Ix::new(1).ok_or("zero")?;
+    /// let mut map: IndexMap<Ix, Vec<u8>> = IndexMap::new();
+    /// map.get_or_insert_default(one).push(7);
+    /// map.get_or_insert_default(one).push(8);
+    /// assert_eq!(map.get(one), Some(&vec![7, 8]));
+    /// # Ok::<(), &str>(())
+    /// ```
+    #[expect(
+        clippy::indexing_slicing,
+        reason = "`at` was just found or just inserted, so it is in bounds"
+    )]
+    pub fn get_or_insert_default(&mut self, key: K) -> &mut V
+    where
+        V: Default,
+    {
+        let at = match self.entries.binary_search_by(|(k, _)| k.cmp(&key)) {
+            Ok(at) => at,
+            Err(at) => {
+                self.entries.insert(at, (key, V::default()));
+                at
+            }
+        };
+        let (_, value) = &mut self.entries[at];
+        value
+    }
+}
+
+impl<K, V> IntoIterator for IndexMap<K, V> {
+    type Item = (K, V);
+    type IntoIter = alloc::vec::IntoIter<(K, V)>;
+
+    /// The entries in increasing key order.
+    fn into_iter(self) -> Self::IntoIter {
+        self.entries.into_iter()
+    }
+}
+
+/// Collects entries in any order; a later entry replaces an earlier one with
+/// the same key.
+impl<K: Ord + Copy, V> FromIterator<(K, V)> for IndexMap<K, V> {
+    fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
+        let mut map = Self::new();
+        for (k, v) in iter {
+            map.insert(k, v);
+        }
+        map
     }
 }
 

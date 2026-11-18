@@ -190,6 +190,10 @@ impl<'a> Raw<'a> {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    pub(crate) fn into_cow(self) -> Cow<'a, str> {
+        self.0
+    }
 }
 
 impl fmt::Display for Raw<'_> {
@@ -236,6 +240,17 @@ impl fmt::Display for TextError {
 }
 
 impl core::error::Error for TextError {}
+
+impl TextError {
+    /// The byte offset the error points at: the control character, or the
+    /// start of the text.
+    pub(crate) const fn offset(self) -> usize {
+        match self {
+            Self::ControlChar { offset } => offset,
+            Self::Empty | Self::NullLiteral => 0,
+        }
+    }
+}
 
 /// The byte offset of the first tab, carriage return or line feed in `text`.
 pub(crate) fn find_control(text: &str) -> Option<usize> {
@@ -300,6 +315,15 @@ impl<'a> Text<'a> {
     #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    pub(crate) fn into_cow(self) -> Cow<'a, str> {
+        self.0
+    }
+
+    /// Wraps text already known to be valid (it came from a `Text`).
+    pub(crate) const fn from_cow_unchecked(text: Cow<'a, str>) -> Self {
+        Self(text)
     }
 }
 
@@ -467,6 +491,13 @@ impl<'a> Decimal<'a> {
     #[must_use]
     pub fn as_str(&self) -> &str {
         &self.lexeme
+    }
+
+    pub(crate) fn into_static(self) -> Decimal<'static> {
+        Decimal {
+            lexeme: Cow::Owned(self.lexeme.into_owned()),
+            kind: self.kind,
+        }
     }
 
     /// Which form the lexeme takes.
@@ -684,6 +715,13 @@ mod tests {
         assert!(Text::new(" null").is_ok(), "only the exact literal is null");
         assert!(Text::new("a|b").is_ok(), "pipes allowed");
         assert_eq!(TextError::Empty.to_string(), "text is empty", "msg");
+        assert_eq!(TextError::Empty.offset(), 0, "empty offset");
+        assert_eq!(TextError::NullLiteral.offset(), 0, "null offset");
+        assert_eq!(
+            TextError::ControlChar { offset: 4 }.offset(),
+            4,
+            "control offset"
+        );
         assert_eq!(
             TextError::NullLiteral.to_string(),
             "text is the `null` literal",

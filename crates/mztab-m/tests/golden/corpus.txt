@@ -1,0 +1,21 @@
+2.0/LDA_v2.11.1_MTBLS3563.mzTab: MZT-S004=94
+2.0/LDA_v2.11.1_MTBLS396.mzTab: MZT-S004=1660
+2.0/lipidcompass-script_226ea96_MTD_SML_LCS-00001-01.mztab:
+2.0/manual_null_MTBLS263.mztab: MZT-S004=776 MZT-S005=1 MZT-S012=187 MZT-S013=1644 MZT-T002=1 MZT-T004=2 MZT-T005=24
+2.0/manual_null_null_lipidomics.mztab: MZT-S004=6 MZT-S012=57 MZT-S013=7 MZT-T004=1 MZT-T005=8
+2.0/manual_null_null_minimal_example.mztab: MZT-S007=2 MZT-T002=4
+2.0/masster_0.5.25_null.mztab: MZT-S013=3 MZT-T002=77 MZT-T004=2
+2.0/msdial_4_gcms_tms_height_mzTab.mztab: MZT-S010=670 MZT-S013=333 MZT-T004=2
+2.0/msdial_5.5.251021GUI_Area_zenodo14263441.mztab: MZT-S010=245 MZT-S013=473
+2.0/msdial_5.5.251021GUI_Height_zenodo14263441.mztab: MZT-S010=245 MZT-S013=473
+2.0/msdial_5console_zenodo14263441.mztab: MZT-S004=1 MZT-S010=980 MZT-S013=1025
+2.1/example_study_variable_group.mztab: MZT-S013=10
+2.1/lipidcompass-script_226ea96_MTD_SML_LCS-00001-01_v2.1.mztab:
+2.1/manual_null_MTD-only.mztab: MZT-T002=1
+2.1/manual_null_null_lipidomics_v2.1.mztab: MZT-S004=4 MZT-S012=57 MZT-S013=3 MZT-T004=1 MZT-T005=8
+2.1/xcms+MsIO_0.0.11_MTBLS1820_onlySMF.mztab: MZT-S013=364
+2.1/xcms+MsIO_0.0.11_MTBLS1820_onlySMF_v2.1.mztab: MZT-S013=364
+2.1/xcms+MsIO_0.0.11_MTBLS3563_onlySMF.mztab: MZT-S013=168
+2.1/xcms+MsIO_0.0.11_MTBLS4381_onlySMF.mztab: MZT-S013=1768
+rikenlipidomics2mztabm_1.0_1_Mouse_Adrenal_gland_1.mztab: MZT-S004=7035
+rikenlipidomics2mztabm_1.0_2_Mouse_Brain_1.mztab: MZT-S004=3633

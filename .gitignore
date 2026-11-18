@@ -19,3 +19,10 @@ mutants.out*/
 # Local agent state (never committed)
 .agent-work/
 .claude/
+
+# cargo-fuzz build output, working corpora and crash artifacts
+/fuzz/target/
+/fuzz/corpus/
+/fuzz/artifacts/
+/fuzz/coverage/
+/fuzz/fuzz-*.log

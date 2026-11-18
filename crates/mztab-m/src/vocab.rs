@@ -460,6 +460,87 @@ impl fmt::Display for AmbiguityCode {
     }
 }
 
+/// `study_variable_group[n]-datatype`: how the group's study-variable
+/// values are encoded.
+///
+/// The field reference types this field as a parameter, but its prose lists
+/// a closed set of plain names, and the 2.1 example uses them (`xsd:integer`).
+/// The prose wins (DECISIONS D-002, D-057).
+///
+/// # Examples
+///
+/// ```
+/// use mztab_m::Datatype;
+///
+/// assert_eq!(Datatype::parse("xsd:dateTime"), Some(Datatype::DateTime));
+/// assert_eq!(Datatype::Parameter.as_str(), "Parameter");
+/// assert_eq!(Datatype::parse("xsd:float"), None);
+/// ```
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Datatype {
+    /// `xsd:string`.
+    String,
+    /// `xsd:integer`.
+    Integer,
+    /// `xsd:decimal`.
+    Decimal,
+    /// `xsd:boolean`.
+    Boolean,
+    /// `xsd:date`.
+    Date,
+    /// `xsd:time`.
+    Time,
+    /// `xsd:dateTime`.
+    DateTime,
+    /// `xsd:anyURI`.
+    AnyUri,
+    /// `Parameter`: values are parameters.
+    Parameter,
+}
+
+impl Datatype {
+    /// Every datatype.
+    pub const ALL: [Self; 9] = [
+        Self::String,
+        Self::Integer,
+        Self::Decimal,
+        Self::Boolean,
+        Self::Date,
+        Self::Time,
+        Self::DateTime,
+        Self::AnyUri,
+        Self::Parameter,
+    ];
+
+    /// Parses the datatype name. Case-sensitive.
+    #[must_use]
+    pub fn parse(text: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|d| d.as_str() == text)
+    }
+
+    /// The name as written.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::String => "xsd:string",
+            Self::Integer => "xsd:integer",
+            Self::Decimal => "xsd:decimal",
+            Self::Boolean => "xsd:boolean",
+            Self::Date => "xsd:date",
+            Self::Time => "xsd:time",
+            Self::DateTime => "xsd:dateTime",
+            Self::AnyUri => "xsd:anyURI",
+            Self::Parameter => "Parameter",
+        }
+    }
+}
+
+impl fmt::Display for Datatype {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 /// The qualifier of a publication item.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PublicationKind {
@@ -560,7 +641,7 @@ mod tests {
     use wasm_bindgen_test::wasm_bindgen_test as test;
 
     use super::{
-        AmbiguityCode, Profile, ProhibitedProfile, PublicationItem, PublicationItemError,
+        AmbiguityCode, Datatype, Profile, ProhibitedProfile, PublicationItem, PublicationItemError,
         PublicationKind, RuleSet, Section, Version, VersionError,
     };
     use crate::value::TextError;
@@ -689,6 +770,19 @@ mod tests {
             assert_eq!(code.to_string(), text, "{text}");
         }
         assert_eq!(AmbiguityCode::parse("0"), None, "0");
+    }
+
+    #[test]
+    fn datatypes() {
+        for d in Datatype::ALL {
+            assert_eq!(Datatype::parse(d.as_str()), Some(d), "{d}");
+            assert_eq!(d.to_string(), d.as_str(), "{d}");
+        }
+        assert_eq!(
+            Datatype::DateTime.as_str(),
+            "xsd:dateTime",
+            "camel case kept"
+        );
     }
 
     #[test]

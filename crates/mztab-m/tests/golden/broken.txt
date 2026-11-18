@@ -1,0 +1,50 @@
+info[MZT-S009] line 1, column 1: byte order mark at start of input
+error[MZT-S006] line 1, column 22, cell 3: invalid mzTab-version: not an mzTab-M version `major.minor.patch-M` (unexpected input at byte 3)
+error[MZT-S001] line 2, column 1, cell 1: unknown line prefix: prefixes are case-sensitive; did you mean `MTD`?
+error[MZT-S001] line 3, column 1, cell 1: unknown line prefix
+error[MZT-T001] line 4, column 19, cell 3: invalid mzTab-profile: expected `M`, `M+S`, `M+F`, `M+F+E` or `M+S+F+E`
+error[MZT-S011] line 5, column 10, cell 3: metadata line must have exactly a key and a value
+error[MZT-S011] line 6, column 4, cell 2: metadata line must have exactly a key and a value
+error[MZT-S011] line 7, column 19, cell 4: metadata line must have exactly a key and a value
+info[MZT-S012] line 8, column 19, cell 4: empty cells after the metadata value
+error[MZT-T003] line 8, column 5, cell 2: duplicate metadata key
+error[MZT-T002] line 9, column 5, cell 2: unknown metadata key
+warning[MZT-S013] line 10, column 35, cell 3: leading or trailing spaces
+error[MZT-S007] line 10, column 36, cell 3: invalid value: expected `ms_run[n]`
+error[MZT-S007] line 11, column 20, cell 3: invalid value: expected `pubmed:`, `doi:` or `uri:` followed by an accession
+error[MZT-S005] line 11, column 27, cell 3: empty or malformed cell: text is empty
+error[MZT-S007] line 12, column 30, cell 3: invalid value: expected `instrument[n]`
+error[MZT-S007] line 13, column 28, cell 3: invalid value: expected `column=[unit parameter]`
+error[MZT-S005] line 14, column 28, cell 3: empty or malformed cell: text is empty
+error[MZT-S002] line 15, column 32, cell 3: invalid parameter: expected 4 comma-separated fields, found 1 (at byte 2)
+error[MZT-S007] line 16, column 38, cell 3: invalid value: expected an `xsd:` datatype or `Parameter`
+error[MZT-S002] line 17, column 27, cell 3: invalid parameter: a CV parameter needs both a label and an accession (at byte 1)
+error[MZT-S005] line 18, column 17, cell 3: empty or malformed cell: text is empty
+warning[MZT-S013] line 19, column 21, cell 3: leading or trailing spaces
+error[MZT-S005] line 21, column 28, cell 3: empty or malformed cell: tab or line break at byte 1
+warning[MZT-S013] line 22, column 25, cell 3: leading or trailing spaces
+warning[MZT-S013] line 23, column 28, cell 3: leading or trailing spaces
+error[MZT-T007] line 24, column 1, cell 1: row before its header
+error[MZT-T005] line 25, column 12, cell 3: duplicate column
+error[MZT-T004] line 25, column 19, cell 4: unknown column
+error[MZT-T004] line 25, column 79, cell 7: unknown column
+error[MZT-T004] line 25, column 104, cell 8: unknown column
+error[MZT-T008] line 26, column 1, cell 1: repeated header line
+error[MZT-S003] line 27, column 5, cell 2: invalid number: expected an integer
+error[MZT-S005] line 27, column 11, cell 5: empty or malformed cell: text is empty
+error[MZT-S003] line 27, column 12, cell 6: invalid number: not a number (unexpected input at byte 0)
+error[MZT-S004] line 27, column 18, cell 9: number in scientific notation or infinity
+error[MZT-S003] line 27, column 22, cell 9: invalid number: not a number (unexpected input at byte 0)
+error[MZT-S004] line 27, column 28, cell 11: number in scientific notation or infinity
+error[MZT-S010] line 28, column 6, cell 3: cell count differs from the header: expected 11 cells, found 2
+error[MZT-S005] line 29, column 40, cell 9: empty or malformed cell: text is empty
+error[MZT-S005] line 29, column 46, cell 11: empty or malformed cell: text is empty
+error[MZT-T004] line 30, column 45, cell 5: unknown column
+error[MZT-S007] line 31, column 7, cell 3: invalid value: expected an ambiguity code `1`, `2` or `3`
+error[MZT-S010] line 31, column 14, cell 6: cell count differs from the header: expected 5 cells, found 6
+error[MZT-S003] line 32, column 12, cell 4: invalid number: expected an integer
+error[MZT-S007] line 34, column 7, cell 3: invalid value: expected `ms_run[n]:` followed by a spectrum reference
+error[MZT-S005] line 34, column 16, cell 3: empty or malformed cell: text is empty
+error[MZT-S003] line 34, column 27, cell 4: invalid number: expected an integer
+error[MZT-T006] line 35, column 1, cell 1: section out of order
+error[MZT-S008] line 37, column 11: line is not valid UTF-8

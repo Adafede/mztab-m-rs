@@ -42,7 +42,7 @@ use crate::id::{
 };
 use crate::param::{Param, ParamError};
 use crate::value::{Cell, Decimal, Raw, Text, TextError};
-use crate::vocab::{AmbiguityCode, Profile, PublicationItem, Version};
+use crate::vocab::{AmbiguityCode, Datatype, Profile, PublicationItem, Version};
 
 /// A metadata field: absent (`None`) or present as a [`Cell`].
 pub type Field<'a, T> = Option<Cell<'a, T>>;
@@ -62,6 +62,66 @@ pub struct MzTab<'a> {
     pub smf: Option<Table<'a, SmfColumn, SmfRow<'a>>>,
     /// The small molecule evidence (`SEH` / `SME`), if present.
     pub sme: Option<Table<'a, SmeColumn, SmeRow<'a>>>,
+    /// What the typed model does not capture about the source text.
+    pub layout: SourceLayout<'a>,
+}
+
+/// How a line ended.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum LineEnding {
+    /// `\n`.
+    #[default]
+    Lf,
+    /// `\r\n`.
+    CrLf,
+    /// The last line of the input, with no line break.
+    None,
+}
+
+/// Where a line was in the source: its 1-based number and its ending.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct LineInfo {
+    /// 1-based line number.
+    pub number: u32,
+    /// The line break that ended it.
+    pub ending: LineEnding,
+}
+
+/// A source line that carries no model data.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum ExtraLine<'a> {
+    /// An empty or whitespace-only line, as written.
+    Blank(Raw<'a>),
+    /// A `COM` line, as written.
+    Comment(Raw<'a>),
+    /// A line the reader could not place, as written: an unknown prefix, a
+    /// row with no header, a repeated header, or invalid UTF-8 (decoded
+    /// lossily).
+    Unrecognized(Raw<'a>),
+}
+
+/// What the typed model does not capture about the source text.
+///
+/// The reader fills it; the writer (M3) will honour it so that non-canonical
+/// files round-trip. It is empty for models built in code.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct SourceLayout<'a> {
+    /// Whether the input started with a UTF-8 byte order mark.
+    pub bom: bool,
+    /// Lines that carry no model data, with their position.
+    pub extra_lines: Vec<(LineInfo, ExtraLine<'a>)>,
+}
+
+impl<S, R> Default for Table<'_, S, R> {
+    /// A table with no columns and no rows.
+    fn default() -> Self {
+        Self {
+            header: Header {
+                columns: Vec::new(),
+            },
+            rows: Vec::new(),
+        }
+    }
 }
 
 impl MzTab<'_> {
@@ -283,7 +343,7 @@ pub struct StudyVariableGroup<'a> {
     /// `study_variable_group[n]-type`.
     pub type_: Field<'a, Param<'a>>,
     /// `study_variable_group[n]-datatype`.
-    pub datatype: Field<'a, Param<'a>>,
+    pub datatype: Field<'a, Datatype>,
     /// `study_variable_group[n]-unit`.
     pub unit: Field<'a, Param<'a>>,
     /// `study_variable_group[n]-study_variable_refs`.
@@ -681,6 +741,8 @@ pub struct SmlRow<'a> {
     pub opt: Vec<Cell<'a, Text<'a>>>,
     /// The unknown columns, in header order.
     pub unknown: Vec<Raw<'a>>,
+    /// Cells beyond the last header column, kept as written.
+    pub extra: Vec<Raw<'a>>,
 }
 
 /// One SMF row.
@@ -715,6 +777,8 @@ pub struct SmfRow<'a> {
     pub opt: Vec<Cell<'a, Text<'a>>>,
     /// The unknown columns, in header order.
     pub unknown: Vec<Raw<'a>>,
+    /// Cells beyond the last header column, kept as written.
+    pub extra: Vec<Raw<'a>>,
 }
 
 /// One SME row.
@@ -763,6 +827,8 @@ pub struct SmeRow<'a> {
     pub opt: Vec<Cell<'a, Text<'a>>>,
     /// The unknown columns, in header order.
     pub unknown: Vec<Raw<'a>>,
+    /// Cells beyond the last header column, kept as written.
+    pub extra: Vec<Raw<'a>>,
 }
 
 /// Why a string is not a spectra reference.

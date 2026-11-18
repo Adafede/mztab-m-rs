@@ -115,6 +115,15 @@ impl<'a> ParamText<'a> {
         &self.0
     }
 
+    pub(crate) fn into_cow(self) -> Cow<'a, str> {
+        self.0
+    }
+
+    /// Wraps text already known to be valid (it came from a `ParamText`).
+    pub(crate) const fn from_cow_unchecked(text: Cow<'a, str>) -> Self {
+        Self(text)
+    }
+
     /// Whether the writer must quote this text.
     fn needs_quotes(&self) -> bool {
         self.0.contains(',') || self.0.starts_with(' ') || self.0.ends_with(' ')
@@ -176,6 +185,10 @@ impl<'a> Accession<'a> {
     #[must_use]
     pub fn as_str(&self) -> &str {
         self.0.as_str()
+    }
+
+    pub(crate) fn into_text(self) -> ParamText<'a> {
+        self.0
     }
 
     /// The part before the first `:`, if both sides are non-empty.

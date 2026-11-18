@@ -401,3 +401,58 @@ These §3 items depend on the reader's design and land with it:
   rejects.
 - **Change:** `clippy.toml` sets `allow-expect-in-tests = true`. Library code
   is unaffected: `expect_used` still fires outside `#[test]` / `cfg(test)`.
+
+## Reader (M2)
+
+### D-056: Spaces around cells and list items — PROPOSED (M2)
+
+- **Implements J-01.** jmzTab-m trims silently. SPEC defines no padding.
+- **Rule:** a cell or `|`-list item with leading or trailing spaces gets
+  `MZT-S013` (warning). Strings keep their spaces. Every other type is read
+  from the trimmed text, so `assay[1]| assay[2]` (xcms, the 2.1 field
+  reference's own example) types correctly.
+- **Round trip:** the typed value of a trimmed cell has no spaces, so such
+  cells are not written back byte-exact. PLAN §6 already excludes them.
+
+### D-057: `study_variable_group[n]-datatype` is a closed vocabulary — PROPOSED (M2)
+
+- **FREF** types it as "Parameter". Its own prose lists `xsd:string`,
+  `xsd:integer`, `xsd:decimal`, `xsd:boolean`, `xsd:date`, `xsd:time`,
+  `xsd:dateTime`, `xsd:anyURI` and `Parameter`, and the 2.1 example
+  (`example_study_variable_group.mztab`) writes `xsd:integer`.
+- **Choice:** prose wins (D-002). The model has a `Datatype` enum; any other
+  value is reported (`MZT-S007`). To report upstream as an FREF defect.
+
+### D-058: Reader design, as built — PROPOSED (M2)
+
+- **One typer, two drivers.** `parse`/`parse_bytes` and `StreamReader` feed
+  the same line typer. `parse_bytes` collects the events with the same
+  builder as `Parsed: FromIterator<Event>`, so "streamed and whole reads give
+  the same document" is a test (corpus, fixtures, proptest, fuzz target), not
+  a hope.
+- **Callback, not iterator** (PLAN §2 sketched `push -> Events`):
+  `StreamReader::push(chunk, &mut impl FnMut(Event<'_>))`. The callback's
+  higher-ranked lifetime stops a caller from keeping a borrowed event, so no
+  internal buffering of events is needed; `Event::into_owned` keeps one.
+- **Metadata events are typed.** `Event::Metadata` carries the key, the
+  typed value and the raw text. `Metadata::insert` places a value; a
+  duplicate or unknown key goes to `Metadata::unknown` with its finding
+  (`MZT-T003`, `MZT-T002`), so nothing is lost.
+- **Never stops.** Unknown prefixes, rows before their header, repeated
+  headers and invalid UTF-8 lines become `ExtraLine::Unrecognized` in the
+  layout, with a finding.
+- **Codes added:** `MZT-S007`–`S013`, `MZT-T002`–`T008`. Each was checked on
+  the corpus; `tests/golden/corpus.txt` records the counts per file.
+- **Not yet in the layout** (M3): MTD key order, MTD trailing tabs, per-line
+  endings outside extra lines. The events carry all of them.
+
+### D-059: Line coverage of generic code — PROPOSED (M2)
+
+- **Finding:** LLVM's line summary credits a generic function with its
+  *best single* instantiation, not the union of all of them. A branch that
+  only one table type can reach (`id_confidence_measure[n]` exists in SME
+  only) therefore counts as uncovered.
+- **Response:** table-independent logic lives in non-generic helpers
+  (`typing::Pre`, `table::Special`), and the fixtures drive one
+  instantiation of each remaining generic function through every branch. No
+  coverage exclusions were needed.

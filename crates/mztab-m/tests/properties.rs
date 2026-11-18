@@ -3,8 +3,55 @@
 //! Native targets only (DECISIONS D-052).
 #![cfg(not(target_arch = "wasm32"))]
 
-use mztab_m::{Accession, Decimal, DecimalKind, Param, ParamText, Text, TextError, Version};
+extern crate alloc;
+
+use mztab_m::{
+    Accession, Decimal, DecimalKind, MtdKey, Param, ParamText, Text, TextError, Version,
+};
+use mztab_m::{Event, IntoOwned, Parsed, StreamReader, parse_bytes};
 use proptest::prelude::*;
+
+/// Lines of the two reader fixtures: realistic material to shuffle.
+fn fixture_lines() -> Vec<Vec<u8>> {
+    let full: &[u8] = include_bytes!("fixtures/full.mztab");
+    let broken: &[u8] = include_bytes!("fixtures/broken.mztab");
+    full.split(|&b| b == b'\n')
+        .chain(broken.split(|&b| b == b'\n'))
+        .map(<[u8]>::to_vec)
+        .collect()
+}
+
+/// A document: fixture lines in any order and number, mixed with arbitrary
+/// bytes, joined by `\n` or `\r\n`.
+fn document() -> impl Strategy<Value = Vec<u8>> {
+    let line = prop_oneof![
+        4 => proptest::sample::select(fixture_lines()),
+        1 => proptest::collection::vec(any::<u8>(), 0..12),
+    ];
+    proptest::collection::vec((line, any::<bool>()), 0..40).prop_map(|lines| {
+        let mut out = Vec::new();
+        for (line, crlf) in lines {
+            out.extend_from_slice(&line);
+            out.extend_from_slice(if crlf { b"\r\n" } else { b"\n" });
+        }
+        out
+    })
+}
+
+fn streamed(input: &[u8], cuts: &[usize]) -> Parsed<'static> {
+    let mut events = Vec::new();
+    let mut reader = StreamReader::new();
+    let mut keep = |event: Event<'_>| events.push(event.into_owned());
+    let mut rest = input;
+    for &cut in cuts {
+        let (chunk, tail) = rest.split_at(cut.min(rest.len()));
+        reader.push(chunk, &mut keep);
+        rest = tail;
+    }
+    reader.push(rest, &mut keep);
+    reader.finish(&mut keep);
+    events.into_iter().collect()
+}
 
 /// Field text that a parameter can carry: no `"`, tab, CR or LF; non-empty.
 /// Commas and spaces are deliberately over-represented.
@@ -41,8 +88,106 @@ fn build<'a>(
     })
 }
 
+/// Every metadata key form; `#N` and `#M` stand for indices.
+const KEYS: &[&str] = &[
+    "mzTab-version",
+    "mzTab-ID",
+    "mzTab-profile",
+    "title",
+    "description",
+    "sample_processing[#N]",
+    "instrument[#N]-name",
+    "instrument[#N]-source",
+    "instrument[#N]-analyzer[#M]",
+    "instrument[#N]-detector",
+    "software[#N]",
+    "software[#N]-setting[#M]",
+    "publication[#N]",
+    "contact[#N]-name",
+    "contact[#N]-affiliation",
+    "contact[#N]-email",
+    "contact[#N]-orcid",
+    "uri[#N]",
+    "external_study_uri[#N]",
+    "quantification_method",
+    "sample[#N]",
+    "sample[#N]-species[#M]",
+    "sample[#N]-tissue[#M]",
+    "sample[#N]-cell_type[#M]",
+    "sample[#N]-disease[#M]",
+    "sample[#N]-description",
+    "sample[#N]-custom[#M]",
+    "ms_run[#N]-location",
+    "ms_run[#N]-instrument_ref",
+    "ms_run[#N]-format",
+    "ms_run[#N]-id_format",
+    "ms_run[#N]-fragmentation_method[#M]",
+    "ms_run[#N]-scan_polarity[#M]",
+    "ms_run[#N]-hash",
+    "ms_run[#N]-hash_method",
+    "ms_run[#N]-parameters",
+    "ms_run[#N]-usi_identifier",
+    "assay[#N]",
+    "assay[#N]-custom[#M]",
+    "assay[#N]-external_uri",
+    "assay[#N]-sample_ref",
+    "assay[#N]-ms_run_ref",
+    "assay[#N]-protocol_refs",
+    "assay[#N]-parameters",
+    "study_variable[#N]",
+    "study_variable[#N]-assay_refs",
+    "study_variable[#N]-ms_run_refs",
+    "study_variable[#N]-description",
+    "study_variable[#N]-average_function",
+    "study_variable[#N]-variation_function",
+    "study_variable[#N]-factors",
+    "study_variable_group[#N]",
+    "study_variable_group[#N]-description",
+    "study_variable_group[#N]-type",
+    "study_variable_group[#N]-datatype",
+    "study_variable_group[#N]-unit",
+    "study_variable_group[#N]-study_variable_refs",
+    "protocol[#N]-name",
+    "protocol[#N]-type",
+    "protocol[#N]-description",
+    "protocol[#N]-parameters",
+    "custom[#N]",
+    "cv[#N]-label",
+    "cv[#N]-full_name",
+    "cv[#N]-version",
+    "cv[#N]-uri",
+    "database[#N]",
+    "database[#N]-prefix",
+    "database[#N]-version",
+    "database[#N]-uri",
+    "derivatization_agent[#N]",
+    "small_molecule-quantification_unit",
+    "small_molecule_feature-quantification_unit",
+    "small_molecule-identification_reliability",
+    "id_confidence_measure[#N]",
+    "colunit-small_molecule",
+    "colunit-small_molecule_feature",
+    "colunit-small_molecule_evidence",
+];
+
+#[test]
+fn every_key_form_is_distinct() {
+    let keys: alloc::collections::BTreeSet<_> = KEYS
+        .iter()
+        .map(|k| MtdKey::parse(&k.replace("#N", "1").replace("#M", "2")))
+        .collect();
+    assert_eq!(keys.len(), KEYS.len(), "each form parses to its own key");
+    assert!(!keys.contains(&None), "every form parses");
+}
+
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(2_000))]
+    #![proptest_config(ProptestConfig {
+        cases: 2_000,
+        // Bounded shrinking keeps a failure (under mutation testing, say)
+        // from running into the harness timeout.
+        max_shrink_time: 2_000,
+        ..ProptestConfig::default()
+    })]
 
     /// `parse(write(p)) == p` for every constructible parameter.
     #[test]
@@ -115,5 +260,35 @@ proptest! {
     fn version_round_trips(major in any::<u16>(), minor in any::<u16>(), patch in any::<u16>()) {
         let version = Version { major, minor, patch };
         prop_assert_eq!(Version::parse(&version.to_string()), Ok(version));
+    }
+
+    /// Every key form, with any indices, parses and writes back unchanged;
+    /// a zero or non-canonical index, or a case change, is not a key.
+    #[test]
+    fn metadata_keys_round_trip(form in proptest::sample::select(KEYS), n in 1_u32.., m in 1_u32..) {
+        let key = form.replace("#N", &n.to_string()).replace("#M", &m.to_string());
+        prop_assert_eq!(MtdKey::parse(&key).map(|k| k.to_string()), Some(key.clone()));
+        if form.contains("#N") {
+            let zero = form.replace("#N", "0").replace("#M", "1");
+            prop_assert_eq!(MtdKey::parse(&zero), None);
+            let padded = form.replace("#N", &format!("0{n}")).replace("#M", "1");
+            prop_assert_eq!(MtdKey::parse(&padded), None);
+        }
+        prop_assert_eq!(MtdKey::parse(&key.to_uppercase()), None);
+    }
+
+    /// `stream_vs_whole`: any document, cut anywhere, streams to the same
+    /// result as a whole read (with or without a final line break).
+    #[test]
+    fn stream_matches_whole(
+        mut input in document(),
+        cuts in proptest::collection::vec(0_usize..64, 0..12),
+        trim_last in any::<bool>(),
+    ) {
+        if trim_last {
+            input.pop();
+        }
+        let whole = parse_bytes(&input).into_owned();
+        prop_assert!(streamed(&input, &cuts) == whole);
     }
 }

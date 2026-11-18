@@ -235,9 +235,55 @@ codes! {
     /// `mzTab-version` is not `major.minor.patch-M`.
     VersionSyntax = "MZT-S006", Syntax, Must, FieldReference # "mztab-version",
         jmztab [1031], "invalid mzTab-version";
+    /// A cell does not have the form its column or key requires (a
+    /// reference, a publication item, a unit mapping, a spectrum reference,
+    /// an ambiguity code).
+    ValueSyntax = "MZT-S007", Syntax, Must, Format # "format-specification",
+        jmztab [1014, 1015, 1026, 1034, 1036], "invalid value";
+    /// A line is not valid UTF-8.
+    Utf8 = "MZT-S008", Syntax, Must, Format # "format-specification",
+        jmztab [], "line is not valid UTF-8";
+    /// The input starts with a UTF-8 byte order mark. It is stripped.
+    Bom = "MZT-S009", Syntax, May, Format # "format-specification",
+        jmztab [1000], "byte order mark at start of input";
+    /// A table row has a different number of cells than its header.
+    CellCount = "MZT-S010", Syntax, Must, FieldReference # "sections",
+        jmztab [1001], "cell count differs from the header";
+    /// An `MTD` line has no value cell, or more than one non-empty cell after
+    /// the key.
+    MtdCells = "MZT-S011", Syntax, Must, FieldReference # "metadata-section",
+        jmztab [1008], "metadata line must have exactly a key and a value";
+    /// An `MTD` line ends with empty cells.
+    TrailingEmptyCells = "MZT-S012", Syntax, May, FieldReference # "metadata-section",
+        jmztab [], "empty cells after the metadata value";
+    /// A cell or list item has leading or trailing spaces. Non-string values
+    /// are read without them.
+    CellWhitespace = "MZT-S013", Syntax, Should, Format # "format-specification",
+        jmztab [], "leading or trailing spaces";
     /// `mzTab-profile` is not one of the declared profiles.
     ProfileValue = "MZT-T001", Structure, Must, FieldReference # "mztab-profile",
         jmztab [1038], "invalid mzTab-profile";
+    /// A metadata key is not defined by the specification.
+    UnknownMtdKey = "MZT-T002", Structure, Must, FieldReference # "metadata-section",
+        jmztab [1009], "unknown metadata key";
+    /// A metadata key appears more than once.
+    DuplicateMtdKey = "MZT-T003", Structure, Must, FieldReference # "metadata-section",
+        jmztab [2010], "duplicate metadata key";
+    /// A table column is not defined for its table.
+    UnknownColumn = "MZT-T004", Structure, Must, FieldReference # "sections",
+        jmztab [2034], "unknown column";
+    /// A column label appears twice in one header.
+    DuplicateColumn = "MZT-T005", Structure, Must, FieldReference # "sections",
+        jmztab [2062], "duplicate column";
+    /// Sections are not in the order MTD, SML, SMF, SME.
+    SectionOrder = "MZT-T006", Structure, Must, Format # "profiles",
+        jmztab [2002], "section out of order";
+    /// A table row appears before its header line.
+    RowBeforeHeader = "MZT-T007", Structure, Must, Format # "format-specification",
+        jmztab [2004], "row before its header";
+    /// A table header line appears more than once.
+    DuplicateHeader = "MZT-T008", Structure, Must, Format # "format-specification",
+        jmztab [2003], "repeated header line";
 }
 
 impl fmt::Display for Code {
@@ -414,6 +460,17 @@ pub enum Detail {
     Text(TextError),
     /// A version grammar error.
     Version(VersionError),
+    /// What the cell should have been.
+    Expected(&'static str),
+    /// How many cells the header has and how many the row has.
+    CellCount {
+        /// Cells in the header, prefix included.
+        expected: u32,
+        /// Cells in the row, prefix included.
+        found: u32,
+    },
+    /// A line prefix that matches a known one except for letter case.
+    PrefixCase(&'static str),
 }
 
 impl fmt::Display for Detail {
@@ -424,6 +481,13 @@ impl fmt::Display for Detail {
             Self::Number(e) => e.fmt(f),
             Self::Text(e) => e.fmt(f),
             Self::Version(e) => e.fmt(f),
+            Self::Expected(what) => write!(f, "expected {what}"),
+            Self::CellCount { expected, found } => {
+                write!(f, "expected {expected} cells, found {found}")
+            }
+            Self::PrefixCase(prefix) => {
+                write!(f, "prefixes are case-sensitive; did you mean `{prefix}`?")
+            }
         }
     }
 }

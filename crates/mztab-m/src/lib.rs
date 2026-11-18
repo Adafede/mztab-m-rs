@@ -5,8 +5,13 @@ extern crate alloc;
 
 mod diag;
 mod id;
+mod meta;
 mod model;
+mod owned;
 mod param;
+mod read;
+mod table;
+mod typing;
 mod value;
 mod vocab;
 
@@ -19,16 +24,23 @@ pub use id::{
     MsRunId, ProtocolId, PublicationId, SampleId, SoftwareId, StudyVariableGroupId,
     StudyVariableId,
 };
-pub use model::{
-    AbundanceColumn, Assay, ColUnit, ColUnitError, Column, Contact, Cv, Database, Field, Header,
-    Instrument, List, Metadata, MsRun, MzTab, OptColumn, OptTarget, Protocol, Sample, SmeColumn,
-    SmeId, SmeRow, SmfColumn, SmfId, SmfRow, SmlColumn, SmlId, SmlRow, Software, SpectraRef,
-    SpectraRefError, StudyVariable, StudyVariableGroup, Table,
+pub use meta::{
+    AssayKey, ContactKey, CvKey, DatabaseKey, InsertError, InstrumentKey, MsRunKey, MtdEntry,
+    MtdKey, MtdValue, ProtocolKey, SampleKey, SoftwareKey, StudyVariableGroupKey, StudyVariableKey,
+    ValueKind,
 };
+pub use model::{
+    AbundanceColumn, Assay, ColUnit, ColUnitError, Column, Contact, Cv, Database, ExtraLine, Field,
+    Header, Instrument, LineEnding, LineInfo, List, Metadata, MsRun, MzTab, OptColumn, OptTarget,
+    Protocol, Sample, SmeColumn, SmeId, SmeRow, SmfColumn, SmfId, SmfRow, SmlColumn, SmlId, SmlRow,
+    Software, SourceLayout, SpectraRef, SpectraRefError, StudyVariable, StudyVariableGroup, Table,
+};
+pub use owned::IntoOwned;
 pub use param::{Accession, Param, ParamError, ParamErrorKind, ParamText, ParamTextError};
+pub use read::{Event, Parsed, StreamReader, parse, parse_bytes};
 pub use value::{Cell, Decimal, DecimalKind, NULL, NumberError, Raw, Text, TextError};
 pub use vocab::{
-    AmbiguityCode, Profile, ProhibitedProfile, PublicationItem, PublicationItemError,
+    AmbiguityCode, Datatype, Profile, ProhibitedProfile, PublicationItem, PublicationItemError,
     PublicationKind, RuleSet, Section, Version, VersionError,
 };
 
