@@ -6,9 +6,9 @@ use alloc::vec::Vec;
 use crate::id::IndexMap;
 use crate::meta::{MtdEntry, MtdValue};
 use crate::model::{
-    Assay, ColUnit, Column, Contact, Cv, Database, ExtraLine, Header, Instrument, Metadata, MsRun,
-    MzTab, OptColumn, Protocol, Sample, SmeRow, SmfRow, SmlRow, Software, SourceLayout, SpectraRef,
-    StudyVariable, StudyVariableGroup, Table,
+    Assay, ColUnit, Column, Contact, Cv, Database, ExtraLine, Header, Instrument, LineContent,
+    Metadata, MsRun, MzTab, OptColumn, Protocol, Sample, SmeRow, SmfRow, SmlRow, Software,
+    SourceLayout, SourceLine, SpectraRef, StudyVariable, StudyVariableGroup, Table, Verbatim,
 };
 use crate::param::{Accession, Param, ParamText};
 use crate::read::{Event, Parsed};
@@ -62,7 +62,7 @@ owned_copy! {
     crate::model::OptTarget, crate::model::LineInfo,
     crate::vocab::Version, crate::vocab::Profile, crate::vocab::AmbiguityCode,
     crate::vocab::PublicationKind, crate::vocab::Datatype,
-    crate::meta::MtdKey, crate::diag::Findings,
+    crate::meta::MtdKey, crate::diag::Findings, crate::model::LineEnding, u64,
 }
 
 fn cow(text: Cow<'_, str>) -> Cow<'static, str> {
@@ -224,6 +224,20 @@ impl IntoOwned for ExtraLine<'_> {
     }
 }
 
+impl IntoOwned for LineContent<'_> {
+    type Owned = LineContent<'static>;
+
+    fn into_owned(self) -> LineContent<'static> {
+        match self {
+            LineContent::Metadata(key) => LineContent::Metadata(key),
+            LineContent::UnknownMetadata => LineContent::UnknownMetadata,
+            LineContent::Header(section) => LineContent::Header(section),
+            LineContent::Row(section) => LineContent::Row(section),
+            LineContent::Extra(line) => LineContent::Extra(line.into_owned()),
+        }
+    }
+}
+
 impl IntoOwned for MtdValue<'_> {
     type Owned = MtdValue<'static>;
 
@@ -263,6 +277,7 @@ impl IntoOwned for Event<'_> {
             Event::Sml(i, row) => Event::Sml(i, row.into_owned()),
             Event::Smf(i, row) => Event::Smf(i, row.into_owned()),
             Event::Sme(i, row) => Event::Sme(i, row.into_owned()),
+            Event::Verbatim(v) => Event::Verbatim(v.into_owned()),
             Event::Finding(f) => Event::Finding(f),
         }
     }
@@ -288,7 +303,9 @@ owned_struct! {
     SpectraRef { ms_run, reference }
     OptColumn { target, name }
     MtdEntry { key, value, trailing, typed }
-    SourceLayout { bom, extra_lines }
+    SourceLayout { bom, lines }
+    SourceLine { content, ending, verbatim }
+    Verbatim { text, fingerprint }
     Parsed { mztab, findings }
     MzTab { metadata, sml, smf, sme, layout }
     Instrument { name, source, analyzer, detector }

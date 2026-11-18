@@ -19,7 +19,9 @@ extern crate alloc;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_test::wasm_bindgen_test as test;
 
-use mztab_m::{Event, Findings, IntoOwned, Location, Parsed, StreamReader, parse_bytes};
+use mztab_m::{
+    Code, Event, Findings, IntoOwned, Location, Parsed, SourceLayout, StreamReader, parse_bytes,
+};
 
 const FULL: &[u8] = include_bytes!("fixtures/full.mztab");
 const BROKEN: &[u8] = include_bytes!("fixtures/broken.mztab");
@@ -38,7 +40,9 @@ fn streamed(input: &[u8], size: usize) -> Parsed<'static> {
 }
 
 /// Checks one file: every finding is located on a line of the file, every
-/// line is accounted for, and chunked reading gives the same document.
+/// line is accounted for, chunked reading gives the same document, the
+/// writer reproduces the file byte for byte (invalid UTF-8 aside), and the
+/// model without its layout survives a canonical write and read.
 fn check(name: &str, input: &[u8], chunk_sizes: &[usize]) -> Findings {
     let parsed = parse_bytes(input);
     let lines = u32::try_from(input.split(|&b| b == b'\n').count()).unwrap_or(u32::MAX);
@@ -64,11 +68,35 @@ fn check(name: &str, input: &[u8], chunk_sizes: &[usize]) -> Findings {
         mztab.smf.as_ref().map_or(0, |t| t.rows.len()),
         mztab.sme.as_ref().map_or(0, |t| t.rows.len()),
     ];
-    assert_eq!(
-        rows,
-        [count(b"SML"), count(b"SMF"), count(b"SME")],
-        "{name}: every row is read"
+    // A row before its header is kept as an unrecognised line instead.
+    if !parsed
+        .findings
+        .iter()
+        .any(|f| f.code == Code::RowBeforeHeader)
+    {
+        assert_eq!(
+            rows,
+            [count(b"SML"), count(b"SMF"), count(b"SME")],
+            "{name}: every row is read"
+        );
+    }
+    let written = mztab_m::to_string(&parsed.mztab).expect("a read model is writable");
+    assert!(
+        written == String::from_utf8_lossy(input),
+        "{name}: written text differs from the input"
     );
+    let has_short_rows = parsed.findings.iter().any(|f| f.code == Code::CellCount);
+    if !has_short_rows {
+        let mut canonical = parsed.mztab.clone();
+        canonical.layout = SourceLayout::default();
+        let text = mztab_m::to_string(&canonical).expect("writable");
+        let mut again = mztab_m::parse(&text).mztab;
+        again.layout = SourceLayout::default();
+        assert!(
+            again == canonical,
+            "{name}: canonical write and read changes the model"
+        );
+    }
     let owned = parsed.clone().into_owned();
     for &size in chunk_sizes {
         assert!(
@@ -128,6 +156,24 @@ fn broken_fixture_findings_match_golden() {
     }
     assert_eq!(rendered(&parsed), BROKEN_GOLDEN, "findings");
     assert!(parsed.mztab.layout.bom, "BOM recorded");
+}
+
+/// Events collect into a document however they arrive: a verbatim event
+/// with no line before it has nothing to attach to and is dropped.
+#[test]
+fn stray_verbatim_events_are_dropped() {
+    let verbatim = mztab_m::Verbatim {
+        text: mztab_m::Raw::new("x"),
+        fingerprint: 0,
+    };
+    let parsed: Parsed<'_> = core::iter::once(Event::Verbatim(verbatim)).collect();
+    assert!(parsed == parse_bytes(b""), "same as an empty document");
+}
+
+#[test]
+fn fixtures_round_trip() {
+    let _full = check("full.mztab", FULL, &[1, 7]);
+    let _broken = check("broken.mztab", BROKEN, &[1, 7]);
 }
 
 /// Every placed metadata value occupies its key, and only values of the

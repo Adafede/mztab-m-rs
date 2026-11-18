@@ -14,6 +14,7 @@ mod table;
 mod typing;
 mod value;
 mod vocab;
+mod write;
 
 pub use diag::{
     Code, Detail, Finding, Findings, Layer, Location, Path, Requirement, Segment, Severity,
@@ -27,13 +28,14 @@ pub use id::{
 pub use meta::{
     AssayKey, ContactKey, CvKey, DatabaseKey, InsertError, InstrumentKey, MsRunKey, MtdEntry,
     MtdKey, MtdValue, ProtocolKey, SampleKey, SoftwareKey, StudyVariableGroupKey, StudyVariableKey,
-    ValueKind,
+    ValueKind, ValueRef,
 };
 pub use model::{
     AbundanceColumn, Assay, ColUnit, ColUnitError, Column, Contact, Cv, Database, ExtraLine, Field,
-    Header, Instrument, LineEnding, LineInfo, List, Metadata, MsRun, MzTab, OptColumn, OptTarget,
-    Protocol, Sample, SmeColumn, SmeId, SmeRow, SmfColumn, SmfId, SmfRow, SmlColumn, SmlId, SmlRow,
-    Software, SourceLayout, SpectraRef, SpectraRefError, StudyVariable, StudyVariableGroup, Table,
+    Header, Instrument, LineContent, LineEnding, LineInfo, List, Metadata, MsRun, MzTab, OptColumn,
+    OptTarget, Protocol, Sample, SmeColumn, SmeId, SmeRow, SmfColumn, SmfId, SmfRow, SmlColumn,
+    SmlId, SmlRow, Software, SourceLayout, SourceLine, SpectraRef, SpectraRefError, StudyVariable,
+    StudyVariableGroup, Table, Verbatim,
 };
 pub use owned::IntoOwned;
 pub use param::{Accession, Param, ParamError, ParamErrorKind, ParamText, ParamTextError};
@@ -43,6 +45,7 @@ pub use vocab::{
     AmbiguityCode, Datatype, Profile, ProhibitedProfile, PublicationItem, PublicationItemError,
     PublicationKind, RuleSet, Section, Version, VersionError,
 };
+pub use write::{WriteError, to_string, write};
 
 /// The mzTab-M specification commit this crate implements.
 ///

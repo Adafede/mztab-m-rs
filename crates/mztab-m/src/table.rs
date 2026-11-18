@@ -12,6 +12,7 @@ use crate::model::{
 use crate::typing::{self, Cx, RawCell};
 use crate::value::{Cell, Decimal, Raw, Text};
 use crate::vocab::Section;
+use crate::write::{Out, Render as _, WriteError};
 
 /// What a header column holds, without borrowing the header text. The
 /// reader keeps one per column to type rows, including across stream chunks.
@@ -165,6 +166,21 @@ pub(crate) trait TableRow<'a>: Sized {
 
     /// The cells beyond the header.
     fn extra(&mut self) -> &mut Vec<Raw<'a>>;
+
+    /// Writes the stable field `column`.
+    fn render_stable(&self, column: Self::Column, out: &mut Out<'_>) -> Result<(), WriteError>;
+
+    /// The numeric non-stable cells.
+    fn numbers_ref(&self) -> &[Cell<'a, Decimal<'a>>];
+
+    /// The `opt_` cells.
+    fn opt_ref(&self) -> &[Cell<'a, Text<'a>>];
+
+    /// The unknown-column cells.
+    fn unknown_ref(&self) -> &[Raw<'a>];
+
+    /// The cells beyond the header.
+    fn extra_ref(&self) -> &[Raw<'a>];
 }
 
 /// Types a row against its header's slots. `cells` excludes the prefix.
@@ -291,6 +307,40 @@ impl<'a> TableRow<'a> for SmlRow<'a> {
     fn extra(&mut self) -> &mut Vec<Raw<'a>> {
         &mut self.extra
     }
+
+    fn render_stable(&self, column: SmlColumn, out: &mut Out<'_>) -> Result<(), WriteError> {
+        match column {
+            SmlColumn::SmlId => self.sml_id.render(out),
+            SmlColumn::SmfIdRefs => self.smf_id_refs.render(out),
+            SmlColumn::DatabaseIdentifier => self.database_identifier.render(out),
+            SmlColumn::ChemicalFormula => self.chemical_formula.render(out),
+            SmlColumn::Smiles => self.smiles.render(out),
+            SmlColumn::Inchi => self.inchi.render(out),
+            SmlColumn::ChemicalName => self.chemical_name.render(out),
+            SmlColumn::Uri => self.uri.render(out),
+            SmlColumn::TheoreticalNeutralMass => self.theoretical_neutral_mass.render(out),
+            SmlColumn::AdductIons => self.adduct_ions.render(out),
+            SmlColumn::Reliability => self.reliability.render(out),
+            SmlColumn::BestIdConfidenceMeasure => self.best_id_confidence_measure.render(out),
+            SmlColumn::BestIdConfidenceValue => self.best_id_confidence_value.render(out),
+        }
+    }
+
+    fn numbers_ref(&self) -> &[Cell<'a, Decimal<'a>>] {
+        &self.abundance
+    }
+
+    fn opt_ref(&self) -> &[Cell<'a, Text<'a>>] {
+        &self.opt
+    }
+
+    fn unknown_ref(&self) -> &[Raw<'a>] {
+        &self.unknown
+    }
+
+    fn extra_ref(&self) -> &[Raw<'a>] {
+        &self.extra
+    }
 }
 
 impl<'a> TableRow<'a> for SmfRow<'a> {
@@ -352,6 +402,39 @@ impl<'a> TableRow<'a> for SmfRow<'a> {
 
     fn extra(&mut self) -> &mut Vec<Raw<'a>> {
         &mut self.extra
+    }
+
+    fn render_stable(&self, column: SmfColumn, out: &mut Out<'_>) -> Result<(), WriteError> {
+        match column {
+            SmfColumn::SmfId => self.smf_id.render(out),
+            SmfColumn::SmeIdRefs => self.sme_id_refs.render(out),
+            SmfColumn::SmeIdRefAmbiguityCode => self.sme_id_ref_ambiguity_code.render(out),
+            SmfColumn::AdductIon => self.adduct_ion.render(out),
+            SmfColumn::Isotopomer => self.isotopomer.render(out),
+            SmfColumn::ExpMassToCharge => self.exp_mass_to_charge.render(out),
+            SmfColumn::Charge => self.charge.render(out),
+            SmfColumn::RetentionTimeInSeconds => self.retention_time_in_seconds.render(out),
+            SmfColumn::RetentionTimeInSecondsStart => {
+                self.retention_time_in_seconds_start.render(out)
+            }
+            SmfColumn::RetentionTimeInSecondsEnd => self.retention_time_in_seconds_end.render(out),
+        }
+    }
+
+    fn numbers_ref(&self) -> &[Cell<'a, Decimal<'a>>] {
+        &self.abundance
+    }
+
+    fn opt_ref(&self) -> &[Cell<'a, Text<'a>>] {
+        &self.opt
+    }
+
+    fn unknown_ref(&self) -> &[Raw<'a>] {
+        &self.unknown
+    }
+
+    fn extra_ref(&self) -> &[Raw<'a>] {
+        &self.extra
     }
 }
 
@@ -424,6 +507,44 @@ impl<'a> TableRow<'a> for SmeRow<'a> {
 
     fn extra(&mut self) -> &mut Vec<Raw<'a>> {
         &mut self.extra
+    }
+
+    fn render_stable(&self, column: SmeColumn, out: &mut Out<'_>) -> Result<(), WriteError> {
+        match column {
+            SmeColumn::SmeId => self.sme_id.render(out),
+            SmeColumn::EvidenceInputId => self.evidence_input_id.render(out),
+            SmeColumn::DatabaseIdentifier => self.database_identifier.render(out),
+            SmeColumn::ChemicalFormula => self.chemical_formula.render(out),
+            SmeColumn::Smiles => self.smiles.render(out),
+            SmeColumn::Inchi => self.inchi.render(out),
+            SmeColumn::ChemicalName => self.chemical_name.render(out),
+            SmeColumn::Uri => self.uri.render(out),
+            SmeColumn::DerivatizedForm => self.derivatized_form.render(out),
+            SmeColumn::AdductIon => self.adduct_ion.render(out),
+            SmeColumn::ExpMassToCharge => self.exp_mass_to_charge.render(out),
+            SmeColumn::Charge => self.charge.render(out),
+            SmeColumn::TheoreticalMassToCharge => self.theoretical_mass_to_charge.render(out),
+            SmeColumn::SpectraRef => self.spectra_ref.render(out),
+            SmeColumn::IdentificationMethod => self.identification_method.render(out),
+            SmeColumn::MsLevel => self.ms_level.render(out),
+            SmeColumn::Rank => self.rank.render(out),
+        }
+    }
+
+    fn numbers_ref(&self) -> &[Cell<'a, Decimal<'a>>] {
+        &self.id_confidence
+    }
+
+    fn opt_ref(&self) -> &[Cell<'a, Text<'a>>] {
+        &self.opt
+    }
+
+    fn unknown_ref(&self) -> &[Raw<'a>] {
+        &self.unknown
+    }
+
+    fn extra_ref(&self) -> &[Raw<'a>] {
+        &self.extra
     }
 }
 

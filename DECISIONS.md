@@ -456,3 +456,65 @@ These §3 items depend on the reader's design and land with it:
   (`typing::Pre`, `table::Special`), and the fixtures drive one
   instantiation of each remaining generic function through every branch. No
   coverage exclusions were needed.
+
+## Writer (M3)
+
+### D-060: Canonical form — PROPOSED (M3)
+
+- **Metadata:** field-reference order, with each element's fields together
+  (`assay[1]`, `assay[1]-…`, then `assay[2]`); the 2.0-only fields last
+  within their element; `colunit-*` lines in model order; unknown keys
+  after everything else.
+- **Tables:** in the order SML, SMF, SME, each preceded by one blank line
+  (SPEC §5.18: "a blank line separating each" section); columns in header
+  order (the model keeps source order, D-010). Rows shorter than the header
+  get `null` for their missing cells.
+- **Cells:** parameters as `[label, accession, name, value]` with `", "`
+  (D-050); numbers as their lexeme; everything else as its `Display`.
+- **Line endings:** `\n`; the last line ends with one.
+- `tests/golden/full.canonical.mztab` is the canonical form of the full
+  fixture.
+
+### D-061: `SourceLayout` and byte-exact round trips — PROPOSED (M3)
+
+- **What is recorded:** for every source line, which model item it carries
+  (a metadata key, an unknown key, a header, the next row of a table, or a
+  blank/comment/unrecognised line), its line ending, and—only if its text
+  differs from the canonical rendering—the text itself plus a 64-bit
+  FNV-1a fingerprint of the canonical rendering. Plus the BOM.
+- **Writing:** lines are written in source order. A recorded text is used
+  only if the item still renders to the recorded fingerprint, so a value
+  edited after reading is written canonically and never overwritten by
+  stale text. Removed items are skipped; added metadata goes after the last
+  metadata line, added rows after their table's last line, and a table with
+  no header line in the layout is appended canonically.
+- **Guarantee, as tested:** `write(read(f)) == f` byte for byte for every
+  input, except lines that are not UTF-8, which come back decoded lossily
+  (U+FFFD). Checked on all 21 corpus files, both fixtures, a proptest over
+  generated documents, and the `roundtrip` fuzz target.
+- **Cost:** reading renders each line once to compare it with its source
+  (no allocation: a comparing `fmt::Write`). Measured in M8.
+- **Replaces** the M2 list of extra lines in `SourceLayout` with `lines`.
+
+### D-062: The writer refuses what would not read back — PROPOSED (M3)
+
+- `write` returns `Result<(), WriteError>` instead of the `fmt::Result` in
+  PLAN §2, because some models built or edited in code cannot be written
+  faithfully. `WriteError::Unwritable` names the output line and the reason:
+  raw text with a tab or newline, a line ending in `\r`, an invalid cell
+  whose raw text is `null`, an empty list, a list of one `null`, a unit
+  column name with `=`, a list item that the reader would split
+  differently.
+- **List splitting is shared.** The reader's splitter (`|` does not split
+  inside `[…]` or `"…"` in parameter lists) is one type, `Splitter`; the
+  writer checks everything it writes inside a list with it. Found by the
+  `roundtrip` fuzz target: the reader kept `[|` as one invalid item, which
+  the first writer refused.
+- **No `WriteConfig`.** PLAN §2 sketched one; nothing needs configuring yet.
+
+### D-063: Round trips of a model without layout — PROPOSED (M3)
+
+- `read(write(m)) == m` (layouts ignored) holds for every model the reader
+  produces, except rows shorter than their header (`MZT-S010`), whose
+  missing cells are written as `null` and come back as values. Tested on
+  the corpus, the fixtures and generated documents.

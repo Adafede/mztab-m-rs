@@ -22,6 +22,7 @@ use crate::model::{ColUnit, Field, List, Metadata, parse_index};
 use crate::param::Param;
 use crate::value::{Cell, Raw, Text};
 use crate::vocab::{Datatype, Profile, PublicationItem, Version};
+use alloc::vec::Vec;
 
 /// One `name` or `name[n]` part of a key, split at `-`.
 type Segment<'k> = (&'k str, Option<u32>);
@@ -986,6 +987,211 @@ impl<'a> Metadata<'a> {
             ),
         }
     }
+    /// Every value, with its key, in canonical order: field-reference
+    /// order, each element's fields together, `colunit-*` keys once per
+    /// value. [`Metadata::unknown`] is not included.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let parsed = mztab_m::parse("MTD\ttitle\tT\nMTD\tmzTab-version\t2.1.0-M\n");
+    /// let keys: Vec<_> = parsed.mztab.metadata.entries().iter().map(|(k, _)| k.to_string()).collect();
+    /// assert_eq!(keys, ["mzTab-version", "title"]);
+    /// ```
+    #[must_use]
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one line per field, in field-reference order: the order is the point"
+    )]
+    pub fn entries(&self) -> Vec<(MtdKey, ValueRef<'_, 'a>)> {
+        use ValueRef as V;
+        let mut e = Entries(Vec::new());
+        e.one(MtdKey::Version, &self.version, V::Version);
+        e.one(MtdKey::Id, &self.id, V::Text);
+        e.one(MtdKey::Profile, &self.profile, V::Profile);
+        e.one(MtdKey::Title, &self.title, V::Text);
+        e.one(MtdKey::Description, &self.description, V::Text);
+        e.each(
+            &self.sample_processing,
+            MtdKey::SampleProcessing,
+            V::ParamList,
+        );
+        for (n, x) in self.instrument.iter() {
+            let k = |sub| MtdKey::Instrument(n, sub);
+            e.one(k(InstrumentKey::Name), &x.name, V::Param);
+            e.one(k(InstrumentKey::Source), &x.source, V::Param);
+            e.each(&x.analyzer, |m| k(InstrumentKey::Analyzer(m)), V::ParamList);
+            e.one(k(InstrumentKey::Detector), &x.detector, V::Param);
+        }
+        for (n, x) in self.software.iter() {
+            e.one(
+                MtdKey::Software(n, SoftwareKey::Software),
+                &x.param,
+                V::Param,
+            );
+            e.each(
+                &x.setting,
+                |m| MtdKey::Software(n, SoftwareKey::Setting(m)),
+                V::Text,
+            );
+        }
+        e.each(&self.publication, MtdKey::Publication, V::Publication);
+        for (n, x) in self.contact.iter() {
+            let k = |sub| MtdKey::Contact(n, sub);
+            e.one(k(ContactKey::Name), &x.name, V::Text);
+            e.one(k(ContactKey::Affiliation), &x.affiliation, V::Text);
+            e.one(k(ContactKey::Email), &x.email, V::Text);
+            e.one(k(ContactKey::Orcid), &x.orcid, V::Text);
+        }
+        e.each(&self.uri, MtdKey::Uri, V::Text);
+        e.each(&self.external_study_uri, MtdKey::ExternalStudyUri, V::Text);
+        e.one(
+            MtdKey::QuantificationMethod,
+            &self.quantification_method,
+            V::Param,
+        );
+        for (n, x) in self.sample.iter() {
+            let k = |sub| MtdKey::Sample(n, sub);
+            e.one(k(SampleKey::Name), &x.name, V::Text);
+            e.each(&x.species, |m: Ix| k(SampleKey::Species(m)), V::ParamList);
+            e.each(&x.tissue, |m| k(SampleKey::Tissue(m)), V::ParamList);
+            e.each(&x.cell_type, |m| k(SampleKey::CellType(m)), V::ParamList);
+            e.each(&x.disease, |m| k(SampleKey::Disease(m)), V::ParamList);
+            e.one(k(SampleKey::Description), &x.description, V::Text);
+            e.each(&x.custom, |m| k(SampleKey::Custom(m)), V::ParamList);
+        }
+        for (n, x) in self.ms_run.iter() {
+            let k = |sub| MtdKey::MsRun(n, sub);
+            e.one(k(MsRunKey::Location), &x.location, V::Text);
+            e.one(
+                k(MsRunKey::InstrumentRef),
+                &x.instrument_ref,
+                V::InstrumentRef,
+            );
+            e.one(k(MsRunKey::Format), &x.format, V::Param);
+            e.one(k(MsRunKey::IdFormat), &x.id_format, V::Param);
+            e.each(
+                &x.fragmentation_method,
+                |m| k(MsRunKey::FragmentationMethod(m)),
+                V::ParamList,
+            );
+            e.each(
+                &x.scan_polarity,
+                |m| k(MsRunKey::ScanPolarity(m)),
+                V::ParamList,
+            );
+            e.one(k(MsRunKey::Hash), &x.hash, V::Text);
+            e.one(k(MsRunKey::HashMethod), &x.hash_method, V::Param);
+            e.one(k(MsRunKey::Parameters), &x.parameters, V::ParamList);
+            e.one(k(MsRunKey::UsiIdentifier), &x.usi_identifier, V::Text);
+        }
+        for (n, x) in self.assay.iter() {
+            let k = |sub| MtdKey::Assay(n, sub);
+            e.one(k(AssayKey::Name), &x.name, V::Text);
+            e.each(&x.custom, |m| k(AssayKey::Custom(m)), V::ParamList);
+            e.one(k(AssayKey::ExternalUri), &x.external_uri, V::Text);
+            e.one(k(AssayKey::SampleRef), &x.sample_ref, V::SampleRef);
+            e.one(k(AssayKey::MsRunRef), &x.ms_run_ref, V::MsRunRefs);
+            e.one(k(AssayKey::ProtocolRefs), &x.protocol_refs, V::ProtocolRefs);
+            e.one(k(AssayKey::Parameters), &x.parameters, V::ParamList);
+        }
+        for (n, x) in self.study_variable.iter() {
+            let k = |sub| MtdKey::StudyVariable(n, sub);
+            e.one(k(StudyVariableKey::Name), &x.name, V::Text);
+            e.one(k(StudyVariableKey::AssayRefs), &x.assay_refs, V::AssayRefs);
+            e.one(k(StudyVariableKey::MsRunRefs), &x.ms_run_refs, V::MsRunRefs);
+            e.one(k(StudyVariableKey::Description), &x.description, V::Text);
+            e.one(
+                k(StudyVariableKey::AverageFunction),
+                &x.average_function,
+                V::Param,
+            );
+            e.one(
+                k(StudyVariableKey::VariationFunction),
+                &x.variation_function,
+                V::Param,
+            );
+            e.one(k(StudyVariableKey::Factors), &x.factors, V::ParamList);
+        }
+        for (n, x) in self.study_variable_group.iter() {
+            let k = |sub| MtdKey::StudyVariableGroup(n, sub);
+            e.one(k(StudyVariableGroupKey::Group), &x.param, V::Param);
+            e.one(
+                k(StudyVariableGroupKey::Description),
+                &x.description,
+                V::Text,
+            );
+            e.one(k(StudyVariableGroupKey::Type), &x.type_, V::Param);
+            e.one(k(StudyVariableGroupKey::Datatype), &x.datatype, V::Datatype);
+            e.one(k(StudyVariableGroupKey::Unit), &x.unit, V::Param);
+            e.one(
+                k(StudyVariableGroupKey::StudyVariableRefs),
+                &x.study_variable_refs,
+                V::StudyVariableRefs,
+            );
+        }
+        for (n, x) in self.protocol.iter() {
+            let k = |sub| MtdKey::Protocol(n, sub);
+            e.one(k(ProtocolKey::Name), &x.name, V::Text);
+            e.one(k(ProtocolKey::Type), &x.type_, V::Param);
+            e.one(k(ProtocolKey::Description), &x.description, V::Text);
+            e.one(k(ProtocolKey::Parameters), &x.parameters, V::ParamList);
+        }
+        e.each(&self.custom, MtdKey::Custom, V::ParamList);
+        for (n, x) in self.cv.iter() {
+            let k = |sub| MtdKey::Cv(n, sub);
+            e.one(k(CvKey::Label), &x.label, V::Text);
+            e.one(k(CvKey::FullName), &x.full_name, V::Text);
+            e.one(k(CvKey::Version), &x.version, V::Text);
+            e.one(k(CvKey::Uri), &x.uri, V::Text);
+        }
+        for (n, x) in self.database.iter() {
+            let k = |sub| MtdKey::Database(n, sub);
+            e.one(k(DatabaseKey::Database), &x.param, V::Param);
+            e.one(k(DatabaseKey::Prefix), &x.prefix, V::Text);
+            e.one(k(DatabaseKey::Version), &x.version, V::Text);
+            e.one(k(DatabaseKey::Uri), &x.uri, V::Text);
+        }
+        e.each(
+            &self.derivatization_agent,
+            MtdKey::DerivatizationAgent,
+            V::ParamList,
+        );
+        e.one(
+            MtdKey::SmallMoleculeQuantificationUnit,
+            &self.small_molecule_quantification_unit,
+            V::Param,
+        );
+        e.one(
+            MtdKey::SmallMoleculeFeatureQuantificationUnit,
+            &self.small_molecule_feature_quantification_unit,
+            V::Param,
+        );
+        e.one(
+            MtdKey::SmallMoleculeIdentificationReliability,
+            &self.small_molecule_identification_reliability,
+            V::Param,
+        );
+        e.each(
+            &self.id_confidence_measure,
+            MtdKey::IdConfidenceMeasure,
+            V::ParamList,
+        );
+        for (key, units) in [
+            (MtdKey::ColunitSmallMolecule, &self.colunit_small_molecule),
+            (
+                MtdKey::ColunitSmallMoleculeFeature,
+                &self.colunit_small_molecule_feature,
+            ),
+            (
+                MtdKey::ColunitSmallMoleculeEvidence,
+                &self.colunit_small_molecule_evidence,
+            ),
+        ] {
+            e.0.extend(units.iter().map(|cell| (key, V::ColUnit(cell))));
+        }
+        e.0
+    }
 }
 
 /// One `MTD` line: the key and value as written, and their typed form.
@@ -1003,4 +1209,86 @@ pub struct MtdEntry<'a> {
     pub trailing: Raw<'a>,
     /// The parsed key and typed value.
     pub typed: Option<(MtdKey, MtdValue<'a>)>,
+}
+
+/// A borrowed metadata value, as [`Metadata::entries`] lists it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ValueRef<'r, 'a> {
+    /// See [`MtdValue::Version`].
+    Version(&'r Cell<'a, Version>),
+    /// See [`MtdValue::Profile`].
+    Profile(&'r Cell<'a, Profile>),
+    /// See [`MtdValue::Datatype`].
+    Datatype(&'r Cell<'a, Datatype>),
+    /// See [`MtdValue::Text`].
+    Text(&'r Cell<'a, Text<'a>>),
+    /// See [`MtdValue::Param`].
+    Param(&'r Cell<'a, Param<'a>>),
+    /// See [`MtdValue::ParamList`].
+    ParamList(&'r Cell<'a, List<'a, Param<'a>>>),
+    /// See [`MtdValue::Publication`].
+    Publication(&'r Cell<'a, List<'a, PublicationItem<'a>>>),
+    /// See [`MtdValue::InstrumentRef`].
+    InstrumentRef(&'r Cell<'a, InstrumentId>),
+    /// See [`MtdValue::SampleRef`].
+    SampleRef(&'r Cell<'a, SampleId>),
+    /// See [`MtdValue::MsRunRefs`].
+    MsRunRefs(&'r Cell<'a, List<'a, MsRunId>>),
+    /// See [`MtdValue::ProtocolRefs`].
+    ProtocolRefs(&'r Cell<'a, List<'a, ProtocolId>>),
+    /// See [`MtdValue::AssayRefs`].
+    AssayRefs(&'r Cell<'a, List<'a, AssayId>>),
+    /// See [`MtdValue::StudyVariableRefs`].
+    StudyVariableRefs(&'r Cell<'a, List<'a, StudyVariableId>>),
+    /// See [`MtdValue::ColUnit`].
+    ColUnit(&'r Cell<'a, ColUnit<'a>>),
+}
+
+impl MtdValue<'_> {
+    /// The value, borrowed.
+    pub(crate) const fn as_ref(&self) -> ValueRef<'_, '_> {
+        match self {
+            Self::Version(c) => ValueRef::Version(c),
+            Self::Profile(c) => ValueRef::Profile(c),
+            Self::Datatype(c) => ValueRef::Datatype(c),
+            Self::Text(c) => ValueRef::Text(c),
+            Self::Param(c) => ValueRef::Param(c),
+            Self::ParamList(c) => ValueRef::ParamList(c),
+            Self::Publication(c) => ValueRef::Publication(c),
+            Self::InstrumentRef(c) => ValueRef::InstrumentRef(c),
+            Self::SampleRef(c) => ValueRef::SampleRef(c),
+            Self::MsRunRefs(c) => ValueRef::MsRunRefs(c),
+            Self::ProtocolRefs(c) => ValueRef::ProtocolRefs(c),
+            Self::AssayRefs(c) => ValueRef::AssayRefs(c),
+            Self::StudyVariableRefs(c) => ValueRef::StudyVariableRefs(c),
+            Self::ColUnit(c) => ValueRef::ColUnit(c),
+        }
+    }
+}
+
+/// Collects `(key, value)` pairs in canonical order.
+struct Entries<'r, 'a>(Vec<(MtdKey, ValueRef<'r, 'a>)>);
+
+impl<'r, 'a> Entries<'r, 'a> {
+    fn one<T>(
+        &mut self,
+        key: MtdKey,
+        field: &'r Field<'a, T>,
+        wrap: fn(&'r Cell<'a, T>) -> ValueRef<'r, 'a>,
+    ) {
+        if let Some(cell) = field {
+            self.0.push((key, wrap(cell)));
+        }
+    }
+
+    fn each<K: Ord + Copy, T>(
+        &mut self,
+        map: &'r IndexMap<K, Cell<'a, T>>,
+        key: impl Fn(K) -> MtdKey,
+        wrap: fn(&'r Cell<'a, T>) -> ValueRef<'r, 'a>,
+    ) {
+        for (k, cell) in map.iter() {
+            self.0.push((key(k), wrap(cell)));
+        }
+    }
 }

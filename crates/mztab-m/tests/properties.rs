@@ -291,4 +291,31 @@ proptest! {
         let whole = parse_bytes(&input).into_owned();
         prop_assert!(streamed(&input, &cuts) == whole);
     }
+
+    /// `write(read(d)) == d` for any document, byte for byte, except that a
+    /// line that is not UTF-8 comes back decoded lossily.
+    #[test]
+    fn written_documents_match_their_source(mut input in document(), trim_last in any::<bool>()) {
+        if trim_last {
+            input.pop();
+        }
+        let written = mztab_m::to_string(&parse_bytes(&input).mztab);
+        prop_assert_eq!(written.as_deref(), Ok(&*String::from_utf8_lossy(&input)));
+    }
+
+    /// Without its layout, a read model survives a canonical write and read
+    /// (rows shorter than their header aside: their missing cells come back
+    /// as `null`).
+    #[test]
+    fn canonical_write_reads_back(input in document()) {
+        let parsed = parse_bytes(&input);
+        prop_assume!(!parsed.findings.iter().any(|f| f.code == mztab_m::Code::CellCount));
+        let mut model = parsed.mztab;
+        model.layout = mztab_m::SourceLayout::default();
+        let text = mztab_m::to_string(&model);
+        prop_assert!(text.is_ok(), "{:?}", text);
+        let mut again = mztab_m::parse(text.as_deref().unwrap_or_default()).mztab;
+        again.layout = mztab_m::SourceLayout::default();
+        prop_assert!(again == model);
+    }
 }

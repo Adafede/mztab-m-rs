@@ -16,7 +16,7 @@ error[MZT-S005] line 11, column 27, cell 3: empty or malformed cell: text is emp
 error[MZT-S007] line 12, column 30, cell 3: invalid value: expected `instrument[n]`
 error[MZT-S007] line 13, column 28, cell 3: invalid value: expected `column=[unit parameter]`
 error[MZT-S005] line 14, column 28, cell 3: empty or malformed cell: text is empty
-error[MZT-S002] line 15, column 32, cell 3: invalid parameter: expected 4 comma-separated fields, found 1 (at byte 2)
+error[MZT-S002] line 15, column 33, cell 3: invalid parameter: expected 4 comma-separated fields, found 1 (at byte 2)
 error[MZT-S007] line 16, column 38, cell 3: invalid value: expected an `xsd:` datatype or `Parameter`
 error[MZT-S002] line 17, column 27, cell 3: invalid parameter: a CV parameter needs both a label and an accession (at byte 1)
 error[MZT-S005] line 18, column 17, cell 3: empty or malformed cell: text is empty

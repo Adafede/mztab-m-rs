@@ -26,6 +26,13 @@ name = "stream_vs_whole"
 path = "fuzz_targets/stream_vs_whole.rs"
 test = false
 
+[[bin]]
+bench = false
+doc = false
+name = "roundtrip"
+path = "fuzz_targets/roundtrip.rs"
+test = false
+
 [dependencies]
 libfuzzer-sys = "0.4"
 mztab-m = { path = "../crates/mztab-m" }

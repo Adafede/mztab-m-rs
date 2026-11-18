@@ -23,13 +23,14 @@ use alloc::vec::Vec;
 use crate::diag::{Code, Detail, Finding, Findings};
 use crate::meta::{MtdEntry, MtdKey};
 use crate::model::{
-    ExtraLine, Header, LineEnding, LineInfo, MzTab, SmeColumn, SmeRow, SmfColumn, SmfRow,
-    SmlColumn, SmlRow, Table,
+    ExtraLine, Header, LineContent, LineEnding, LineInfo, MzTab, SmeColumn, SmeRow, SmfColumn,
+    SmfRow, SmlColumn, SmlRow, SourceLine, Table, Verbatim,
 };
 use crate::table::{self, Slot};
 use crate::typing::{self, Cx, RawCell};
 use crate::value::Raw;
 use crate::vocab::Section;
+use crate::write::{self, Compare, Out};
 
 const BOM: &[u8] = b"\xEF\xBB\xBF";
 
@@ -66,6 +67,9 @@ pub enum Event<'a> {
     Smf(LineInfo, SmfRow<'a>),
     /// An `SME` row.
     Sme(LineInfo, SmeRow<'a>),
+    /// The text of the preceding line, which differs from its canonical
+    /// form; the writer reproduces it.
+    Verbatim(Verbatim<'a>),
     /// A finding about the preceding line.
     Finding(Finding),
 }
@@ -78,6 +82,9 @@ struct Typer {
     current: Option<Section>,
     furthest: Option<Section>,
     seen_keys: BTreeSet<MtdKey>,
+    /// Whether the last metadata line is placed in the model (not unknown,
+    /// not a duplicate).
+    placed: bool,
     sml: Option<Vec<Slot<SmlColumn>>>,
     smf: Option<Vec<Slot<SmfColumn>>>,
     sme: Option<Vec<Slot<SmeColumn>>>,
@@ -104,7 +111,7 @@ fn cells(text: &str) -> impl Iterator<Item = RawCell<'_>> {
 
 impl Typer {
     /// Types one line, given without its line break.
-    fn line<'a>(&mut self, bytes: &'a [u8], ending: LineEnding, sink: &mut impl FnMut(Event<'a>)) {
+    fn line<'a>(&mut self, bytes: &'a [u8], ending: LineEnding, sink: &mut dyn FnMut(Event<'a>)) {
         self.number = self.number.saturating_add(1);
         let info = LineInfo {
             number: self.number,
@@ -120,7 +127,11 @@ impl Typer {
         match core::str::from_utf8(bytes) {
             Ok(text) => {
                 let event = self.typed(text, info);
+                let verbatim = self.verbatim(&event, text);
                 sink(event);
+                if let Some(verbatim) = verbatim {
+                    sink(Event::Verbatim(verbatim));
+                }
             }
             Err(error) => {
                 let valid = bytes.get(..error.valid_up_to()).unwrap_or_default();
@@ -136,6 +147,37 @@ impl Typer {
         for finding in self.findings.drain(..) {
             sink(Event::Finding(finding));
         }
+    }
+
+    /// The line's text, if it differs from the canonical form of its event.
+    fn verbatim<'a>(&self, event: &Event<'a>, text: &'a str) -> Option<Verbatim<'a>> {
+        let mut compare = Compare::new(text);
+        let mut out = Out::new(&mut compare);
+        let rendered = match event {
+            Event::Metadata(_, entry) => match (&entry.typed, self.placed) {
+                (Some((key, value)), true) => write::metadata_line(&mut out, *key, value.as_ref()),
+                _ => write::unknown_line(&mut out, &entry.key, &entry.value),
+            },
+            Event::Sml(_, row) => {
+                write::row_line(&mut out, Section::Sml, self.sml.as_deref()?, row)
+            }
+            Event::Smf(_, row) => {
+                write::row_line(&mut out, Section::Smf, self.smf.as_deref()?, row)
+            }
+            Event::Sme(_, row) => {
+                write::row_line(&mut out, Section::Sme, self.sme.as_deref()?, row)
+            }
+            // Header lines always render as written: every label either
+            // round-trips through its column type or is kept raw. Blank,
+            // comment and unrecognised lines are stored as written.
+            _ => return None,
+        };
+        // A reader-built line always renders; if it somehow did not, keep
+        // the source text unconditionally (fingerprint of nothing).
+        (rendered.is_err() || !compare.matched()).then(|| Verbatim {
+            text: Raw::new(text),
+            fingerprint: compare.fingerprint.finish(),
+        })
     }
 
     const fn cx<'l>(findings: &'l mut Vec<Finding>, line: &'l str, number: u32) -> Cx<'l> {
@@ -167,7 +209,9 @@ impl Typer {
         let unrecognized = || Event::Unrecognized(info, Raw::new(text));
         match (section, is_header) {
             (Section::Mtd, _) => {
-                Event::Metadata(info, metadata(&mut cx, &mut self.seen_keys, text))
+                let (entry, placed) = metadata(&mut cx, &mut self.seen_keys, text);
+                self.placed = placed;
+                Event::Metadata(info, entry)
             }
             (Section::Sml, true) => header_slot(
                 &mut cx,
@@ -256,16 +300,21 @@ fn row<'a, R: table::TableRow<'a>>(
 }
 
 /// Types an `MTD` line.
-fn metadata<'a>(cx: &mut Cx<'_>, seen: &mut BTreeSet<MtdKey>, text: &'a str) -> MtdEntry<'a> {
+fn metadata<'a>(
+    cx: &mut Cx<'_>,
+    seen: &mut BTreeSet<MtdKey>,
+    text: &'a str,
+) -> (MtdEntry<'a>, bool) {
     let mut parts = cells(text);
     let Some(key) = parts.next() else {
         cx.report(Code::MtdCells, text.len(), 2, Detail::None);
-        return MtdEntry {
+        let entry = MtdEntry {
             key: Raw::new(""),
             value: Raw::new(""),
             trailing: Raw::new(""),
             typed: None,
         };
+        return (entry, false);
     };
     let value = parts.next();
     let trailing_at = value.map_or(text.len(), |v| v.offset + v.text.len());
@@ -284,13 +333,17 @@ fn metadata<'a>(cx: &mut Cx<'_>, seen: &mut BTreeSet<MtdKey>, text: &'a str) -> 
         cx.report(Code::MtdCells, text.len(), 3, Detail::None);
     }
     let parsed = MtdKey::parse(key.text);
-    match parsed {
-        None => cx.report(Code::UnknownMtdKey, key.offset, key.number, Detail::None),
+    let placed = match parsed {
+        None => {
+            cx.report(Code::UnknownMtdKey, key.offset, key.number, Detail::None);
+            false
+        }
         Some(k) if !k.repeats() && !seen.insert(k) => {
             cx.report(Code::DuplicateMtdKey, key.offset, key.number, Detail::None);
+            false
         }
-        Some(_) => {}
-    }
+        Some(_) => true,
+    };
     let typed = parsed.map(|k| {
         let raw = value.unwrap_or(RawCell {
             text: "",
@@ -312,12 +365,13 @@ fn metadata<'a>(cx: &mut Cx<'_>, seen: &mut BTreeSet<MtdKey>, text: &'a str) -> 
         };
         (k, value)
     });
-    MtdEntry {
+    let entry = MtdEntry {
         key: Raw::new(key.text),
         value: Raw::new(value.map_or("", |v| v.text)),
         trailing: Raw::new(trailing),
         typed,
-    }
+    };
+    (entry, placed)
 }
 
 /// Splits `line` (which includes its `\n`, or is the unterminated last line)
@@ -349,63 +403,80 @@ struct Builder<'a> {
 
 impl<'a> Builder<'a> {
     fn event(&mut self, event: Event<'a>) {
-        let layout = &mut self.mztab.layout;
-        match event {
-            Event::Bom => layout.bom = true,
-            Event::Blank(info, raw) => layout.extra_lines.push((info, ExtraLine::Blank(raw))),
-            Event::Comment(info, raw) => layout.extra_lines.push((info, ExtraLine::Comment(raw))),
-            Event::Unrecognized(info, raw) => {
-                layout
-                    .extra_lines
-                    .push((info, ExtraLine::Unrecognized(raw)));
+        let (info, content) = match event {
+            Event::Bom => {
+                self.mztab.layout.bom = true;
+                return;
             }
-            Event::Metadata(_, entry) => {
+            Event::Finding(finding) => {
+                self.findings.push(finding);
+                return;
+            }
+            Event::Verbatim(verbatim) => {
+                if let Some(line) = self.mztab.layout.lines.last_mut() {
+                    line.verbatim = Some(verbatim);
+                }
+                return;
+            }
+            Event::Blank(info, raw) => (info, LineContent::Extra(ExtraLine::Blank(raw))),
+            Event::Comment(info, raw) => (info, LineContent::Extra(ExtraLine::Comment(raw))),
+            Event::Unrecognized(info, raw) => {
+                (info, LineContent::Extra(ExtraLine::Unrecognized(raw)))
+            }
+            Event::Metadata(info, entry) => {
                 let metadata = &mut self.mztab.metadata;
                 let placed = entry
                     .typed
-                    .is_some_and(|(key, value)| metadata.insert(key, value).is_ok());
-                if !placed {
+                    .and_then(|(key, value)| metadata.insert(key, value).ok().map(|()| key));
+                if let Some(key) = placed {
+                    (info, LineContent::Metadata(key))
+                } else {
                     metadata.unknown.push((entry.key, entry.value));
+                    (info, LineContent::UnknownMetadata)
                 }
             }
-            Event::SmlHeader(_, header) => {
-                self.mztab.sml = Some(Table {
-                    header,
-                    rows: Vec::new(),
-                });
+            Event::SmlHeader(info, header) => {
+                self.mztab.sml.get_or_insert_with(Table::default).header = header;
+                (info, LineContent::Header(Section::Sml))
             }
-            Event::SmfHeader(_, header) => {
-                self.mztab.smf = Some(Table {
-                    header,
-                    rows: Vec::new(),
-                });
+            Event::SmfHeader(info, header) => {
+                self.mztab.smf.get_or_insert_with(Table::default).header = header;
+                (info, LineContent::Header(Section::Smf))
             }
-            Event::SmeHeader(_, header) => {
-                self.mztab.sme = Some(Table {
-                    header,
-                    rows: Vec::new(),
-                });
+            Event::SmeHeader(info, header) => {
+                self.mztab.sme.get_or_insert_with(Table::default).header = header;
+                (info, LineContent::Header(Section::Sme))
             }
-            Event::Sml(_, row) => self
-                .mztab
-                .sml
-                .get_or_insert_with(Table::default)
-                .rows
-                .push(row),
-            Event::Smf(_, row) => self
-                .mztab
-                .smf
-                .get_or_insert_with(Table::default)
-                .rows
-                .push(row),
-            Event::Sme(_, row) => self
-                .mztab
-                .sme
-                .get_or_insert_with(Table::default)
-                .rows
-                .push(row),
-            Event::Finding(finding) => self.findings.push(finding),
-        }
+            Event::Sml(info, row) => {
+                self.mztab
+                    .sml
+                    .get_or_insert_with(Table::default)
+                    .rows
+                    .push(row);
+                (info, LineContent::Row(Section::Sml))
+            }
+            Event::Smf(info, row) => {
+                self.mztab
+                    .smf
+                    .get_or_insert_with(Table::default)
+                    .rows
+                    .push(row);
+                (info, LineContent::Row(Section::Smf))
+            }
+            Event::Sme(info, row) => {
+                self.mztab
+                    .sme
+                    .get_or_insert_with(Table::default)
+                    .rows
+                    .push(row);
+                (info, LineContent::Row(Section::Sme))
+            }
+        };
+        self.mztab.layout.lines.push(SourceLine {
+            content,
+            ending: info.ending,
+            verbatim: None,
+        });
     }
 }
 
@@ -514,33 +585,27 @@ impl StreamReader {
     }
 
     /// Reads `chunk`, calling `on` for the events of every line it completes.
-    pub fn push(&mut self, chunk: &[u8], on: &mut impl FnMut(Event<'_>)) {
-        let mut rest = chunk;
-        if !self.pending.is_empty() {
-            let Some(at) = rest.iter().position(|&b| b == b'\n') else {
-                self.pending.extend_from_slice(rest);
-                return;
-            };
-            let (head, tail) = rest.split_at(at + 1);
-            self.pending.extend_from_slice(head);
-            let mut line = core::mem::take(&mut self.pending);
-            let (text, ending) = strip_ending(&line, true);
-            self.typer.line(text, ending, on);
-            line.clear();
-            self.pending = line;
-            rest = tail;
+    pub fn push(&mut self, chunk: &[u8], on: &mut dyn FnMut(Event<'_>)) {
+        for piece in chunk.split_inclusive(|&b| b == b'\n') {
+            if !piece.ends_with(b"\n") {
+                // The chunk ends inside a line.
+                self.pending.extend_from_slice(piece);
+            } else if self.pending.is_empty() {
+                let (text, ending) = strip_ending(piece, true);
+                self.typer.line(text, ending, on);
+            } else {
+                self.pending.extend_from_slice(piece);
+                let mut line = core::mem::take(&mut self.pending);
+                let (text, ending) = strip_ending(&line, true);
+                self.typer.line(text, ending, on);
+                line.clear();
+                self.pending = line;
+            }
         }
-        while let Some(at) = rest.iter().position(|&b| b == b'\n') {
-            let (line, tail) = rest.split_at(at + 1);
-            let (text, ending) = strip_ending(line, true);
-            self.typer.line(text, ending, on);
-            rest = tail;
-        }
-        self.pending.extend_from_slice(rest);
     }
 
     /// Ends the document, reading a last line that has no line break.
-    pub fn finish(mut self, on: &mut impl FnMut(Event<'_>)) {
+    pub fn finish(mut self, on: &mut dyn FnMut(Event<'_>)) {
         if !self.pending.is_empty() {
             let line = core::mem::take(&mut self.pending);
             self.typer.line(&line, LineEnding::None, on);
@@ -565,11 +630,15 @@ mod tests {
         let endings: vec::Vec<_> = parse(text)
             .mztab
             .layout
-            .extra_lines
+            .lines
             .iter()
-            .map(|(info, _)| info.ending)
+            .map(|line| line.ending)
             .collect();
-        assert_eq!(endings, [LineEnding::None], "last line has no ending");
+        assert_eq!(
+            endings,
+            [LineEnding::CrLf, LineEnding::None],
+            "endings kept"
+        );
         assert!(parse("").findings.is_empty(), "empty input");
     }
 
@@ -587,6 +656,30 @@ mod tests {
             lines,
             [at(2), at(4)],
             "MTD after SMF, SMH after SMF; not SMF again"
+        );
+    }
+
+    #[test]
+    fn verbatim_before_any_line_is_ignored() {
+        use crate::model::Verbatim;
+        use crate::value::Raw;
+        let parsed: Parsed<'_> = vec![Event::Verbatim(Verbatim {
+            text: Raw::new("x"),
+            fingerprint: 0,
+        })]
+        .into_iter()
+        .collect();
+        assert!(
+            parsed.mztab.layout.lines.is_empty(),
+            "nothing to attach it to"
+        );
+        let spaced = parse("MTD\tquantification_method\t[,,a,]");
+        let first = spaced.mztab.layout.lines.first();
+        let verbatim = first.and_then(|line| line.verbatim.as_ref());
+        assert_eq!(
+            verbatim.map(|v| v.text.as_str()),
+            Some("MTD\tquantification_method\t[,,a,]"),
+            "attached to its line"
         );
     }
 

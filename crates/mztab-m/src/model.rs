@@ -42,7 +42,7 @@ use crate::id::{
 };
 use crate::param::{Param, ParamError};
 use crate::value::{Cell, Decimal, Raw, Text, TextError};
-use crate::vocab::{AmbiguityCode, Datatype, Profile, PublicationItem, Version};
+use crate::vocab::{AmbiguityCode, Datatype, Profile, PublicationItem, Section, Version};
 
 /// A metadata field: absent (`None`) or present as a [`Cell`].
 pub type Field<'a, T> = Option<Cell<'a, T>>;
@@ -100,16 +100,56 @@ pub enum ExtraLine<'a> {
     Unrecognized(Raw<'a>),
 }
 
-/// What the typed model does not capture about the source text.
+/// The source text of a line whose canonical form differs from it.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Verbatim<'a> {
+    /// The line as written, without its line break.
+    pub text: Raw<'a>,
+    /// A fingerprint of the line's canonical form when it was read. The
+    /// writer uses `text` only while the model still renders to it, so an
+    /// edited value is never overwritten by stale source text.
+    pub fingerprint: u64,
+}
+
+/// What a source line carried.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum LineContent<'a> {
+    /// The next value of this key (`colunit-*` keys repeat).
+    Metadata(crate::meta::MtdKey),
+    /// The next entry of [`Metadata::unknown`].
+    UnknownMetadata,
+    /// The header of a table.
+    Header(Section),
+    /// The next row of a table.
+    Row(Section),
+    /// A line with no model data.
+    Extra(ExtraLine<'a>),
+}
+
+/// One line of the source, in order.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct SourceLine<'a> {
+    /// What the line carried.
+    pub content: LineContent<'a>,
+    /// How it ended.
+    pub ending: LineEnding,
+    /// Its text, when that differs from the canonical form.
+    pub verbatim: Option<Verbatim<'a>>,
+}
+
+/// What the typed model does not capture about the source text: line order,
+/// line endings, blank and comment lines, and the exact text of every line
+/// that is not in canonical form.
 ///
-/// The reader fills it; the writer (M3) will honour it so that non-canonical
-/// files round-trip. It is empty for models built in code.
+/// The reader fills it and the writer honours it, so `write(read(f)) == f`
+/// byte for byte (except lines that were not valid UTF-8). It is empty for
+/// models built in code, which are written in canonical form.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SourceLayout<'a> {
     /// Whether the input started with a UTF-8 byte order mark.
     pub bom: bool,
-    /// Lines that carry no model data, with their position.
-    pub extra_lines: Vec<(LineInfo, ExtraLine<'a>)>,
+    /// Every source line, in order.
+    pub lines: Vec<SourceLine<'a>>,
 }
 
 impl<S, R> Default for Table<'_, S, R> {

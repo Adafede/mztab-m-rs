@@ -12,7 +12,7 @@ MTD	publication[1]	PMID:1|doi:
 MTD	ms_run[1]-instrument_ref	instr[1]
 MTD	colunit-small_molecule	x
 MTD	colunit-small_molecule	=[a]
-MTD	colunit-small_molecule	c=[a]
+MTD	colunit-small_molecule	cc=[a]
 MTD	study_variable_group[1]-datatype	xsd:float
 MTD	sample[1]-species[1]	[MS,,x,]
 MTD	software[1]	

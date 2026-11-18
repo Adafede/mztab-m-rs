@@ -221,22 +221,53 @@ pub(crate) fn reference<'a, I: ElementId>(
 fn split_list(text: &str, brackets: bool) -> Vec<(usize, &str)> {
     let mut items = Vec::new();
     let mut start = 0;
-    let mut depth = 0_usize;
-    let mut quoted = false;
+    let mut splitter = Splitter::new(brackets);
     for (at, byte) in text.bytes().enumerate() {
-        match byte {
-            b'"' if brackets => quoted = !quoted,
-            b'[' if brackets && !quoted => depth += 1,
-            b']' if brackets && !quoted => depth = depth.saturating_sub(1),
-            b'|' if depth == 0 && !quoted => {
-                items.push((start, text.get(start..at).unwrap_or_default()));
-                start = at + 1;
-            }
-            _ => {}
+        if splitter.step(byte) {
+            items.push((start, text.get(start..at).unwrap_or_default()));
+            start = at + 1;
         }
     }
     items.push((start, text.get(start..).unwrap_or_default()));
     items
+}
+
+/// The state of a list split: which `|` separate items. The reader splits
+/// with it and the writer checks its output with it, so the two agree by
+/// construction.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Splitter {
+    /// Parameter lists: `|` inside `[…]` or `"…"` does not split.
+    brackets: bool,
+    depth: usize,
+    quoted: bool,
+}
+
+impl Splitter {
+    pub(crate) const fn new(brackets: bool) -> Self {
+        Self {
+            brackets,
+            depth: 0,
+            quoted: false,
+        }
+    }
+
+    /// Consumes one byte; `true` if it separates two items.
+    pub(crate) const fn step(&mut self, byte: u8) -> bool {
+        match byte {
+            b'"' if self.brackets => self.quoted = !self.quoted,
+            b'[' if self.brackets && !self.quoted => self.depth += 1,
+            b']' if self.brackets && !self.quoted => self.depth = self.depth.saturating_sub(1),
+            b'|' => return self.depth == 0 && !self.quoted,
+            _ => {}
+        }
+        false
+    }
+
+    /// Whether a `|` here would separate items.
+    pub(crate) const fn at_rest(&self) -> bool {
+        self.depth == 0 && !self.quoted
+    }
 }
 
 /// Types a `|`-separated list. A whole-cell `null` is [`Cell::Null`]; each
@@ -373,5 +404,10 @@ mod tests {
             "unbalanced close does not underflow"
         );
         assert_eq!(split_list("", false), [(0, "")], "empty");
+        assert_eq!(
+            split_list("a\"|b", false),
+            [(0, "a\""), (3, "b")],
+            "quotes only matter in parameter lists"
+        );
     }
 }
