@@ -518,3 +518,74 @@ These §3 items depend on the reader's design and land with it:
   produces, except rows shorter than their header (`MZT-S010`), whose
   missing cells are written as `null` and come back as values. Tested on
   the corpus, the fixtures and generated documents.
+
+## Structure validator (M4)
+
+### D-064: Validation API and locations — PROPOSED (M4)
+
+- `validate::syntax(&str)`, `validate::structure(&MzTab)` and
+  `validate::all(&str)`, each taking a `Config` (per-code severity
+  overrides, disabled codes). `structure` never re-parses; `all` drops the
+  structure layer's `MZT-T028 InvalidValue` because the reader already
+  reported each such cell.
+- **Locations.** On a model read from text, every structure finding gets
+  line, column and cell from the `SourceLayout` (computing the column needs
+  the line's text: its verbatim source or a canonical rendering of that one
+  item, never a re-scan). An item added after reading points at the first
+  metadata line. On a model built in code, findings carry a model path
+  (`metadata.assay[1]`, `sml[3][14]`, `smf.header`).
+- **Rule set** by `mzTab-version`: 2.0 for `2.0.x`, 2.1 otherwise (D-003).
+  2.0 files get the 2.0 mandatory set (D-014) and no profile errors, only
+  the inferred profile as information (J-12).
+
+### D-065: Rules as implemented — PROPOSED (M4)
+
+The OPEN decisions above are implemented on their proposals; each is one
+place in `validate/` to change if you decide otherwise.
+
+- D-010: every stable column is mandatory (`MZT-T024`, error), plus an
+  abundance column for every assay and study variable (SML) or assay (SMF),
+  and an SME `id_confidence_measure[n]` for every declared measure; order
+  is a warning (`T025`); an `opt_` column before a defined one is a warning
+  (`T026`).
+- D-011: SMF `charge` is nullable. D-012: a null SML
+  `best_id_confidence_value` is information. D-015: a null reliability is a
+  warning (`T029`); a value outside `1`-`4` is an error only when no
+  `small_molecule-identification_reliability` scheme is declared (`T030`).
+- D-013: no group in a 2.1 file is a warning (`T021`); with groups, each
+  study variable in exactly one is an error (`T020`).
+- D-014: 2.1 mandatory set = `mzTab-version`, `mzTab-ID`, assays (name,
+  `ms_run_ref`), `ms_run` locations, study variables (name), CVs (four
+  fields), `software`, databases' four fields, protocols' name and type,
+  group names; profile-dependent fields per SPEC §5.18.1, and present
+  without their table = information (`T016`).
+- D-016: one adduct pattern for SML, SMF and SME (`T033`).
+- D-017: study-variable values are checked against their group's datatype
+  (`T035`).
+- D-019: a header-only table in 2.1 is an error with a declared profile,
+  a warning with an inferred one (`T015`).
+- D-022: an inferred `M+S+F` is a warning (`T014`).
+- Cross-references per profile (SPEC table `table-profile-crossrefs`,
+  `T022`): `M+S` rows have null `SMF_ID_REFS`; `M+S+F+E` rows have at least
+  one; `M+F` rows have null `SME_ID_REFS`; with features and evidence, every
+  SME row is referenced by an SMF row. "Identified" SMF rows (which MUST
+  reference SME) are not checked: the spec does not define "identified".
+- Not checked yet: `spectra_ref` against the run's `id_format`, URIs
+  (RFC 3986) and emails. CV rules are M5.
+
+### D-066: Oracle harness, as built — PROPOSED (M4)
+
+- `.github/workflows/oracle.yml` builds the jmzTab-m CLI from the pinned
+  submodule (Java 25, `./mvnw -pl cli -am package`), runs it over every
+  corpus file and both reader fixtures with `-l Info`, uploads the outputs,
+  and fails if committed outputs are stale. It runs on manual dispatch and
+  on pull requests that touch it, the outputs or `third_party/`.
+- `tests/oracle.rs` compares each committed output with `validate::all`
+  by jmzTab-m code and line (`Code::jmztab`), and fails on any disagreement
+  not listed in `tests/oracle/expected-disagreements.tsv` with its J-/D-
+  reference.
+- **No outputs are committed yet:** there is no JVM in this environment
+  (D-030), so the first run of the workflow, and the review of its
+  disagreements, is still to do. Until then the comparison test passes
+  vacuously, and says so here. The seed rows of the disagreement list are
+  the deviations already known from reading jmzTab-m (J-01, J-02, J-04).

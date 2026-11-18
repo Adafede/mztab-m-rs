@@ -23,9 +23,10 @@ use alloc::borrow::Cow;
 use alloc::vec::Vec;
 use core::fmt;
 
+use crate::meta::MtdKey;
 use crate::param::ParamError;
 use crate::value::{NumberError, TextError};
-use crate::vocab::VersionError;
+use crate::vocab::{Profile, ProhibitedProfile, VersionError};
 
 /// How serious a finding is. Ordered from least to most serious.
 ///
@@ -284,6 +285,87 @@ codes! {
     /// A table header line appears more than once.
     DuplicateHeader = "MZT-T008", Structure, Must, Format # "format-specification",
         jmztab [2003], "repeated header line";
+    /// A metadata field the specification requires is missing.
+    MissingField = "MZT-T009", Structure, Must, FieldReference # "metadata-section",
+        jmztab [2008], "a mandatory metadata field is missing";
+    /// `mzTab-version` names a version this crate has no rules for.
+    UnknownVersion = "MZT-T010", Structure, Should, FieldReference # "mztab-version",
+        jmztab [], "unknown mzTab-M version; newest rules applied";
+    /// No `mzTab-profile` is declared; the profile is inferred and reported.
+    ProfileInferred = "MZT-T011", Structure, May, Format # "profiles",
+        jmztab [2052], "profile inferred from the tables present";
+    /// The tables present do not match the declared `mzTab-profile`.
+    ProfileMismatch = "MZT-T012", Structure, Must, FieldReference # "table-profiles",
+        jmztab [2053, 2054, 2055], "tables present do not match the declared profile";
+    /// The tables form a prohibited combination (`M+E` or `M+S+E`).
+    ProhibitedProfile = "MZT-T013", Structure, Must, Format # "profiles-not-supported",
+        jmztab [2056], "prohibited table combination";
+    /// The tables form profile `M+S+F`, which is tolerated but not recommended.
+    DiscouragedProfile = "MZT-T014", Structure, Should, Format # "profiles-not-supported",
+        jmztab [2057], "profile M+S+F is not recommended";
+    /// A table has a header and no rows.
+    EmptyTable = "MZT-T015", Structure, Must, Format # "profiles",
+        jmztab [], "header without rows; omit the section instead";
+    /// A profile-dependent metadata field is present although its table is not.
+    ProfileField = "MZT-T016", Structure, May, Format # "profile-metadata-requirements",
+        jmztab [2058], "field describes a table that is not present";
+    /// A reference names an element or row that is not defined.
+    DanglingReference = "MZT-T017", Structure, Must, FieldReference # "metadata-section",
+        jmztab [2005, 2006, 2007, 2047, 2068], "reference to an element that is not defined";
+    /// A row id (`SML_ID`, `SMF_ID`, `SME_ID`) is not unique in its table.
+    DuplicateRowId = "MZT-T018", Structure, Must, FieldReference # "sections",
+        jmztab [], "duplicate row id";
+    /// The indices of an element are not `1..n` without gaps.
+    IndexGap = "MZT-T019", Structure, Should, FieldReference # "metadata-section",
+        jmztab [], "element indices are not contiguous from 1";
+    /// A study variable belongs to no group, or to more than one, while groups exist.
+    StudyVariableGrouping = "MZT-T020", Structure, Must, FieldReference # "study_variable_group1-n",
+        jmztab [2007, 2028], "study variable not in exactly one group";
+    /// A 2.1 file defines no `study_variable_group`.
+    NoStudyVariableGroup = "MZT-T021", Structure, Should, FieldReference # "study_variable_group1-n",
+        jmztab [2008], "no study_variable_group defined";
+    /// A row breaks the cross-reference obligations of its profile.
+    CrossReference = "MZT-T022", Structure, Must, Format # "table-profile-crossrefs",
+        jmztab [2059, 2060, 2061], "cross-reference required or forbidden by the profile";
+    /// `SME_ID_REF_ambiguity_code` is set without several `SME_ID_REFS`, or missing with them.
+    AmbiguityCode = "MZT-T023", Structure, Must, FieldReference # "smf-sme_id_ref_ambiguity_code",
+        jmztab [], "ambiguity code must be set exactly when SME_ID_REFS has several entries";
+    /// A table lacks a mandatory column.
+    MissingColumn = "MZT-T024", Structure, Must, FieldReference # "sections",
+        jmztab [1004, 2009], "a mandatory column is missing";
+    /// Table columns are not in the specified order.
+    ColumnOrder = "MZT-T025", Structure, Should, FieldReference # "sections",
+        jmztab [], "columns are not in the specified order";
+    /// An `opt_` column comes before a column that is not optional.
+    OptColumnPosition = "MZT-T026", Structure, Should, Format # "adding-optional-columns",
+        jmztab [], "optional column before a defined column";
+    /// A column that is not nullable holds `null`.
+    NullValue = "MZT-T027", Structure, Must, Format # "encoding-missing-values-zeroes-nulls-infinity-and-calculation-errors",
+        jmztab [2000], "null in a column that is not nullable";
+    /// A model value failed to type, or is a number in a form mzTab forbids.
+    InvalidValue = "MZT-T028", Structure, Must, FieldReference # "sections",
+        jmztab [], "value does not have the type its field requires";
+    /// An SML row has no reliability.
+    ReliabilityMissing = "MZT-T029", Structure, Should, FieldReference # "sml-reliability",
+        jmztab [], "reliability is null";
+    /// An SML reliability is not `1`-`4` and no other scheme is declared.
+    ReliabilityValue = "MZT-T030", Structure, Must, FieldReference # "sml-reliability",
+        jmztab [1034], "reliability is not a level of the default scheme (1-4)";
+    /// An `ms_run` has a hash but no `hash_method`.
+    HashMethod = "MZT-T031", Structure, Must, FieldReference # "ms_run1-n-hash_method",
+        jmztab [2033], "hash without hash_method";
+    /// A `colunit-*` entry names a column its table does not have.
+    ColunitColumn = "MZT-T032", Structure, Must, FieldReference # "colunit-small_molecule",
+        jmztab [1029], "colunit names a column that is not in the table";
+    /// An adduct ion does not match the specified pattern.
+    AdductIon = "MZT-T033", Structure, Must, FieldReference # "sml-adduct_ions",
+        jmztab [1034], "adduct ion does not match `[nM+X]n+`";
+    /// A contact ORCID does not match the specified pattern.
+    Orcid = "MZT-T034", Structure, Must, FieldReference # "contact1-n-orcid",
+        jmztab [1037], "ORCID does not match `0000-0000-0000-000X`";
+    /// A study variable value does not match the `datatype` of its group.
+    StudyVariableDatatype = "MZT-T035", Structure, Must, FieldReference # "study_variable_group1-n-datatype",
+        jmztab [], "study variable value does not match its group datatype";
 }
 
 impl fmt::Display for Code {
@@ -471,6 +553,14 @@ pub enum Detail {
     },
     /// A line prefix that matches a known one except for letter case.
     PrefixCase(&'static str),
+    /// The metadata key concerned (for example, a missing field).
+    Key(MtdKey),
+    /// The element, column or row id concerned, as written.
+    Label(Cow<'static, str>),
+    /// The profile the tables form.
+    Profile(Profile),
+    /// The prohibited combination the tables form.
+    Prohibited(ProhibitedProfile),
 }
 
 impl fmt::Display for Detail {
@@ -488,6 +578,10 @@ impl fmt::Display for Detail {
             Self::PrefixCase(prefix) => {
                 write!(f, "prefixes are case-sensitive; did you mean `{prefix}`?")
             }
+            Self::Key(key) => write!(f, "`{key}`"),
+            Self::Label(label) => write!(f, "`{label}`"),
+            Self::Profile(profile) => write!(f, "profile `{profile}`"),
+            Self::Prohibited(tables) => write!(f, "tables `{tables}`"),
         }
     }
 }

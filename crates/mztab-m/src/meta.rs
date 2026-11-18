@@ -429,6 +429,56 @@ impl MtdKey {
         }
     }
 
+    /// The indexed element this key belongs to, as its name and index:
+    /// `assay[2]-ms_run_ref` belongs to `("assay", 2)`. `None` for keys of
+    /// the document as a whole (`mzTab-version`, `title`, …).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use mztab_m::MtdKey;
+    ///
+    /// let key = MtdKey::parse("assay[2]-ms_run_ref").ok_or("unknown")?;
+    /// assert_eq!(key.element(), Some(("assay", 2)));
+    /// assert_eq!(MtdKey::Title.element(), None);
+    /// # Ok::<(), &str>(())
+    /// ```
+    #[must_use]
+    pub const fn element(self) -> Option<(&'static str, u32)> {
+        Some(match self {
+            Self::SampleProcessing(n) => ("sample_processing", n.get()),
+            Self::Instrument(n, _) => ("instrument", n.get()),
+            Self::Software(n, _) => ("software", n.get()),
+            Self::Publication(n) => ("publication", n.get()),
+            Self::Contact(n, _) => ("contact", n.get()),
+            Self::Uri(n) => ("uri", n.get()),
+            Self::ExternalStudyUri(n) => ("external_study_uri", n.get()),
+            Self::Sample(n, _) => ("sample", n.get()),
+            Self::MsRun(n, _) => ("ms_run", n.get()),
+            Self::Assay(n, _) => ("assay", n.get()),
+            Self::StudyVariable(n, _) => ("study_variable", n.get()),
+            Self::StudyVariableGroup(n, _) => ("study_variable_group", n.get()),
+            Self::Protocol(n, _) => ("protocol", n.get()),
+            Self::Custom(n) => ("custom", n.get()),
+            Self::Cv(n, _) => ("cv", n.get()),
+            Self::Database(n, _) => ("database", n.get()),
+            Self::DerivatizationAgent(n) => ("derivatization_agent", n.get()),
+            Self::IdConfidenceMeasure(n) => ("id_confidence_measure", n.get()),
+            Self::Version
+            | Self::Id
+            | Self::Profile
+            | Self::Title
+            | Self::Description
+            | Self::QuantificationMethod
+            | Self::SmallMoleculeQuantificationUnit
+            | Self::SmallMoleculeFeatureQuantificationUnit
+            | Self::SmallMoleculeIdentificationReliability
+            | Self::ColunitSmallMolecule
+            | Self::ColunitSmallMoleculeFeature
+            | Self::ColunitSmallMoleculeEvidence => return None,
+        })
+    }
+
     /// Whether the key may appear more than once (`colunit-*` only).
     #[must_use]
     pub const fn repeats(self) -> bool {

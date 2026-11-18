@@ -261,8 +261,8 @@ mod native {
         text.split("examples/").last().unwrap_or(&text).to_owned()
     }
 
-    /// Every file reads (see [`check`]), and the finding codes per file match
-    /// `tests/golden/corpus.txt`. Set `BLESS=1` to rewrite the golden file
+    /// Every file reads (see [`check`]), and the finding codes per file (the
+    /// reader's and the structure validator's) match `tests/golden/corpus.txt`. Set `BLESS=1` to rewrite the golden file
     /// after an intended change.
     #[test]
     fn every_corpus_file_reads_as_recorded() {
@@ -279,8 +279,11 @@ mod native {
                 _ => &[],
             };
             let findings = check(&name(&path), &input, sizes);
+            let model = mztab_m::parse_bytes(&input).mztab;
+            let structure =
+                mztab_m::validate::structure(&model, &mztab_m::validate::Config::default());
             let mut codes = BTreeMap::<&str, usize>::new();
-            for finding in &findings {
+            for finding in findings.iter().chain(&structure) {
                 *codes.entry(finding.code.id()).or_default() += 1;
             }
             write!(report, "{}:", name(&path)).expect("writing to a String");

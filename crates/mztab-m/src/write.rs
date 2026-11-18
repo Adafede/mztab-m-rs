@@ -717,6 +717,20 @@ impl<'r, 'a> Writer<'_, 'r, 'a> {
     }
 }
 
+/// The canonical text of a table's header line.
+pub(crate) fn header_text(mztab: &MzTab<'_>, section: Section) -> Option<String> {
+    let mut text = String::new();
+    item_line(&mut Out::new(&mut text), mztab, &Item::Header(section)).ok()?;
+    Some(text)
+}
+
+/// The canonical text of a row line.
+pub(crate) fn row_text(mztab: &MzTab<'_>, section: Section, row: usize) -> Option<String> {
+    let mut text = String::new();
+    item_line(&mut Out::new(&mut text), mztab, &Item::Row(section, row)).ok()?;
+    Some(text)
+}
+
 /// Writes `mztab` as mzTab-M TSV.
 ///
 /// # Errors

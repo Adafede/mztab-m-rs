@@ -12,6 +12,7 @@ mod param;
 mod read;
 mod table;
 mod typing;
+pub mod validate;
 mod value;
 mod vocab;
 mod write;

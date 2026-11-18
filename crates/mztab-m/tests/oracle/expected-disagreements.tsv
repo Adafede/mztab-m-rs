@@ -1,0 +1,18 @@
+# Disagreements with jmzTab-m that the spec settles in our favour.
+#
+# Columns (tab-separated):
+#   file       corpus path with / as __, or * for every file
+#   code       jmzTab-m code, or * for any
+#   line       1-based line, -1 (jmzTab-m: no line), or * for any
+#   direction  jmztab-only (jmzTab-m reports it, we do not)
+#              ours-only   (we report a finding with this jmzTab-m equivalent; jmzTab-m does not)
+#   reference  the DECISIONS.md entry that explains it (J-xx or D-xxx)
+#   note       one line
+#
+# Every disagreement found by tests/oracle.rs must match a row here.
+*	1019	*	ours-only	J-02	jmzTab-m parses numbers with Java Double: no error for scientific notation or infinity.
+*	1022	*	ours-only	J-02	As 1019, in lists.
+*	2000	*	ours-only	J-01	jmzTab-m trims cells and drops trailing empty ones before checking for empty cells.
+*	1001	*	jmztab-only	J-01	jmzTab-m drops trailing empty cells and then miscounts; we count the cells as written.
+*	1000	*	ours-only	J-04	jmzTab-m accepts line prefixes in any case.
+*	1009	*	ours-only	J-04	jmzTab-m lower-cases metadata keys before matching them.

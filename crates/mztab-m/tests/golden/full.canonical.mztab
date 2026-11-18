@@ -76,11 +76,11 @@ MTD	id_confidence_measure[1]	[MS, MS:1002890, fragmentation score, ]
 MTD	colunit-small_molecule	theoretical_neutral_mass=[UO, UO:0000221, dalton, ]
 MTD	colunit-small_molecule	best_id_confidence_value=[UO, UO:0000186, dimensionless unit, ]
 MTD	colunit-small_molecule_feature	retention_time_in_seconds=[UO, UO:0000010, second, ]
-MTD	colunit-small_molecule_evidence	opt_global_mass_error=[UO, UO:0000169, parts per million, ]
+MTD	colunit-small_molecule_evidence	opt_ms_run[1]_mass_error=[UO, UO:0000169, parts per million, ]
 
 SMH	SML_ID	SMF_ID_REFS	database_identifier	chemical_formula	smiles	inchi	chemical_name	uri	theoretical_neutral_mass	adduct_ions	reliability	best_id_confidence_measure	best_id_confidence_value	abundance_assay[1]	abundance_study_variable[1]	abundance_variation_study_variable[1]	opt_global_note
 SML	1	1|2	HMDB:HMDB0000122|null	C6H12O6|null	OC1OC(CO)C(O)C(O)C1O|null	InChI=1S/C6H12O6|null	Glucose|null	https://hmdb.ca/metabolites/HMDB0000122|null	180.0634|null	[M+H]1+|null	2	[MS, MS:1002890, fragmentation score, ]	0.95	1234.5	1234.5	0.1	first
-SML	2	null	null	null	null	null	null	null	null	null	4	null	null	null	null	null	null
+SML	2	2	null	null	null	null	null	null	null	null	4	null	0.5	null	null	null	null
 
 SFH	SMF_ID	SME_ID_REFS	SME_ID_REF_ambiguity_code	adduct_ion	isotopomer	exp_mass_to_charge	charge	retention_time_in_seconds	retention_time_in_seconds_start	retention_time_in_seconds_end	abundance_assay[1]	opt_assay[1]_area
 SMF	1	1|2	1	[M+H]1+	[, , monoisotopic, ]	181.0707	1	300.5	295.0	306.0	1234.5	10
