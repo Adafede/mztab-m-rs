@@ -18,7 +18,7 @@ COVERAGE_FAIL_UNDER_LINES="100"
 LOCAL_OVERRIDES=(wasm=wasm)
 # Must equal the wasm-bindgen version in Cargo.lock (task_wasm checks it).
 LOCAL_CARGO_TOOLS=(wasm-bindgen-cli@0.2.130:wasm-bindgen-test-runner)
-WASM_CRATES=(mztab-m mztab-m-obo)
+WASM_CRATES=(mztab-m mztab-m-obo mztab-m-wasm)
 
 task_wasm() {
     local locked runner
@@ -35,4 +35,18 @@ task_wasm() {
         CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner \
             cargo test -p "$c" --target wasm32-unknown-unknown --all-features --locked --lib --tests
     done
+}
+
+# The browser demo (crates/mztab-m-wasm/www): builds the module and its
+# JavaScript glue into www/pkg (not committed). `./mk local:demo`; CI runs it
+# so the page's module always builds.
+LOCAL_CI_GATES=(demo)
+
+task_demo() {
+    rustup target add wasm32-unknown-unknown
+    cargo build -p mztab-m-wasm --target wasm32-unknown-unknown --release --locked
+    wasm-bindgen --target web --no-typescript \
+        --out-dir crates/mztab-m-wasm/www/pkg \
+        target/wasm32-unknown-unknown/release/mztab_m_wasm.wasm
+    echo "demo: serve crates/mztab-m-wasm/www (e.g. python3 -m http.server -d crates/mztab-m-wasm/www)"
 }

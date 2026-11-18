@@ -164,10 +164,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "mztab-m-cli"
+version = "0.1.0"
+dependencies = [
+ "mztab-m",
+ "mztab-m-obo",
+]
+
+[[package]]
 name = "mztab-m-obo"
 version = "0.1.0"
 dependencies = [
  "mztab-m",
+ "wasm-bindgen-test",
+]
+
+[[package]]
+name = "mztab-m-wasm"
+version = "0.1.0"
+dependencies = [
+ "mztab-m",
+ "mztab-m-obo",
+ "wasm-bindgen",
  "wasm-bindgen-test",
 ]
 

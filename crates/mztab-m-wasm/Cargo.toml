@@ -1,0 +1,26 @@
+[package]
+name = "mztab-m-wasm"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Browser demo: validate an mzTab-M file in the page (not published)."
+repository.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+mztab-m = { path = "../mztab-m", version = "0.1.0", features = ["json"] }
+mztab-m-obo = { path = "../mztab-m-obo", version = "0.1.0" }
+# The only way to export functions to JavaScript without writing `unsafe`
+# (PLAN §5). Demo only; never a dependency of a published crate.
+wasm-bindgen = "=0.2.130"
+
+# Test-only: runs the tests on wasm32-unknown-unknown (see crates/mztab-m).
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test = "0.3"
+
+[lints]
+workspace = true

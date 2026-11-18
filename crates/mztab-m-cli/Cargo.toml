@@ -1,0 +1,22 @@
+[package]
+name = "mztab-m-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Command-line validator, formatter and converter for mzTab-M (TSV and JSON)."
+readme = "README.md"
+repository.workspace = true
+license.workspace = true
+keywords = ["cli", "mass-spectrometry", "metabolomics", "mztab", "validator"]
+categories = ["command-line-utilities", "science"]
+
+[[bin]]
+name = "mztab-m"
+path = "src/main.rs"
+
+[dependencies]
+mztab-m = { path = "../mztab-m", version = "0.1.0", features = ["json"] }
+mztab-m-obo = { path = "../mztab-m-obo", version = "0.1.0" }
+
+[lints]
+workspace = true

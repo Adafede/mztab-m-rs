@@ -103,6 +103,16 @@ pub enum Layer {
     Semantic,
 }
 
+impl fmt::Display for Layer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Syntax => "syntax",
+            Self::Structure => "structure",
+            Self::Semantic => "semantic",
+        })
+    }
+}
+
 /// A specification document at the pinned commit
 /// ([`SPEC_COMMIT`](crate::SPEC_COMMIT)).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -829,6 +839,15 @@ mod tests {
             assert!(!code.spec_ref().anchor.is_empty(), "{code} has an anchor");
             assert_eq!(code.to_string(), code.id(), "{code} displays as its id");
         }
+    }
+
+    #[test]
+    fn layers_render() {
+        let names: Vec<alloc::string::String> = [Layer::Syntax, Layer::Structure, Layer::Semantic]
+            .iter()
+            .map(alloc::string::ToString::to_string)
+            .collect();
+        assert_eq!(names, ["syntax", "structure", "semantic"], "names");
     }
 
     #[test]

@@ -7,6 +7,10 @@ extend-exclude = [
   "third_party/",
 ]
 
+[default]
+# Commit hashes (as in docs/STATUS.md) are not words.
+extend-ignore-re = ["`[0-9a-f]{7,40}`"]
+
 [default.extend-words]
 # mzTab-M section codes and spec vocabulary.
 SME = "SME"

@@ -757,3 +757,41 @@ place in `validate/` to change if you decide otherwise.
 - Codes `S014`-`S018` (syntax layer): not JSON, wrong JSON form, unknown
   member (warning, ignored), other dialect, a string with a tab or line
   feed (or ending a line with a carriage return), which TSV cannot carry.
+
+## CLI and WASM demo (M7)
+
+### D-072: The `mztab-m` command and the browser demo — PROPOSED (M7)
+
+- **`mztab-m-cli`** (binary `mztab-m`): `validate`, `fmt`, `convert`,
+  `inspect`. Dependencies: `mztab-m` (with `json`) and `mztab-m-obo` only;
+  arguments are hand-parsed (PLAN §5). All logic is in the library's
+  `run(args, &mut dyn Io) -> u8`; `main` only supplies files and standard
+  streams, so the commands are tested in memory and the binary once.
+- **Input:** a file or `-` (standard input). JSON if the name ends in
+  `.json` or the text starts with `{`; `--input tsv|json` overrides.
+- **`validate`:** the reader's findings and each layer up to `--layer`
+  (default `semantic`), with `--severity CODE=LEVEL|off` applied to all of
+  them. An untyped value is reported once, by the reader (as
+  `validate::all` does). Vocabularies come only from `--cv FILE.obo`
+  (repeatable); nothing is downloaded. Output: one finding per line on
+  stdout and a count on stderr, or `--format json` (the core's
+  `json::write_findings`, an array of objects with code, severity, layer,
+  location, summary, detail, spec URL and jmzTab-m codes).
+- **Exit codes:** 0 ok; 1 a finding at or above `--fail-on` (default
+  `error`; `never` disables), or `fmt --check` would change the file; 2 a
+  bad command line; 3 a file that cannot be read or written, or a model
+  that cannot be written in the requested format (a JSON conversion that
+  D-071 refuses is an error, not a silent loss; no lossy option yet).
+- **`fmt`:** the canonical form in the input's format (TSV stays TSV, JSON
+  stays JSON); `--check` compares it with the input bytes. **`convert`:**
+  `--to tsv|json`. **`inspect`:** version, profile (declared and implied
+  by the tables), element counts, rows per table, and the reader's finding
+  counts, as text or JSON.
+- **`mztab-m-wasm`** (`publish = false`): `validate(text, obo)` returns
+  the findings as JSON, `convert(text, to)` the converted text. Its one
+  extra dependency is `wasm-bindgen`, pinned to the version of the
+  test runner. `www/index.html` is a self-contained page (no external
+  resources) that validates a dropped file in the browser, takes OBO files
+  for the semantic layer, and downloads the JSON or TSV form;
+  `./mk local:demo` builds `www/pkg` (not committed) and runs in CI. The
+  crate is tested natively and on wasm32.

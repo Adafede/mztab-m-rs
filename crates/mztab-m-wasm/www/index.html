@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mzTab-M validator</title>
+<style>
+  :root {
+    --bg: #fbfbfa; --fg: #1d1d1b; --muted: #6b6b66; --line: #deded9;
+    --panel: #ffffff; --accent: #2f5d8a;
+    --error: #b42318; --warning: #9a6700; --info: #2f5d8a;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151514; --fg: #ecece8; --muted: #a2a29b; --line: #34342f;
+      --panel: #1d1d1b; --accent: #8db7e0;
+      --error: #f08a7e; --warning: #e3b341; --info: #8db7e0;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 64rem; margin: 0 auto; padding: 2rem 1rem 4rem; }
+  h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+  p.lede { color: var(--muted); margin: 0 0 1.5rem; }
+  #drop {
+    border: 2px dashed var(--line); border-radius: 10px; background: var(--panel);
+    padding: 2rem 1rem; text-align: center; cursor: pointer;
+  }
+  #drop.over { border-color: var(--accent); }
+  #drop strong { color: var(--accent); }
+  .row { display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; align-items: center; margin: 1rem 0; }
+  label { color: var(--muted); }
+  button {
+    font: inherit; padding: .35rem .8rem; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--panel); color: var(--fg);
+  }
+  button:disabled { opacity: .5; cursor: default; }
+  #summary { font-weight: 600; margin: 1.5rem 0 .5rem; }
+  .table { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .45rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  tr:last-child td { border-bottom: 0; }
+  td.sev { font-weight: 600; white-space: nowrap; }
+  .error { color: var(--error); } .warning { color: var(--warning); } .info { color: var(--info); }
+  a { color: var(--accent); }
+  code { font-size: .85rem; white-space: nowrap; }
+  #status { color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>mzTab-M validator</h1>
+  <p class="lede">Checks an mzTab-M file (TSV or JSON) against the 2.1 specification. Everything
+    runs in this page: the file never leaves your computer.</p>
+
+  <div id="drop" tabindex="0" role="button" aria-label="Choose an mzTab-M file">
+    <strong>Drop an mzTab-M file here</strong> or click to choose one
+    <input id="file" type="file" accept=".mztab,.mzTab,.tsv,.txt,.json" hidden>
+  </div>
+
+  <div class="row">
+    <label>Vocabularies (optional, OBO): <input id="obo" type="file" accept=".obo" multiple></label>
+    <span id="status">Loading…</span>
+  </div>
+
+  <div class="row">
+    <button id="to-json" disabled>Download as JSON</button>
+    <button id="to-tsv" disabled>Download as TSV</button>
+  </div>
+
+  <p id="summary" aria-live="polite"></p>
+  <div class="table" hidden>
+    <table>
+      <thead><tr><th>Severity</th><th>Code</th><th>Where</th><th>What</th></tr></thead>
+      <tbody id="findings"></tbody>
+    </table>
+  </div>
+</main>
+
+<script type="module">
+  import init, { validate, convert } from "./pkg/mztab_m_wasm.js";
+
+  const $ = (id) => document.getElementById(id);
+  let text = "", name = "", obo = "";
+
+  function where(location) {
+    if (location === null) return "document";
+    if ("pointer" in location) return location.pointer;
+    if ("path" in location) return location.path;
+    const cell = location.cell === null ? "" : `, cell ${location.cell}`;
+    return `line ${location.line}, column ${location.column}${cell}`;
+  }
+
+  function cell(row, content, className) {
+    const td = row.insertCell();
+    if (className) td.className = className;
+    if (content instanceof Node) td.append(content); else td.textContent = content;
+  }
+
+  function show() {
+    const findings = JSON.parse(validate(text, obo));
+    const body = $("findings");
+    body.replaceChildren();
+    const count = (s) => findings.filter((f) => f.severity === s).length;
+    $("summary").textContent = `${name}: ${count("error")} errors, ` +
+      `${count("warning")} warnings, ${count("info")} notes`;
+    for (const f of findings) {
+      const row = body.insertRow();
+      cell(row, f.severity, `sev ${f.severity}`);
+      const link = document.createElement("a");
+      link.href = f.spec; link.target = "_blank"; link.rel = "noopener";
+      link.append(Object.assign(document.createElement("code"), { textContent: f.code }));
+      cell(row, link);
+      cell(row, where(f.location));
+      cell(row, f.detail === null ? f.summary : `${f.summary}: ${f.detail}`);
+    }
+    document.querySelector(".table").hidden = findings.length === 0;
+    $("to-json").disabled = $("to-tsv").disabled = false;
+  }
+
+  async function load(file) {
+    name = file.name;
+    text = await file.text();
+    show();
+  }
+
+  function download(to) {
+    try {
+      const out = convert(text, to);
+      const base = name.replace(/\.[^.]*$/, "");
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(new Blob([out], { type: "text/plain" }));
+      link.download = `${base}.${to === "json" ? "json" : "mztab"}`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (reason) {
+      $("status").textContent = `Cannot convert: ${reason}`;
+    }
+  }
+
+  await init();
+  $("status").textContent = "Ready.";
+  const drop = $("drop");
+  drop.addEventListener("click", () => $("file").click());
+  drop.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") $("file").click(); });
+  drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", (e) => {
+    e.preventDefault(); drop.classList.remove("over");
+    if (e.dataTransfer.files[0]) load(e.dataTransfer.files[0]);
+  });
+  $("file").addEventListener("change", (e) => { if (e.target.files[0]) load(e.target.files[0]); });
+  $("obo").addEventListener("change", async (e) => {
+    obo = (await Promise.all([...e.target.files].map((f) => f.text()))).join("\n");
+    $("status").textContent = `${e.target.files.length} vocabulary file(s) loaded.`;
+    if (text) show();
+  });
+  $("to-json").addEventListener("click", () => download("json"));
+  $("to-tsv").addEventListener("click", () => download("tsv"));
+</script>
+</body>
+</html>

@@ -797,3 +797,45 @@ fn mutation_edges() {
         assert_eq!(json::to_string(&model).is_ok(), writable, "{index}");
     }
 }
+
+/// Findings as JSON: every kind of location, with and without detail, and
+/// a failing output at every point.
+#[test]
+fn findings_as_json() {
+    use mztab_m::{Detail, Finding, Findings};
+    let mut findings = Findings::new();
+    let at = |l| Finding::new(Code::JsonShape, l, Detail::None);
+    findings.push(at(Location::text(1, 2)));
+    findings.push(at(Location::text(1, 2).with_cell(3)));
+    findings.push(at(pointer("/a/0")));
+    findings.push(at(Location::Model(Path::new().key("sml").index(1))));
+    findings.push(Finding::new(
+        Code::NumberSyntax,
+        Location::Document,
+        Detail::Expected("x"),
+    ));
+    let mut out = String::new();
+    json::write_findings(&findings, &mut out).expect("written");
+    assert!(
+        out.starts_with("[{") && out.ends_with("}]") && out.matches("},{").count() == 4,
+        "five objects, comma-separated: {out}"
+    );
+    for part in [
+        r#""location":{"line":1,"column":2,"cell":null}"#,
+        r#""location":{"line":1,"column":2,"cell":3}"#,
+        r#""location":{"pointer":"/a/0"}"#,
+        r#""location":{"path":"sml[1]"}"#,
+        r#""location":null"#,
+        r#""detail":null"#,
+        r#""detail":"expected x""#,
+        r#""jmztab":[1018,1019,1022,1033]"#,
+    ] {
+        assert!(out.contains(part), "{part} in {out}");
+    }
+    for n in 0.. {
+        let mut failing = FailAfter(n);
+        if json::write_findings(&findings, &mut failing).is_ok() {
+            break;
+        }
+    }
+}

@@ -26,3 +26,6 @@ mutants.out*/
 /fuzz/artifacts/
 /fuzz/coverage/
 /fuzz/fuzz-*.log
+
+# The browser demo's generated module (./mk local:demo)
+/crates/mztab-m-wasm/www/pkg/

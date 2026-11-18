@@ -20,6 +20,7 @@
 //! # Ok::<(), mztab_m::WriteError>(())
 //! ```
 
+mod findings;
 mod read;
 mod schema;
 mod value;
@@ -28,6 +29,7 @@ mod write;
 use alloc::string::String;
 use core::fmt;
 
+use crate::diag::Findings;
 use crate::model::MzTab;
 use crate::read::Parsed;
 use crate::write::WriteError;
@@ -63,4 +65,28 @@ pub fn to_string(mztab: &MzTab<'_>) -> Result<String, WriteError> {
     let mut out = String::new();
     write(mztab, &mut out)?;
     Ok(out)
+}
+
+/// Writes findings as a JSON array.
+///
+/// One object per finding: `code`,
+/// `severity`, `layer`, `location`, `summary`, `detail`, `spec` (the URL
+/// of the rule's section at the pinned spec commit) and `jmztab` (the
+/// equivalent jmzTab-m codes).
+///
+/// ```
+/// use mztab_m::{json, validate};
+///
+/// let findings = validate::syntax("XYZ\tx\n", &validate::Config::default());
+/// let mut out = String::new();
+/// json::write_findings(&findings, &mut out)?;
+/// assert!(out.starts_with(r#"[{"code":"MZT-S001","severity":"error","layer":"syntax","location":{"line":1"#));
+/// # Ok::<(), core::fmt::Error>(())
+/// ```
+///
+/// # Errors
+///
+/// If `out` fails.
+pub fn write_findings(findings: &Findings, out: &mut dyn fmt::Write) -> fmt::Result {
+    findings::write(findings, out)
 }
