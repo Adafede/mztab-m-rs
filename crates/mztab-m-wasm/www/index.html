@@ -3,82 +3,112 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>mzTab-M validator</title>
+<title>mzTab-M browser validator — mztab-m-rs</title>
 <style>
   :root {
-    --bg: #fbfbfa; --fg: #1d1d1b; --muted: #6b6b66; --line: #deded9;
-    --panel: #ffffff; --accent: #2f5d8a;
-    --error: #b42318; --warning: #9a6700; --info: #2f5d8a;
+    --bg: #fbfbfa; --fg: #1d1d1b; --muted: #555550; --line: #c9c9c2;
+    --panel: #ffffff; --accent: #1f4e78; --accent-bg: #eef4fa;
+    --error: #a61b11; --warning: #7a4900; --info: #1f4e78;
     color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #151514; --fg: #ecece8; --muted: #a2a29b; --line: #34342f;
-      --panel: #1d1d1b; --accent: #8db7e0;
-      --error: #f08a7e; --warning: #e3b341; --info: #8db7e0;
+      --bg: #151514; --fg: #f0f0ec; --muted: #b5b5ad; --line: #42423c;
+      --panel: #1d1d1b; --accent: #8dc0f0; --accent-bg: #1c2a38;
+      --error: #f69c92; --warning: #efc45c; --info: #8dc0f0;
       color-scheme: dark;
     }
   }
   * { box-sizing: border-box; }
   body {
     margin: 0; background: var(--bg); color: var(--fg);
-    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
   }
-  main { max-width: 64rem; margin: 0 auto; padding: 2rem 1rem 4rem; }
-  h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
-  p.lede { color: var(--muted); margin: 0 0 1.5rem; }
+  main { max-width: 64rem; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+  nav { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem; font-size: .95rem; }
+  h1 { font-size: 1.5rem; margin: 0 0 .35rem; }
+  p.lede { color: var(--muted); margin: 0 0 1.25rem; }
+  p.lede strong { color: var(--fg); }
   #drop {
     border: 2px dashed var(--line); border-radius: 10px; background: var(--panel);
     padding: 2rem 1rem; text-align: center; cursor: pointer;
   }
-  #drop.over { border-color: var(--accent); }
+  #drop.over { border-color: var(--accent); background: var(--accent-bg); }
   #drop strong { color: var(--accent); }
-  .row { display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; align-items: center; margin: 1rem 0; }
+  .row { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; align-items: center; margin: 1rem 0; }
   label { color: var(--muted); }
   button {
-    font: inherit; padding: .35rem .8rem; border-radius: 6px; cursor: pointer;
+    font: inherit; padding: .45rem .9rem; border-radius: 6px; cursor: pointer;
     border: 1px solid var(--line); background: var(--panel); color: var(--fg);
   }
+  button.primary { border-color: var(--accent); color: var(--accent); font-weight: 600; }
   button:disabled { opacity: .5; cursor: default; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   #summary { font-weight: 600; margin: 1.5rem 0 .5rem; }
   .table { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
-  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
-  th, td { text-align: left; padding: .45rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+  th, td { text-align: left; padding: .5rem .75rem; border-bottom: 1px solid var(--line); vertical-align: top; }
   th { color: var(--muted); font-weight: 600; }
   tr:last-child td { border-bottom: 0; }
   td.sev { font-weight: 600; white-space: nowrap; }
   .error { color: var(--error); } .warning { color: var(--warning); } .info { color: var(--info); }
   a { color: var(--accent); }
-  code { font-size: .85rem; white-space: nowrap; }
-  #status { color: var(--muted); }
+  code { font-size: .9rem; white-space: nowrap; }
+  #status, .note { color: var(--muted); font-size: .92rem; }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
 </style>
 </head>
 <body>
 <main>
-  <h1>mzTab-M validator</h1>
-  <p class="lede">Checks an mzTab-M file (TSV or JSON) against the draft 2.1 specification. Everything
-    runs in this page: the file never leaves your computer. This is an early
-    demo; findings may change between versions.</p>
+  <header>
+    <nav aria-label="Site navigation">
+      <a href="../index.html">&larr; Documentation</a>
+      <a href="../findings.html">Findings reference</a>
+    </nav>
+    <h1>mzTab-M browser validator</h1>
+    <p class="lede">Check and convert mzTab-M files (TSV or JSON) against the draft 2.1
+      specification. <strong>Everything runs locally in this page via WebAssembly: your
+      files never leave your computer.</strong> Early development preview; finding codes,
+      messages and severities may change.</p>
+  </header>
 
-  <div id="drop" tabindex="0" role="button" aria-label="Choose an mzTab-M file">
+  <div id="drop" tabindex="0" role="button" aria-label="Choose an mzTab-M file" aria-describedby="drop-hint">
     <strong>Drop an mzTab-M file here</strong> or click to choose one
+    <div id="drop-hint" class="note">Accepts TSV (<code>.mztab</code>, <code>.tsv</code>, <code>.txt</code>) or JSON (<code>.json</code>).</div>
     <input id="file" type="file" accept=".mztab,.mzTab,.tsv,.txt,.json" hidden>
   </div>
 
   <div class="row">
-    <label>Vocabularies (optional, OBO): <input id="obo" type="file" accept=".obo" multiple></label>
-    <span id="status">Loading…</span>
+    <button id="try-example" class="primary" type="button" disabled>Try an example file</button>
+    <span class="note">Bundled example: <code>example_study_variable_group.mztab</code> (HUPO-PSI 2.1 draft, CC-BY-4.0).</span>
   </div>
 
   <div class="row">
-    <button id="to-json" disabled>Download as JSON</button>
-    <button id="to-tsv" disabled>Download as TSV</button>
+    <label for="obo">Vocabularies (optional, OBO):</label>
+    <input id="obo" type="file" accept=".obo" multiple>
+    <span id="status" role="status" aria-live="polite">Loading WebAssembly validator…</span>
+  </div>
+
+  <div class="row">
+    <button id="to-json" type="button" disabled>Download as JSON</button>
+    <button id="to-tsv" type="button" disabled>Download as TSV</button>
   </div>
 
   <p id="summary" aria-live="polite"></p>
   <div class="table" hidden>
-    <table>
-      <thead><tr><th>Severity</th><th>Code</th><th>Where</th><th>What</th></tr></thead>
+    <table aria-describedby="summary">
+      <caption class="sr-only">Validation findings</caption>
+      <thead>
+        <tr>
+          <th scope="col">Severity</th>
+          <th scope="col">Code</th>
+          <th scope="col">Where</th>
+          <th scope="col">What</th>
+        </tr>
+      </thead>
       <tbody id="findings"></tbody>
     </table>
   </div>
@@ -110,12 +140,14 @@
     body.replaceChildren();
     const count = (s) => findings.filter((f) => f.severity === s).length;
     $("summary").textContent = `${name}: ${count("error")} errors, ` +
-      `${count("warning")} warnings, ${count("info")} notes`;
+      `${count("warning")} warnings, ${count("info")} infos`;
     for (const f of findings) {
       const row = body.insertRow();
       cell(row, f.severity, `sev ${f.severity}`);
       const link = document.createElement("a");
-      link.href = f.spec; link.target = "_blank"; link.rel = "noopener";
+      link.href = f.spec;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
       link.append(Object.assign(document.createElement("code"), { textContent: f.code }));
       cell(row, link);
       cell(row, where(f.location));
@@ -129,6 +161,22 @@
     name = file.name;
     text = await file.text();
     show();
+  }
+
+  async function loadExample() {
+    $("status").textContent = "Loading bundled example…";
+    try {
+      const response = await fetch("./pkg/example_study_variable_group.mztab");
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      name = "example_study_variable_group.mztab";
+      text = await response.text();
+      show();
+      $("status").textContent = "Loaded bundled example (example_study_variable_group.mztab).";
+    } catch (reason) {
+      $("status").textContent = `Could not load bundled example: ${reason}`;
+    }
   }
 
   function download(to) {
@@ -147,15 +195,22 @@
 
   await init();
   $("status").textContent = "Ready.";
+  $("try-example").disabled = false;
   const drop = $("drop");
   drop.addEventListener("click", () => $("file").click());
-  drop.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") $("file").click(); });
+  drop.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      $("file").click();
+    }
+  });
   drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
   drop.addEventListener("dragleave", () => drop.classList.remove("over"));
   drop.addEventListener("drop", (e) => {
     e.preventDefault(); drop.classList.remove("over");
     if (e.dataTransfer.files[0]) load(e.dataTransfer.files[0]);
   });
+  $("try-example").addEventListener("click", loadExample);
   $("file").addEventListener("change", (e) => { if (e.target.files[0]) load(e.target.files[0]); });
   $("obo").addEventListener("change", async (e) => {
     obo = (await Promise.all([...e.target.files].map((f) => f.text()))).join("\n");

@@ -49,6 +49,8 @@ task_demo() {
     wasm-bindgen --target web --no-typescript \
         --out-dir crates/mztab-m-wasm/www/pkg \
         target/wasm32-unknown-unknown/release/mztab_m_wasm.wasm
+    cp third_party/mzTab-M/examples/2.1/example_study_variable_group.mztab \
+        crates/mztab-m-wasm/www/pkg/example_study_variable_group.mztab
     echo "demo: serve crates/mztab-m-wasm/www (e.g. python3 -m http.server -d crates/mztab-m-wasm/www)"
 }
 
