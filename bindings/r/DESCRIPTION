@@ -2,7 +2,7 @@ Package: mztabm
 Title: Read, Validate, Convert and Inspect 'mzTab-M' Files
 Version: 0.1.0
 Authors@R: person("Adriano", "Rutz", role = c("aut", "cre"),
-    email = "adrutz@ethz.ch")
+    email = "adafede@gmail.com")
 Description: Validation, canonical formatting, TSV and JSON conversion and
     summaries of 'mzTab-M' metabolomics result files, through the 'Rust'
     library 'mztab-m': the same reader, validator and writer as the

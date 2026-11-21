@@ -26,4 +26,4 @@ Please do not report security vulnerabilities in public GitHub issues.
    commit, and what you expected to happen versus what happened.
 
 If private advisories are not available, write to
-TODO(human): security contact address.
+adafede@gmail.com.
