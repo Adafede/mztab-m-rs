@@ -1,6 +1,6 @@
 # Benchmarks
 
-Measured on 2026-11-18 (M8, PLAN §7). Raw numbers, including where this
+Measured on 2026-11-18 (M8, [PLAN §7](agents/PLAN.md)). Raw numbers, including where this
 library loses.
 
 ## Setup
@@ -102,10 +102,9 @@ allocations. The input text itself is not counted.
 
 ## Not done
 
-- **jmzTab-m comparison (hyperfine, CLI against CLI).** hyperfine is not
-  installed. A JDK 25 is installed, but building the jmzTab-m CLI fetches
-  Maven and its dependencies from the network, which needs approval. Until
-  then there is no comparison, and none is claimed. In-process JMH stays out
+- **Speed against jmzTab-m (CLI against CLI, e.g. with hyperfine).** Not
+  measured: building the jmzTab-m CLI needs a JDK and a Maven download, and
+  that has not been done. No comparison is claimed. In-process JMH is out
   of scope (PLAN §7).
 - **Repeated runs and variance across machines.** One machine, one run
   each.
