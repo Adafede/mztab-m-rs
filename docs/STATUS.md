@@ -1,6 +1,6 @@
 # Status and what is left
 
-Last updated: 2026-11-19, after M9. Milestones are defined in
+Last updated: 2026-11-21, after closing the gaps (D-075, D-076). Milestones are defined in
 [PLAN.md §8](PLAN.md); decisions are in [DECISIONS.md](../DECISIONS.md).
 
 ## Done
@@ -16,7 +16,8 @@ Last updated: 2026-11-19, after M9. Milestones are defined in
 | M6 | JSON (feature `json`) | `c5b7c29` | D-071 |
 | M7 | CLI (`mztab-m`) and browser demo | `8b5439c` | D-072 |
 | M8 | Benchmarks ([BENCHMARKS.md](BENCHMARKS.md)) | `570c987` | D-073 |
-| M9 | Docs and release preparation | (pending commit) | D-074 |
+| M9 | Docs and release preparation | `9378f48` | D-074 |
+| — | Remaining checks, API crate, Python and R packages | (pending commit) | D-075, D-076 |
 
 All gates pass at each commit: 100% line coverage, no surviving mutants
 in the milestone's diff, and wasm32 tests for `mztab-m` and `mztab-m-obo`.
@@ -29,36 +30,26 @@ All milestones are done. **Publishing is not**: `cargo publish --dry-run`
 passes for `mztab-m`, `mztab-m-obo` and `mztab-m-cli` (D-074), and the
 real publish waits for approval.
 
-### Open items carried from earlier milestones
+### Open items
 
-- **Oracle outputs (M4, D-066).** No JVM is available locally. The
-  `oracle.yml` workflow has to run in CI, its outputs have to be committed,
-  and every disagreement has to be reviewed into
-  `tests/oracle/expected-disagreements.tsv`. Until then the comparison
-  passes vacuously.
+- **Publishing** (crates.io, PyPI, CRAN) waits for approval. CRAN would
+  also need the Rust sources vendored (D-076).
 - **jmzTab-m comparison and oracle outputs.** A JDK 25 is installed
   (`~/.jenv/versions/25.0.4`), so both could run locally, but building the
-  jmzTab-m CLI downloads Maven and its dependencies: needs approval.
-- **Real vocabularies (M5).** The semantic layer has only been run with the
-  test stand-in (`tests/support/terms.rs`). A run of the corpus against the
-  real `psi-ms.obo` (and UO and others) needs those files downloaded, which
-  has not been done because downloads need approval.
-- **Not checked yet:**
-  - URIs (RFC 3986) and emails (D-065);
-  - `spectra_ref` against the run's `id_format` (spec table-1);
-  - CV term units (`has_units`) and value types (D-067).
-- **JSON comments (D-071).** `COM` lines are neither written to nor read
-  from JSON.
-- **Lossy conversion (D-071, D-072).** `mztab-m convert --to json` refuses
-  what JSON cannot carry; there is no option to drop it instead.
-- **Demo hosting.** `./mk local:demo` builds the page; it is not
-  published anywhere (that would need approval).
+  jmzTab-m CLI downloads Maven and its dependencies, which needs approval.
+- **Real vocabularies.** The semantic layer has only been run with the test
+  stand-in. A run of the corpus against the real `psi-ms.obo` needs it
+  downloaded, which needs approval.
+- **Deliberately not done:** CV term units (D-075 explains why mzTab has
+  nothing to check them against); the original position of JSON comments
+  (D-075).
 
 ### Local environment notes (not in CI)
 
 - Source `target/env.sh` before `./mk`. It points `CARGO_HOME` and `PATH` at
-  `target/`; `target/` was wiped once mid-M4, and the tools were
-  reinstalled.
+  `target/`. `target/` has been wiped twice (mid-M4 and before the
+  post-M9 work); `./mk setup` plus tombi, cargo-audit and cargo-fuzz
+  reinstall the tools.
 - Run `cargo fuzz` with `--target aarch64-apple-darwin`, because the
   installed cargo-fuzz is an x86_64 build.
 - The `mutants-diff` gate is run by hand

@@ -1,0 +1,7 @@
+useDynLib(mztabm, .registration = TRUE)
+export(validate)
+export(convert)
+export(canonical)
+export(inspect)
+export(codes)
+export(spec_commit)

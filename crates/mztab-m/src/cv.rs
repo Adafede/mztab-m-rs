@@ -34,6 +34,10 @@ pub struct Term<'t> {
     pub name: &'t str,
     /// Whether the term is marked obsolete.
     pub obsolete: bool,
+    /// The XML Schema type a value of this term must have, by its local
+    /// name (`int`, `double`, `string`, ...), if the vocabulary gives one
+    /// (PSI-MS: `xref: value-type:xsd\:int`).
+    pub value_type: Option<&'t str>,
 }
 
 /// Answers questions about the terms of the vocabularies it holds.

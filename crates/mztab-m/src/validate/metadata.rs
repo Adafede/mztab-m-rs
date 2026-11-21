@@ -494,6 +494,45 @@ fn is_orcid(text: &str) -> bool {
         })
 }
 
+/// Whether `text` is an RFC 3986 URI: a scheme, `:`, then only characters
+/// RFC 3986 allows (a `%` only before two hex digits, at most one `#`).
+pub(super) fn is_uri(text: &str) -> bool {
+    let Some((scheme, rest)) = text.split_once(':') else {
+        return false;
+    };
+    let scheme_ok = scheme
+        .bytes()
+        .next()
+        .is_some_and(|b| b.is_ascii_alphabetic())
+        && scheme
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'+' | b'-' | b'.'));
+    let bytes = rest.as_bytes();
+    let chars_ok = bytes.iter().enumerate().all(|(i, &b)| match b {
+        b'%' => bytes
+            .get(i + 1..i + 3)
+            .is_some_and(|h| h.iter().all(u8::is_ascii_hexdigit)),
+        // Unreserved, sub-delims and the delimiters of the URI syntax.
+        b => b.is_ascii_alphanumeric() || b"-._~!$&'()*+,;=:@/?#[]".contains(&b),
+    });
+    scheme_ok && chars_ok && rest.matches('#').count() <= 1
+}
+
+/// Whether `text` looks like an e-mail address: `local@domain`, with a dot
+/// inside the domain and no spaces.
+fn is_email(text: &str) -> bool {
+    let Some((local, domain)) = text.split_once('@') else {
+        return false;
+    };
+    let printable = |s: &str| s.bytes().all(|b| b.is_ascii_graphic() && b != b'@');
+    !local.is_empty()
+        && printable(local)
+        && printable(domain)
+        && domain.contains('.')
+        && !domain.starts_with('.')
+        && !domain.ends_with('.')
+}
+
 /// Whether `text` is an ISO 8601 date `YYYY-MM-DD`.
 fn is_date(text: &str) -> bool {
     let b = text.as_bytes();
@@ -591,6 +630,27 @@ fn values(mztab: &MzTab<'_>, report: &mut Report<'_, '_>) {
     let mut seen = BTreeMap::<MtdKey, usize>::new();
     for (key, value) in m.entries() {
         let nth = seen.entry(key).or_default();
+        let text = match value {
+            ValueRef::Text(Cell::Value(text)) => Some(text.as_str()),
+            _ => None,
+        };
+        if let Some(text) = text {
+            let uri = matches!(
+                key,
+                MtdKey::Uri(_)
+                    | MtdKey::ExternalStudyUri(_)
+                    | MtdKey::MsRun(_, MsRunKey::Location)
+                    | MtdKey::Assay(_, AssayKey::ExternalUri)
+                    | MtdKey::Cv(_, CvKey::Uri)
+            );
+            if uri && !is_uri(text) {
+                report.add(Code::Uri, Site::Value(key), Detail::None);
+            }
+            let email = matches!(key, MtdKey::Contact(_, crate::meta::ContactKey::Email));
+            if email && !is_email(text) {
+                report.add(Code::Email, Site::Value(key), Detail::None);
+            }
+        }
         if has_invalid(value) {
             let site = if key.repeats() {
                 Site::Nth(key, *nth)

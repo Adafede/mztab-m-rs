@@ -839,3 +839,65 @@ fn findings_as_json() {
         }
     }
 }
+
+/// `COM` lines travel as `comment` objects; read back, they follow the
+/// metadata (D-075).
+#[test]
+fn comments_travel() {
+    let source = format!("COM\tfirst\n{BASE}COM\tlast\n");
+    let model = parse(&source).mztab;
+    let text = json::to_string(&model).expect("writable");
+    assert!(
+        text.ends_with(r#""comment":[{"prefix":"COM","msg":"first","line_number":1},{"prefix":"COM","msg":"last","line_number":137}]}"#),
+        "{}",
+        text.get(text.len().saturating_sub(160)..).unwrap_or_default()
+    );
+    let back = json::parse(&text);
+    assert!(back.findings.is_empty(), "{:?}", back.findings);
+    let tsv = mztab_m::to_string(&back.mztab).expect("writable");
+    assert_eq!(
+        tsv.replace("COM\tfirst\nCOM\tlast\n", ""),
+        BASE,
+        "the same document, comments after the metadata"
+    );
+    assert!(tsv.contains("\nCOM\tfirst\nCOM\tlast\n\nSMH"), "{tsv}");
+    let shapes = json::parse(r#"{"comment": [{"msg": null}, {"msg": 3}, {"msg": "a\nb"}]}"#);
+    let codes: Vec<Code> = shapes.findings.iter().map(|f| f.code).collect();
+    assert_eq!(codes, [Code::JsonShape, Code::JsonText], "bad comments");
+    assert_eq!(
+        shapes.mztab.layout.lines.len(),
+        1,
+        "an empty comment is kept"
+    );
+}
+
+/// `strip_unknown` drops what each table and the metadata could not place.
+#[test]
+fn stripping_unknown_content() {
+    let edited: String = BASE
+        .lines()
+        .map(|l| {
+            let tail = if l.starts_with("SMH\t") || l.starts_with("SFH\t") || l.starts_with("SEH\t")
+            {
+                "\tbogus\n"
+            } else if l.starts_with("SML\t") || l.starts_with("SMF\t") || l.starts_with("SME\t") {
+                "\tx\textra\n"
+            } else {
+                "\n"
+            };
+            [l, tail].concat()
+        })
+        .collect::<String>()
+        .replace("MTD\ttitle\t", "MTD\tnot-a-key\tx\nMTD\ttitle\t");
+    let mut model = parse(&edited).mztab;
+    let dropped = model.strip_unknown();
+    assert_eq!(
+        (dropped.metadata, dropped.columns, dropped.cells),
+        (1, 3, 12),
+        "one key, a column per table, two cells per row"
+    );
+    model.layout = SourceLayout::default();
+    let mut base = parse(BASE).mztab;
+    base.layout = SourceLayout::default();
+    assert_eq!(model, base, "what remains is the base document");
+}

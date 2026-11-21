@@ -47,8 +47,8 @@ pub use model::{
     AbundanceColumn, Assay, ColUnit, ColUnitError, Column, Contact, Cv, Database, ExtraLine, Field,
     Header, Instrument, LineContent, LineEnding, LineInfo, List, Metadata, MsRun, MzTab, OptColumn,
     OptTarget, Protocol, Sample, SmeColumn, SmeId, SmeRow, SmfColumn, SmfId, SmfRow, SmlColumn,
-    SmlId, SmlRow, Software, SourceLayout, SourceLine, SpectraRef, SpectraRefError, StudyVariable,
-    StudyVariableGroup, Table, Verbatim,
+    SmlId, SmlRow, Software, SourceLayout, SourceLine, SpectraRef, SpectraRefError, Stripped,
+    StudyVariable, StudyVariableGroup, Table, Verbatim,
 };
 pub use owned::IntoOwned;
 pub use param::{Accession, Param, ParamError, ParamErrorKind, ParamText, ParamTextError};

@@ -1,0 +1,23 @@
+[package]
+name = "mztab-m-api"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Text-in, text-out operations on mzTab-M files (read, validate, convert, inspect) shared by the mztab-m CLI and the Python, R and WASM bindings."
+readme = "README.md"
+repository.workspace = true
+license.workspace = true
+keywords = ["mass-spectrometry", "metabolomics", "mztab", "validator"]
+categories = ["no-std", "science"]
+# Sources only (see crates/mztab-m).
+include = ["/src", "/README.md"]
+
+[dependencies]
+mztab-m = { path = "../mztab-m", version = "0.1.0", features = ["json"] }
+mztab-m-obo = { path = "../mztab-m-obo", version = "0.1.0" }
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test = "0.3"
+
+[lints]
+workspace = true

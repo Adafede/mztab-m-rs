@@ -39,7 +39,10 @@ pub(super) fn check(mztab: &MzTab<'_>, terms: &dyn TermLookup, report: &mut Repo
     declarations(mztab, &uses, &columns, report);
     for u in &uses {
         if let Param::Cv {
-            accession, name, ..
+            accession,
+            name,
+            value,
+            ..
         } = u.param
         {
             if accession.prefix().is_none() {
@@ -51,7 +54,10 @@ pub(super) fn check(mztab: &MzTab<'_>, terms: &dyn TermLookup, report: &mut Repo
             }
             term_checks(
                 accession.as_str(),
-                Some(name.as_str()),
+                (
+                    Some(name.as_str()),
+                    value.as_ref().map(crate::param::ParamText::as_str),
+                ),
                 u.site,
                 terms,
                 report,
@@ -59,7 +65,7 @@ pub(super) fn check(mztab: &MzTab<'_>, terms: &dyn TermLookup, report: &mut Repo
         }
     }
     for c in &columns {
-        term_checks(c.accession, None, c.site, terms, report);
+        term_checks(c.accession, (None, None), c.site, terms, report);
     }
     for rule in cv::rules() {
         check_rule(rule, &uses, terms, report);
@@ -328,9 +334,11 @@ fn declarations(
 }
 
 /// `X004`-`X006` for one accession, if the lookup covers it.
+/// `X004`-`X006` and `X011` for one accession (with the parameter's name
+/// and value, if any), if the lookup covers it.
 fn term_checks(
     accession: &str,
-    name: Option<&str>,
+    (name, value): (Option<&str>, Option<&str>),
     site: Site,
     terms: &dyn TermLookup,
     report: &mut Report<'_, '_>,
@@ -352,6 +360,38 @@ fn term_checks(
     if found.obsolete {
         report.add(Code::ObsoleteTerm, site, term(accession, None, None));
     }
+    // A value, when given, has the term's type; a missing value is not
+    // reported (mzTab names score types without values, D-075).
+    if let (Some(kind), Some(value)) = (found.value_type, value)
+        && xsd_matches(kind, value) == Some(false)
+    {
+        report.add(
+            Code::TermValueType,
+            site,
+            Detail::Label(Cow::Owned(alloc::format!("`{value}` is not xsd:{kind}"))),
+        );
+    }
+}
+
+/// Whether `value` is a lexical value of XML Schema type `kind` (by local
+/// name); `None` for a type not checked.
+fn xsd_matches(kind: &str, value: &str) -> Option<bool> {
+    let digits = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit());
+    let signed = |s: &str| digits(s.strip_prefix(['-', '+']).unwrap_or(s));
+    Some(match kind {
+        "int" | "integer" | "long" | "short" => signed(value),
+        "nonNegativeInteger" | "unsignedInt" => digits(value.strip_prefix('+').unwrap_or(value)),
+        "positiveInteger" => {
+            digits(value.strip_prefix('+').unwrap_or(value))
+                && value.bytes().any(|b| (b'1'..=b'9').contains(&b))
+        }
+        "float" | "double" | "decimal" => {
+            matches!(value, "NaN" | "INF" | "-INF") || value.parse::<f64>().is_ok()
+        }
+        "boolean" => matches!(value, "true" | "false" | "1" | "0"),
+        // `string`, `anyURI`, dates and the rest: not checked.
+        _ => return None,
+    })
 }
 
 /// How one rule term judges an accession.
@@ -442,6 +482,36 @@ fn versions(mztab: &MzTab<'_>, terms: &dyn TermLookup, report: &mut Report<'_, '
                 Site::Value(MtdKey::Cv(id, CvKey::Version)),
                 Detail::Label(Cow::Owned(checked.to_string())),
             );
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(target_arch = "wasm32")]
+    use wasm_bindgen_test::wasm_bindgen_test as test;
+
+    use super::xsd_matches;
+
+    #[test]
+    fn xml_schema_types() {
+        let cases = [
+            ("int", "-3", Some(true)),
+            ("integer", "x", Some(false)),
+            ("nonNegativeInteger", "+0", Some(true)),
+            ("nonNegativeInteger", "-1", Some(false)),
+            ("positiveInteger", "0", Some(false)),
+            ("positiveInteger", "07", Some(true)),
+            ("double", "1.5e3", Some(true)),
+            ("float", "INF", Some(true)),
+            ("decimal", "one", Some(false)),
+            ("boolean", "1", Some(true)),
+            ("boolean", "yes", Some(false)),
+            ("string", "anything", None),
+            ("QName", "x", None),
+        ];
+        for (kind, value, expected) in cases {
+            assert_eq!(xsd_matches(kind, value), expected, "{kind} {value}");
         }
     }
 }

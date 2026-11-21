@@ -1,0 +1,30 @@
+[package]
+name = "mztabm"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.100.0"
+description = "R bindings for mztab-m (the `mztabm` R package, built by R CMD INSTALL)."
+license = "MIT OR Apache-2.0"
+publish = false
+
+# Built by R, outside the Rust workspace: it needs R's headers (D-076).
+[workspace]
+
+[lib]
+crate-type = ["staticlib"]
+name = "mztabm"
+
+[dependencies]
+extendr-api = "0.9"
+mztab-m = { path = "../../../../crates/mztab-m", features = ["json"] }
+mztab-m-api = { path = "../../../../crates/mztab-m-api" }
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+panic = "deny"
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "deny"
+
+# `missing_docs` is not set: `#[extendr]` generates undocumented wrappers.
+[lints.rust]
+unsafe_code = "warn"

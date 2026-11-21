@@ -1,0 +1,25 @@
+[project]
+name = "mztab-m"
+description = "Read, validate, convert and inspect mzTab-M metabolomics files (TSV and JSON)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT OR Apache-2.0"
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Rust",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "Topic :: Scientific/Engineering :: Chemistry",
+]
+dynamic = ["version"]
+
+[project.urls]
+Repository = "https://github.com/Adafede/mztab-m-rs"
+
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
+
+[tool.maturin]
+features = []
+module-name = "mztab_m._native"
+python-source = "python"

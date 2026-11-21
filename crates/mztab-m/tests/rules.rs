@@ -423,6 +423,21 @@ fn cases() -> Vec<(Code, Vec<u8>)> {
             .bytes(),
         ),
         (Code::CvVersion, d().set("cv[1]-version", "4.0.0").bytes()),
+        (
+            Code::Uri,
+            d().set("ms_run[1]-location", "D:\\data\\run 1.mzML")
+                .bytes(),
+        ),
+        (Code::Email, d().set("contact[1]-email", "nobody").bytes()),
+        (
+            Code::SpectraRefFormat,
+            d().cell(sme, 1, "spectra_ref", "ms_run[1]:scan=5").bytes(),
+        ),
+        (
+            Code::TermValueType,
+            d().cell(sme, 1, "ms_level", "[MS, MS:1000511, ms level, two]")
+                .bytes(),
+        ),
     ]
 }
 
@@ -616,6 +631,34 @@ fn more_cases() -> Vec<(Code, Vec<u8>)> {
         Code::NullValue,
         d().cell(sml, 1, "best_id_confidence_value", "null").bytes(),
     ));
+    for uri in [
+        "no-scheme",
+        "1x:y",
+        "http://a b",
+        "http://a%zz",
+        "http://a#b#c",
+    ] {
+        cases.push((Code::Uri, d().set("uri[1]", uri).bytes()));
+    }
+    cases.push((Code::Uri, d().cell(sme, 1, "uri", "not a uri").bytes()));
+    let thermo = "[MS, MS:1000768, Thermo nativeID format, ]";
+    for reference in [
+        "controllerType=x controllerNumber=1 scan=5",
+        "controllerType=0 controllerNumber=1",
+        "controllerType=0 controllerNumber=1 index=5",
+        "controllerType=0 controllerNumber=1 scan=",
+    ] {
+        let edited = d().set("ms_run[1]-id_format", thermo).cell(
+            sme,
+            1,
+            "spectra_ref",
+            &format!("ms_run[1]:{reference}"),
+        );
+        cases.push((Code::SpectraRefFormat, edited.bytes()));
+    }
+    for email in ["@x.org", "a@", "a@org", "a@.org", "a@x.org.", "a b@x.org"] {
+        cases.push((Code::Email, d().set("contact[1]-email", email).bytes()));
+    }
     for value in ["2020-01-01Tnoon", "today\u{54}12:00:00"] {
         let typed = d()
             .set("study_variable_group[1]-datatype", "xsd:dateTime")
@@ -647,6 +690,68 @@ fn clean_cases() -> Vec<(Code, Vec<u8>)> {
         (
             Code::ReliabilityMissing,
             d().drop_column(sml, "reliability").bytes(),
+        ),
+        // Spec table 1: a Thermo id; a file id (IDREF); any string for
+        // mzML ids.
+        (
+            Code::SpectraRefFormat,
+            d().set(
+                "ms_run[1]-id_format",
+                "[MS, MS:1000768, Thermo nativeID format, ]",
+            )
+            .cell(
+                sme,
+                1,
+                "spectra_ref",
+                "ms_run[1]:controllerType=0 controllerNumber=1 scan=5",
+            )
+            .cell(
+                sme,
+                2,
+                "spectra_ref",
+                "ms_run[1]:controllerType=0 controllerNumber=1 scan=6",
+            )
+            .bytes(),
+        ),
+        (
+            Code::SpectraRefFormat,
+            d().set(
+                "ms_run[1]-id_format",
+                "[MS, MS:1000775, single peak list nativeID format, ]",
+            )
+            .cell(sme, 1, "spectra_ref", "ms_run[1]:file=a.dta")
+            .cell(sme, 2, "spectra_ref", "ms_run[1]:file=b.dta")
+            .bytes(),
+        ),
+        (
+            Code::SpectraRefFormat,
+            d().set(
+                "ms_run[1]-id_format",
+                "[MS, MS:1001530, mzML unique identifier, ]",
+            )
+            .cell(sme, 1, "spectra_ref", "ms_run[1]:anything at all")
+            .bytes(),
+        ),
+        (
+            Code::SpectraRefFormat,
+            d().set("ms_run[1]-id_format", "[,, my format, ]")
+                .cell(sme, 1, "spectra_ref", "ms_run[1]:x")
+                .bytes(),
+        ),
+        // RFC 3986 allows all of these.
+        (
+            Code::Uri,
+            d().set(
+                "uri[1]",
+                "file:///D:/Data%20Sets/run.mzML?x=1&y=(2)*;z#frag~_.-[]@!$',+=",
+            )
+            .bytes(),
+        ),
+        (Code::Uri, d().set("uri[1]", "urn:isbn:0451450523").bytes()),
+        (
+            Code::Email,
+            d().set("contact[1]-email", "first.last+tag@sub.example.org")
+                .bytes(),
         ),
         // Without SMF, SME rows need no reference.
         (Code::CrossReference, d().drop_table(smf, true).bytes()),

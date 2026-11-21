@@ -1,0 +1,52 @@
+root <- normalizePath(file.path(testthat::test_path(), "..", "..", "..", ".."))
+read_text <- function(path) paste(readLines(file.path(root, path), warn = FALSE), collapse = "\n")
+base <- paste0(read_text("crates/mztab-m/tests/golden/full.canonical.mztab"), "\n")
+base_json <- read_text("crates/mztab-m/tests/golden/full.json")
+
+test_that("the base document is valid", {
+  expect_equal(nrow(validate(base)), 0L)
+  expect_equal(nrow(validate(charToRaw(base))), 0L)
+  expect_equal(nrow(validate(base_json)), 0L)
+})
+
+test_that("findings are a data frame", {
+  bad <- sub("\t2.1.0-M\n", "\t2.1\n", base, fixed = TRUE)
+  findings <- validate(bad)
+  expect_equal(findings$code, "MZT-S006")
+  expect_equal(findings$severity, "error")
+  expect_equal(c(findings$line, findings$column, findings$cell), c(1L, 22L, 3L))
+  expect_match(findings$spec, "^https://github.com/HUPO-PSI/mzTab-M/blob/")
+  missing <- "MTD\tmzTab-version\t2.1.0-M\n"
+  structure <- validate(missing, layer = "structure")
+  expect_true("MZT-T009" %in% structure$code)
+  expect_true(any(is.na(structure$line)))
+  expect_equal(nrow(validate(missing, layer = "syntax")), 0L)
+  quiet <- validate(missing, severities = c("MZT-T009" = "off"))
+  expect_false("MZT-T009" %in% quiet$code)
+  terms <- validate(base, vocabularies = "[Term]\nid: MS:1\nname: x\n")
+  expect_true("MZT-X004" %in% terms$code)
+  expect_error(validate(base, layer = "all"), "unknown layer")
+  expect_error(validate(base, severities = c("MZT-T009" = "loud")), "unknown severity")
+  expect_error(validate(c("a", "b")), "one character string")
+})
+
+test_that("documents convert both ways", {
+  expect_equal(convert(base, "json"), base_json)
+  expect_equal(convert(base_json, "tsv"), base)
+  expect_equal(canonical(base), base)
+  unknown <- sub("MTD\ttitle\t", "MTD\tnot-a-key\tx\nMTD\ttitle\t", base, fixed = TRUE)
+  expect_error(convert(unknown, "json"), "no JSON form")
+  expect_equal(convert(unknown, "json", lossy = TRUE), base_json)
+  expect_error(convert(base, "xml"), "unknown format")
+  expect_equal(canonical(base_json, format = "json"), base_json)
+})
+
+test_that("inspect, codes and the spec commit", {
+  facts <- inspect(base)
+  expect_equal(facts$version, "2.1.0-M")
+  expect_equal(facts$sml_rows, 2L)
+  expect_true(is.na(inspect("MTD\ttitle\tx\n")$sml_rows))
+  table <- codes()
+  expect_true("MZT-T009" %in% table$code)
+  expect_equal(nchar(spec_commit()), 40L)
+})

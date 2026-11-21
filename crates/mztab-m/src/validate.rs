@@ -322,7 +322,13 @@ impl<'m, 'a> Report<'m, 'a> {
     }
 
     fn locate(&mut self, site: Site) -> Location {
-        if self.mztab.layout.lines.is_empty() {
+        // No source lines for items (none at all, or only comments, as a
+        // JSON-read model has): locate by model path.
+        let items = self.mztab.layout.lines.iter();
+        if items
+            .clone()
+            .all(|l| matches!(l.content, LineContent::Extra(_)))
+        {
             return model_path(site);
         }
         let lines = self.lines();

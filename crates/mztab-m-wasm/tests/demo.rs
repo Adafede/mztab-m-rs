@@ -40,4 +40,8 @@ fn converts_both_ways() {
         convert(&unknown, "json").is_err_and(|e| e.contains("no JSON form")),
         "unwritable"
     );
+    assert!(
+        convert(BASE, "xml").is_err_and(|e| e.contains("unknown format")),
+        "unwritable"
+    );
 }

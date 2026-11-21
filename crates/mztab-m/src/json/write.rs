@@ -100,8 +100,36 @@ pub(super) fn write(mztab: &MzTab<'_>, out: &mut dyn fmt::Write) -> Result<(), W
         };
         root.push((table.json.into(), rows));
     }
-    root.push(("comment".into(), J::Null));
+    root.push(("comment".into(), comments(mztab)));
     J::Obj(root).write(out).map_err(|_| WriteError::Fmt)
+}
+
+/// The source's `COM` lines as `Comment` objects, with their line numbers
+/// (D-075).
+fn comments(mztab: &MzTab<'_>) -> J {
+    let items: Vec<J> = mztab
+        .layout
+        .lines
+        .iter()
+        .enumerate()
+        .filter_map(|(n, line)| match &line.content {
+            crate::model::LineContent::Extra(crate::model::ExtraLine::Comment(raw)) => {
+                let text = raw.as_str();
+                let msg = text.split_once('\t').map_or("", |(_, msg)| msg);
+                Some(J::Obj(Vec::from([
+                    ("prefix".into(), J::str("COM")),
+                    ("msg".into(), J::str(msg)),
+                    ("line_number".into(), J::Number((n + 1).to_string())),
+                ])))
+            }
+            _ => None,
+        })
+        .collect();
+    if items.is_empty() {
+        J::Null
+    } else {
+        J::Arr(items)
+    }
 }
 
 const fn unwritable(line: u32, reason: &'static str) -> WriteError {

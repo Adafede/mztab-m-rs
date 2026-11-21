@@ -32,6 +32,8 @@ relationship: has_units UO:0000221 ! dalton\r
 id: MS:1000001\r
 name: sample number\r
 is_obsolete: true\r
+xref: value-type:xsd\\:string \"The allowed value-type for this CV term.\"\r
+xref: PMID:12345\r
 \r
 [Term]\r
 name: no id: dropped\r
@@ -68,7 +70,8 @@ fn parses_terms_and_header() {
         ms.term("MS:1000031"),
         Some(Term {
             name: "instrument model",
-            obsolete: false
+            obsolete: false,
+            value_type: None,
         }),
         "first stanza wins"
     );
@@ -80,6 +83,19 @@ fn parses_terms_and_header() {
     assert!(
         ms.term("MS:1000001").is_some_and(|t| t.obsolete),
         "obsolete"
+    );
+    assert_eq!(
+        ms.term("MS:1000001").and_then(|t| t.value_type),
+        Some("string"),
+        "value type"
+    );
+    let plain = Ontology::parse(
+        "[Term]\nid: X:1\nxref: value-type:xsd:int\nxref: value-type:other\nxref: value-type:xsd\\:\n",
+    );
+    assert_eq!(
+        plain.term("X:1").and_then(|t| t.value_type),
+        Some("int"),
+        "unescaped form; others ignored"
     );
     assert_eq!(ms.term("part_of"), None, "typedefs are not terms");
     assert!(Ontology::parse("").is_empty(), "empty text");

@@ -842,3 +842,90 @@ place in `validate/` to change if you decide otherwise.
 - **Documentation:** `README.md` links each guarantee to the gate that
   enforces it; the core's README is its crate documentation, with doctested
   examples; `docs/DESIGN.md` explains the architecture.
+
+## Closing the gaps (after M9)
+
+### D-075: URIs, e-mails, spectrum references, value types, comments, lossy conversion — PROPOSED
+
+- **URIs (`T036`, error):** values of the six fields the field reference
+  types as URI must be RFC 3986 URIs (format specification, "URIs ...
+  MUST follow RFC 3986 and RFC 8089"). The six are `uri[n]`,
+  `external_study_uri[n]`, `ms_run[n]-location`, `assay[n]-external_uri`,
+  `cv[n]-uri` and SME `uri`. A URI needs:
+  - a scheme;
+  - only the characters RFC 3986 allows;
+  - `%` followed by two hex digits;
+  - at most one `#`.
+  A Windows path (`D:\data`) or a space fails. `database[n]-uri` and SML
+  `uri` are typed String and String List, so they are not checked. No corpus
+  file triggers this.
+- **E-mail (`T037`, warning):** `contact[n]-email` must look like
+  `local@domain.tld`. The field is typed String but described as an e-mail
+  address, hence a warning.
+- **Spectrum references (`T038`, warning):** each `spectra_ref` of an SME
+  row must have the `key=value` form that spec table 1 gives for its run's
+  `id_format` term:
+  - Thermo: `controllerType=… controllerNumber=… scan=…`;
+  - multiple peak lists: `index=…`;
+  - ... ten formats in all.
+  An `id_format` the table does not constrain (`MS:1001530` mzML ids, user
+  parameters) is not checked. The table says "should", hence a warning.
+- **Value types (`X011`, error):** a CV parameter's value, when present,
+  must match its term's XML Schema `value-type` (PSI-MS
+  `xref: value-type:xsd\:int`, read by `mztab-m-obo` into
+  `Term::value_type`). A missing value is not reported, because mzTab names
+  score types without values (`id_confidence_measure[n]`).
+- **Units are not checked, and this is deliberate.** PSI-MS `has_units`
+  says which unit a value of a term is in. An mzTab parameter
+  `[label, accession, name, value]` has no unit slot, and units of columns
+  are given by `colunit-*` lines, whose columns are not CV terms. There is
+  nothing to check a unit against.
+- **JSON comments:**
+  - The writer turns `COM` lines into the top-level `comment` array:
+    `prefix`, `msg`, and the source `line_number`.
+  - The reader keeps them as a layout of comment lines only. Written as
+    TSV, they follow the metadata; their original position is not kept.
+  - A layout that holds only comments locates findings by model path, as
+    an empty one does.
+  - Canonical TSV (`fmt`, `convert`) now keeps comments, after the
+    metadata, instead of dropping them.
+- **Lossy conversion:** `MzTab::strip_unknown` drops unknown metadata lines,
+  unknown or repeated columns with their cells, and cells beyond a row's
+  header. It reports the counts. `mztab-m convert --lossy` (and the
+  bindings' `lossy`) use it before writing. Abundance columns that do not
+  match the metadata still make JSON refuse.
+
+### D-076: A shared API crate, and Python and R packages — PROPOSED
+
+- **`mztab-m-api`** (`no_std`, published with the others) holds what every
+  front end needs, as plain functions over text:
+  - detect the format;
+  - read;
+  - validate up to a layer, with `CODE=LEVEL` settings and OBO
+    vocabularies;
+  - write canonically (optionally lossy);
+  - flat finding `Record`s;
+  - `inspect` facts.
+  The CLI and the WASM demo now use it, as do the bindings.
+- **Python (`bindings/python`, package `mztab-m`, module `mztab_m`):**
+  - PyO3 0.30 with the stable ABI from Python 3.9, so one wheel per
+    platform covers every Python version;
+  - built by maturin;
+  - `validate`, `convert`, `canonical`, `inspect` and `codes`, returning
+    dicts and strings and raising `ValueError`;
+  - type stubs (`_native.pyi`, `py.typed`).
+- **R (`bindings/r`, package `mztabm`):**
+  - extendr 0.9, built by `R CMD INSTALL` from `src/rust`;
+  - the same functions, with `validate` and `codes` returning data frames;
+  - errors come back as `list(value, error)` and are raised by R, because
+    an extendr `Err` would first print a Rust panic message.
+- **Both sit outside the Rust workspace, like `fuzz/`.** They need a
+  Python interpreter or R headers, which the workspace gates do not have.
+  `.github/workflows/bindings.yml` builds and tests them: unittest and
+  doctests for Python, testthat for R. Locally, Python is tested by
+  building with cargo and importing the library as `_native.abi3.so`, and R
+  by `R CMD INSTALL` into a scratch library.
+- **Not done:**
+  - **CRAN:** a CRAN tarball would need the Rust sources vendored; the
+    package installs from the repository.
+  - **PyPI:** wheels are not uploaded. Publishing either needs approval.

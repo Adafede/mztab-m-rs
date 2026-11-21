@@ -18,7 +18,7 @@ COVERAGE_FAIL_UNDER_LINES="100"
 LOCAL_OVERRIDES=(wasm=wasm)
 # Must equal the wasm-bindgen version in Cargo.lock (task_wasm checks it).
 LOCAL_CARGO_TOOLS=(wasm-bindgen-cli@0.2.130:wasm-bindgen-test-runner)
-WASM_CRATES=(mztab-m mztab-m-obo mztab-m-wasm)
+WASM_CRATES=(mztab-m mztab-m-obo mztab-m-api mztab-m-wasm)
 
 task_wasm() {
     local locked runner

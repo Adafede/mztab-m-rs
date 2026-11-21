@@ -1,0 +1,16 @@
+Package: mztabm
+Title: Read, Validate, Convert and Inspect 'mzTab-M' Files
+Version: 0.1.0
+Authors@R: person("Adriano", "Rutz", role = c("aut", "cre"),
+    email = "adrutz@ethz.ch")
+Description: Validation, canonical formatting, TSV and JSON conversion and
+    summaries of 'mzTab-M' metabolomics result files, through the 'Rust'
+    library 'mztab-m': the same reader, validator and writer as the
+    'mztab-m' command line tool.
+License: MIT + file LICENSE | Apache License 2.0
+Encoding: UTF-8
+SystemRequirements: Cargo (Rust's package manager), rustc >= 1.100
+Suggests: testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Config/rextendr/version: 0.4.0
+URL: https://github.com/Adafede/mztab-m-rs

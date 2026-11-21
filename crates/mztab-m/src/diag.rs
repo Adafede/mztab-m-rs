@@ -417,6 +417,18 @@ codes! {
     /// A study variable value does not match the `datatype` of its group.
     StudyVariableDatatype = "MZT-T035", Structure, Must, FieldReference # "study_variable_group1-n-datatype",
         jmztab [], "study variable value does not match its group datatype";
+    /// A value typed URI is not an RFC 3986 URI (with a scheme, no spaces
+    /// or backslashes, `%` only before two hex digits).
+    Uri = "MZT-T036", Structure, Must, Format # "format-specification",
+        jmztab [], "not a URI (RFC 3986)";
+    /// A contact e-mail address is not of the form `local@domain.tld`.
+    Email = "MZT-T037", Structure, Should, FieldReference # "contact1-n-email",
+        jmztab [], "not an e-mail address";
+    /// A spectrum reference does not have the form its run's `id_format`
+    /// term prescribes (spec table 1, e.g. `index=N` for "multiple peak
+    /// list nativeID format").
+    SpectraRefFormat = "MZT-T038", Structure, Should, Format # "table-1",
+        jmztab [], "spectrum reference does not match the run's id_format";
     /// A CV parameter's label is not declared by any `cv[n]-label`.
     CvUndeclared = "MZT-X001", Semantic, Should, FieldReference # "cv1-n-label",
         jmztab [3013], "CV label is not declared";
@@ -451,6 +463,10 @@ codes! {
     /// used for checking.
     CvVersion = "MZT-X010", Semantic, May, FieldReference # "cv1-n-version",
         jmztab [], "declared CV version differs from the checked vocabulary";
+    /// A CV parameter's value is not of the type its term declares
+    /// (PSI-MS `value-type`, e.g. `xsd:int` for "ms level").
+    TermValueType = "MZT-X011", Semantic, Must, Format # "the-psi-mass-spectrometry-controlled-vocabulary-cv",
+        jmztab [], "parameter value is not of the term's value type";
 }
 
 impl fmt::Display for Code {

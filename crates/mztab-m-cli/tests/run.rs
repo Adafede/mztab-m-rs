@@ -246,8 +246,10 @@ fn fmt_and_convert() {
         "formatted"
     );
     assert!(
-        io.written.get("out.mztab").is_some_and(|t| t == BASE),
-        "comments go; the canonical text stays"
+        io.written
+            .get("out.mztab")
+            .is_some_and(|t| t != BASE && t.replace("COM\tnote\n", "") == BASE),
+        "the canonical text, with the comment kept (after the metadata)"
     );
     let mut io = fake();
     assert_eq!(exec(&mut io, &["fmt", "base.json"]), OK, "JSON stays JSON");
@@ -280,6 +282,23 @@ fn fmt_and_convert() {
         io.err.contains("metadata key has no JSON form"),
         "{}",
         io.err
+    );
+    // More abundance values than assays: readable, but JSON cannot write
+    // the model back.
+    let mut io = fake();
+    io.files.insert(
+        "ragged.json".into(),
+        r#"{"metadata": {"assay": [{"id": 1, "name": "a"}]}, "smallMoleculeFeature": [{"smf_id": 1, "abundance_assay": [1, 2]}]}"#.into(),
+    );
+    assert_eq!(exec(&mut io, &["fmt", "ragged.json"]), FAILED, "unwritable");
+    assert!(io.err.contains("cannot write the file"), "{}", io.err);
+    let mut io = fake();
+    let args = ["convert", "--to", "json", "--lossy", "unknown.mztab"];
+    assert_eq!(exec(&mut io, &args), OK, "lossy");
+    assert_eq!(io.out, BASE_JSON.trim_end(), "dropped to the base document");
+    assert_eq!(
+        io.err, "dropped 1 unknown metadata lines, 0 unknown columns, 0 cells\n",
+        "says what was dropped"
     );
     let mut io = fake();
     io.readonly = true;

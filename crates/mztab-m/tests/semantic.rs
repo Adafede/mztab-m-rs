@@ -157,6 +157,7 @@ fn lookups_combine() {
     let scan = Term {
         name: "positive scan",
         obsolete: false,
+        value_type: None,
     };
     for (name, lookup) in [
         ("reference", by_ref),

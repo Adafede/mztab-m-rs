@@ -100,7 +100,18 @@ const TERMS: &[Entry] = &[
         &["MS:1001060", "MS:1000531"],
     ),
     ("MS:1009999", "old term", true, &["MS:1001833"]),
+    ("MS:1009997", "flag", false, &[]),
 ];
+
+/// The value types of the stand-in's terms (as PSI-MS declares them).
+fn value_type(accession: &str) -> Option<&'static str> {
+    match accession {
+        "MS:1000511" => Some("int"),
+        "MS:1002890" => Some("double"),
+        "MS:1009997" => Some("boolean"),
+        _ => None,
+    }
+}
 
 /// The PSI-MS stand-in: covers the `MS` prefix, version `4.1.0`.
 #[derive(Debug)]
@@ -116,9 +127,10 @@ impl TermLookup for Mini {
     }
 
     fn term(&self, accession: &str) -> Option<Term<'_>> {
-        entry(accession).map(|(_, name, obsolete, _)| Term {
+        entry(accession).map(|(accession, name, obsolete, _)| Term {
             name,
             obsolete: *obsolete,
+            value_type: value_type(accession),
         })
     }
 

@@ -51,6 +51,17 @@ pub type Field<'a, T> = Option<Cell<'a, T>>;
 /// items are kept.
 pub type List<'a, T> = Vec<Cell<'a, T>>;
 
+/// What [`MzTab::strip_unknown`] dropped.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Stripped {
+    /// Unknown metadata lines.
+    pub metadata: usize,
+    /// Unknown or repeated header columns.
+    pub columns: usize,
+    /// Row cells: those of the dropped columns, and those beyond a header.
+    pub cells: usize,
+}
+
 /// A whole mzTab-M document.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct MzTab<'a> {
@@ -152,6 +163,35 @@ pub struct SourceLayout<'a> {
     pub lines: Vec<SourceLine<'a>>,
 }
 
+impl SourceLayout<'_> {
+    /// Only the `COM` lines, in order, without line endings or a byte order
+    /// mark. Writing a model with this layout gives its canonical form with
+    /// its comments after the metadata, which is what a JSON-read model
+    /// has (D-075).
+    ///
+    /// ```
+    /// let mut model = mztab_m::parse("COM\tnote\r\nMTD\tmzTab-ID\tx\r\n").mztab;
+    /// model.layout = model.layout.comments_only();
+    /// assert_eq!(mztab_m::to_string(&model)?, "MTD\tmzTab-ID\tx\nCOM\tnote\n");
+    /// # Ok::<(), mztab_m::WriteError>(())
+    /// ```
+    #[must_use]
+    pub fn comments_only(self) -> Self {
+        let lines = self
+            .lines
+            .into_iter()
+            .filter(|l| matches!(l.content, LineContent::Extra(ExtraLine::Comment(_))))
+            // Comment lines keep their text in the line itself, never as
+            // verbatim source text, so only the ending changes.
+            .map(|l| SourceLine {
+                ending: LineEnding::Lf,
+                ..l
+            })
+            .collect();
+        Self { bom: false, lines }
+    }
+}
+
 impl<S, R> Default for Table<'_, S, R> {
     /// A table with no columns and no rows.
     fn default() -> Self {
@@ -183,6 +223,46 @@ impl MzTab<'_> {
     /// ```
     pub const fn inferred_profile(&self) -> Result<Profile, crate::vocab::ProhibitedProfile> {
         Profile::from_tables(self.sml.is_some(), self.smf.is_some(), self.sme.is_some())
+    }
+
+    /// Drops what the reader kept but could not place: unknown metadata
+    /// lines, unknown (or repeated) columns with their cells, and cells
+    /// beyond a row's header. What remains is the document as the
+    /// specification defines it; JSON can carry it (D-071, D-075).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut model = mztab_m::parse("MTD\tnot-a-key\tx\nSFH\tSMF_ID\tbogus\nSMF\t1\ty\tz\n").mztab;
+    /// let dropped = model.strip_unknown();
+    /// assert_eq!((dropped.metadata, dropped.columns, dropped.cells), (1, 1, 2));
+    /// ```
+    pub fn strip_unknown(&mut self) -> Stripped {
+        let mut dropped = Stripped {
+            metadata: self.metadata.unknown.len(),
+            ..Stripped::default()
+        };
+        self.metadata.unknown.clear();
+        macro_rules! strip {
+            ($table:expr) => {
+                if let Some(t) = $table {
+                    let unknown = |c: &&Column<'_, _>| matches!(c, Column::Unknown(_));
+                    dropped.columns += t.header.columns.iter().filter(unknown).count();
+                    t.header
+                        .columns
+                        .retain(|c| !matches!(c, Column::Unknown(_)));
+                    for row in &mut t.rows {
+                        dropped.cells += row.unknown.len() + row.extra.len();
+                        row.unknown.clear();
+                        row.extra.clear();
+                    }
+                }
+            };
+        }
+        strip!(&mut self.sml);
+        strip!(&mut self.smf);
+        strip!(&mut self.sme);
+        dropped
     }
 }
 

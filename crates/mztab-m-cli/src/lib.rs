@@ -29,9 +29,8 @@
 //! assert!(io.0.starts_with("mztab-m "));
 //! ```
 
-use mztab_m::cv::TermLookup;
-use mztab_m::validate::{self, Config};
-use mztab_m::{Code, Findings, IntoOwned as _, MzTab, Parsed, Severity, json};
+use mztab_m::{Parsed, Severity, json};
+use mztab_m_api::{Error, Fact, Format, Layer, Settings};
 use mztab_m_obo::Ontology;
 
 /// Success: no finding at or above `--fail-on`; the file is formatted.
@@ -75,7 +74,7 @@ mztab-m: validate, format, convert and inspect mzTab-M files (TSV or JSON)
 Usage:
   mztab-m validate [options] FILE
   mztab-m fmt [--check] [-o OUT] FILE
-  mztab-m convert --to tsv|json [-o OUT] FILE
+  mztab-m convert --to tsv|json [--lossy] [-o OUT] FILE
   mztab-m inspect [--format human|json] FILE
   mztab-m --help | --version
 
@@ -92,6 +91,11 @@ validate options:
                          (default: error)
   --severity CODE=LEVEL  report CODE at LEVEL (error|warning|info|off);
                          repeatable
+
+convert options:
+  --lossy                drop what the specification does not define
+                         (unknown metadata, unknown columns, extra cells)
+                         instead of refusing; says what was dropped
 
 Exit codes: 0 ok, 1 findings (or `fmt --check` would change the file),
 2 bad command line, 3 a file could not be read or written.
@@ -141,18 +145,13 @@ enum Failure {
     Failed(String),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Format {
-    Tsv,
-    Json,
-}
-
-/// The highest layer `validate` runs.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-enum Layer {
-    Syntax,
-    Structure,
-    Semantic,
+/// A bad value on the command line.
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "a function for `map_err`, which passes the error by value"
+)]
+fn usage(error: Error) -> Failure {
+    Failure::Usage(error.to_string())
 }
 
 #[derive(Debug)]
@@ -164,32 +163,15 @@ struct Options {
     to: Option<Format>,
     json: bool,
     check: bool,
-    layer: Layer,
+    lossy: bool,
     cv: Vec<String>,
     fail_on: Option<Severity>,
-    config: Config,
+    settings: Settings,
 }
 
 fn value<'a>(flag: &str, args: &mut impl Iterator<Item = &'a str>) -> Result<&'a str, Failure> {
     args.next()
         .ok_or_else(|| Failure::Usage(format!("`{flag}` needs a value")))
-}
-
-fn format(flag: &str, text: &str) -> Result<Format, Failure> {
-    match text {
-        "tsv" => Ok(Format::Tsv),
-        "json" => Ok(Format::Json),
-        _ => Err(Failure::Usage(format!("`{flag}` takes `tsv` or `json`"))),
-    }
-}
-
-fn severity(text: &str) -> Option<Severity> {
-    match text {
-        "error" => Some(Severity::Error),
-        "warning" => Some(Severity::Warning),
-        "info" => Some(Severity::Info),
-        _ => None,
-    }
 }
 
 impl Options {
@@ -202,10 +184,10 @@ impl Options {
             to: None,
             json: false,
             check: false,
-            layer: Layer::Semantic,
+            lossy: false,
             cv: Vec::new(),
             fail_on: Some(Severity::Error),
-            config: Config::default(),
+            settings: Settings::default(),
         };
         // Which flags each command takes.
         let allowed: &[&str] = match command {
@@ -218,7 +200,7 @@ impl Options {
                 "--severity",
             ],
             "fmt" => &["--check", "-o", "--input"],
-            "convert" => &["--to", "-o", "--input"],
+            "convert" => &["--to", "-o", "--input", "--lossy"],
             _ => &["--format", "--input"],
         };
         while let Some(arg) = args.next() {
@@ -237,38 +219,29 @@ impl Options {
                         }
                     };
                 }
-                "--input" => o.input = Some(format(arg, value(arg, &mut args)?)?),
-                "--to" => o.to = Some(format(arg, value(arg, &mut args)?)?),
+                "--input" => o.input = Some(Format::parse(value(arg, &mut args)?).map_err(usage)?),
+                "--to" => o.to = Some(Format::parse(value(arg, &mut args)?).map_err(usage)?),
                 "-o" => value(arg, &mut args)?.clone_into(&mut o.output),
                 "--check" => o.check = true,
+                "--lossy" => o.lossy = true,
                 "--layer" => {
-                    o.layer = match value(arg, &mut args)? {
-                        "syntax" => Layer::Syntax,
-                        "structure" => Layer::Structure,
-                        "semantic" => Layer::Semantic,
-                        _ => {
-                            return Err(Failure::Usage(
-                                "`--layer` takes `syntax`, `structure` or `semantic`".into(),
-                            ));
-                        }
-                    };
+                    let layer = Layer::parse(value(arg, &mut args)?).map_err(usage)?;
+                    o.settings = core::mem::take(&mut o.settings).layer(layer);
                 }
                 "--cv" => o.cv.push(value(arg, &mut args)?.to_owned()),
                 "--fail-on" => {
                     let level = value(arg, &mut args)?;
-                    o.fail_on = match (level, severity(level)) {
-                        ("never", _) => None,
-                        (_, Some(s)) => Some(s),
-                        _ => {
-                            return Err(Failure::Usage(
-                                "`--fail-on` takes `error`, `warning`, `info` or `never`".into(),
-                            ));
-                        }
+                    o.fail_on = if level == "never" {
+                        None
+                    } else {
+                        Some(mztab_m_api::severity(level).map_err(usage)?)
                     };
                 }
                 "--severity" => {
                     let setting = value(arg, &mut args)?;
-                    o.config = configure(core::mem::take(&mut o.config), setting)?;
+                    o.settings = core::mem::take(&mut o.settings)
+                        .set(setting)
+                        .map_err(usage)?;
                 }
                 file if o.file.is_none() => o.file = Some(file.to_owned()),
                 extra => return Err(Failure::Usage(format!("unexpected `{extra}`"))),
@@ -288,13 +261,21 @@ impl Options {
         let bytes = io
             .read(file)
             .map_err(|e| Failure::Failed(format!("cannot read `{file}`: {e}")))?;
-        let format = self.input.unwrap_or_else(|| sniff(file, &bytes));
-        let parsed = read(&bytes, format);
+        let format = self.input.unwrap_or_else(|| Format::sniff(file, &bytes));
+        let parsed = mztab_m_api::read(&bytes, format);
         match self.command.as_str() {
             "validate" => self.validate(&parsed, io),
             "fmt" => self.canonical(&parsed, &bytes, format, io),
             "convert" => {
-                let text = write(&parsed.mztab, self.to.unwrap_or(Format::Tsv))?;
+                let to = self.to.unwrap_or(Format::Tsv);
+                let (text, dropped) = mztab_m_api::write(&parsed.mztab, to, self.lossy)
+                    .map_err(|e| Failure::Failed(e.to_string()))?;
+                if dropped != mztab_m::Stripped::default() {
+                    io.err(&format!(
+                        "dropped {} unknown metadata lines, {} unknown columns, {} cells\n",
+                        dropped.metadata, dropped.columns, dropped.cells
+                    ));
+                }
                 self.output(&text, io)?;
                 Ok(OK)
             }
@@ -317,7 +298,7 @@ impl Options {
         }
         let vocabularies: Vec<Ontology<'_>> = texts.iter().map(|t| Ontology::parse(t)).collect();
         let terms: &[Ontology<'_>] = &vocabularies;
-        let findings = findings(parsed, self.layer, &self.config, &terms);
+        let findings = mztab_m_api::validate(parsed, &self.settings, &terms);
         let mut out = String::new();
         if self.json {
             // Writing into a `String` cannot fail.
@@ -327,7 +308,13 @@ impl Options {
         } else {
             out.extend(findings.iter().map(|f| format!("{f}\n")));
             io.out(&out);
-            io.err(&summary(&findings));
+            let count = |s| findings.iter().filter(|f| f.severity == s).count();
+            io.err(&format!(
+                "{} errors, {} warnings, {} infos\n",
+                count(Severity::Error),
+                count(Severity::Warning),
+                count(Severity::Info)
+            ));
         }
         let failing = self
             .fail_on
@@ -342,7 +329,8 @@ impl Options {
         format: Format,
         io: &mut dyn Io,
     ) -> Result<u8, Failure> {
-        let text = write(&parsed.mztab, format)?;
+        let (text, _) = mztab_m_api::write(&parsed.mztab, format, false)
+            .map_err(|e| Failure::Failed(e.to_string()))?;
         if self.check {
             if text.as_bytes() == bytes {
                 return Ok(OK);
@@ -356,169 +344,27 @@ impl Options {
     }
 
     fn inspect(&self, parsed: &Parsed<'static>, io: &mut dyn Io) -> u8 {
-        let facts = facts(parsed);
+        let facts = mztab_m_api::facts(parsed);
         let out = if self.json {
             let members: Vec<String> = facts
                 .iter()
-                .map(|(key, value)| format!("\"{key}\":{value}"))
+                .map(|(key, value)| format!("\"{key}\":{}", value.to_json()))
                 .collect();
             format!("{{{}}}\n", members.join(","))
         } else {
             facts
                 .iter()
-                .flat_map(|(key, value)| [*key, ": ", value.trim_matches('"'), "\n"])
+                .flat_map(|(key, value): &(&str, Fact)| {
+                    [
+                        (*key).to_owned(),
+                        ": ".to_owned(),
+                        value.to_string(),
+                        "\n".to_owned(),
+                    ]
+                })
                 .collect()
         };
         io.out(&out);
         OK
     }
-}
-
-/// `CODE=LEVEL`: report CODE at LEVEL, or not at all (`off`).
-fn configure(config: Config, setting: &str) -> Result<Config, Failure> {
-    let bad = || Failure::Usage(format!("`--severity` takes CODE=LEVEL, not `{setting}`"));
-    let (id, level) = setting.split_once('=').ok_or_else(bad)?;
-    let code = Code::ALL
-        .iter()
-        .copied()
-        .find(|c| c.id() == id)
-        .ok_or_else(|| Failure::Usage(format!("unknown code `{id}`")))?;
-    match (level, severity(level)) {
-        ("off", _) => Ok(config.without(code)),
-        (_, Some(s)) => Ok(config.with_severity(code, s)),
-        _ => Err(bad()),
-    }
-}
-
-/// JSON if the name says so or the text starts with `{`.
-fn sniff(file: &str, bytes: &[u8]) -> Format {
-    let first = bytes.iter().find(|b| !b.is_ascii_whitespace());
-    let named = std::path::Path::new(file)
-        .extension()
-        .is_some_and(|e| e.eq_ignore_ascii_case("json"));
-    if named || first == Some(&b'{') {
-        Format::Json
-    } else {
-        Format::Tsv
-    }
-}
-
-fn read(bytes: &[u8], format: Format) -> Parsed<'static> {
-    match format {
-        Format::Tsv => mztab_m::parse_bytes(bytes).into_owned(),
-        Format::Json => json::parse(&String::from_utf8_lossy(bytes)),
-    }
-}
-
-/// The canonical text of a model in `format`.
-fn write(mztab: &MzTab<'_>, format: Format) -> Result<String, Failure> {
-    let written = match format {
-        Format::Tsv => {
-            let mut canonical = mztab.clone();
-            canonical.layout = mztab_m::SourceLayout::default();
-            mztab_m::to_string(&canonical)
-        }
-        Format::Json => json::to_string(mztab),
-    };
-    written.map_err(|e| Failure::Failed(format!("cannot write the file: {e}")))
-}
-
-/// The reader's findings and those of each layer up to `layer`, with
-/// `config` applied. Values that failed to type are reported once, by the
-/// reader.
-fn findings(
-    parsed: &Parsed<'static>,
-    layer: Layer,
-    config: &Config,
-    terms: &dyn TermLookup,
-) -> Findings {
-    let mut out = Findings::new();
-    for mut finding in parsed.findings.iter().cloned() {
-        if let Some(severity) = config.severity_of(finding.code) {
-            finding.severity = severity;
-            out.push(finding);
-        }
-    }
-    if layer >= Layer::Structure {
-        let structure = validate::structure(&parsed.mztab, config);
-        out.extend(
-            structure
-                .into_vec()
-                .into_iter()
-                .filter(|f| f.code != Code::InvalidValue),
-        );
-    }
-    if layer >= Layer::Semantic {
-        out.extend(validate::semantic(&parsed.mztab, config, terms).into_vec());
-    }
-    out
-}
-
-fn summary(findings: &Findings) -> String {
-    let count = |s| findings.iter().filter(|f| f.severity == s).count();
-    format!(
-        "{} errors, {} warnings, {} infos\n",
-        count(Severity::Error),
-        count(Severity::Warning),
-        count(Severity::Info)
-    )
-}
-
-/// What `inspect` reports: key and JSON value.
-fn facts(parsed: &Parsed<'static>) -> Vec<(&'static str, String)> {
-    let m = &parsed.mztab;
-    let meta = &m.metadata;
-    let text = |v: Option<String>| v.map_or_else(|| "null".to_owned(), |v| format!("\"{v}\""));
-    let cell = |c: Option<&mztab_m::Cell<'_, mztab_m::Text<'_>>>| {
-        text(c.and_then(|c| c.value()).map(|t| escape(t.as_str())))
-    };
-    let version = meta
-        .version
-        .as_ref()
-        .and_then(|c| c.value())
-        .map(ToString::to_string);
-    let profile = meta
-        .profile
-        .as_ref()
-        .and_then(|c| c.value())
-        .map(ToString::to_string);
-    let inferred = m.inferred_profile().ok().map(|p| p.to_string());
-    let rows = |n: Option<usize>| n.map_or_else(|| "null".to_owned(), |n| n.to_string());
-    let errors = parsed
-        .findings
-        .iter()
-        .filter(|f| f.severity == Severity::Error)
-        .count();
-    Vec::from([
-        ("version", text(version)),
-        ("id", cell(meta.id.as_ref())),
-        ("title", cell(meta.title.as_ref())),
-        ("profile", text(profile)),
-        ("tables_profile", text(inferred)),
-        ("ms_runs", meta.ms_run.iter().count().to_string()),
-        ("assays", meta.assay.iter().count().to_string()),
-        (
-            "study_variables",
-            meta.study_variable.iter().count().to_string(),
-        ),
-        ("samples", meta.sample.iter().count().to_string()),
-        ("cvs", meta.cv.iter().count().to_string()),
-        ("sml_rows", rows(m.sml.as_ref().map(|t| t.rows.len()))),
-        ("smf_rows", rows(m.smf.as_ref().map(|t| t.rows.len()))),
-        ("sme_rows", rows(m.sme.as_ref().map(|t| t.rows.len()))),
-        ("reader_findings", parsed.findings.len().to_string()),
-        ("reader_errors", errors.to_string()),
-    ])
-}
-
-/// Escapes text for a JSON string body.
-fn escape(text: &str) -> String {
-    text.chars()
-        .map(|c| match c {
-            '"' => "\\\"".to_owned(),
-            '\\' => "\\\\".to_owned(),
-            c if u32::from(c) < 0x20 => format!("\\u{:04x}", u32::from(c)),
-            c => c.to_string(),
-        })
-        .collect()
 }

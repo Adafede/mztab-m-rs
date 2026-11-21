@@ -211,9 +211,9 @@ fn findings_without_a_source_line_fall_back() {
         "title is still on line 4: {invalid:?}"
     );
 
-    let mut comment_only = parse("COM\tx\n").mztab;
-    comment_only.metadata.title = Some(Cell::Invalid(Raw::new("x")));
-    let findings = validate::structure(&comment_only, &Config::default());
+    let mut table_only = parse("SFH\tSMF_ID\n").mztab;
+    table_only.metadata.title = Some(Cell::Invalid(Raw::new("x")));
+    let findings = validate::structure(&table_only, &Config::default());
     let invalid = findings
         .iter()
         .find(|f| f.code == Code::InvalidValue)
@@ -223,6 +223,17 @@ fn findings_without_a_source_line_fall_back() {
         Some(Location::Document),
         "no metadata line to point at"
     );
+
+    // Comments alone (as a JSON-read model keeps them) are no layout to
+    // locate by: model paths.
+    let mut comment_only = parse("COM\tx\n").mztab;
+    comment_only.metadata.title = Some(Cell::Invalid(Raw::new("x")));
+    let findings = validate::structure(&comment_only, &Config::default());
+    let invalid = findings
+        .iter()
+        .find(|f| f.code == Code::InvalidValue)
+        .map(|f| f.location.to_string());
+    assert_eq!(invalid.as_deref(), Some("metadata.title"), "model path");
 
     let mut added = parse("MTD\tmzTab-ID\tx\n").mztab;
     added.metadata.description = Some(Cell::Invalid(Raw::new("y")));

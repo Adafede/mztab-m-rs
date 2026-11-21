@@ -4,9 +4,9 @@ A reader, writer and validator for [mzTab-M](https://github.com/HUPO-PSI/mzTab-M
 the HUPO-PSI / MSI exchange format for mass-spectrometry-based metabolomics
 results.
 
-> **Status:** feature-complete for 2.1.0-M (milestones M0–M8), being
-> prepared for a first release (M9). **Nothing is published yet.** What is
-> left is in [docs/STATUS.md](docs/STATUS.md).
+> **Status:** feature-complete for 2.1.0-M, with Python and R packages.
+> **Nothing is published yet.** What is left is in
+> [docs/STATUS.md](docs/STATUS.md).
 
 ## Crates
 
@@ -14,7 +14,10 @@ results.
 |---|---|
 | [`mztab-m`](crates/mztab-m) | The core: model, TSV reader (streaming), byte-exact writer, three-layer validator, JSON (feature `json`). `no_std`, zero dependencies. |
 | [`mztab-m-obo`](crates/mztab-m-obo) | OBO vocabularies (such as `psi-ms.obo`) as term lookups for semantic validation. |
+| [`mztab-m-api`](crates/mztab-m-api) | Text-in, text-out operations shared by the command and the bindings. |
 | [`mztab-m-cli`](crates/mztab-m-cli) | The `mztab-m` command: `validate`, `fmt`, `convert`, `inspect`. |
+| [Python: `mztab-m`](bindings/python) | `import mztab_m`: validate, convert, canonical, inspect (PyO3, one wheel per platform). |
+| [R: `mztabm`](bindings/r) | `library(mztabm)`: the same functions, with findings as data frames (extendr). |
 | [`mztab-m-wasm`](crates/mztab-m-wasm) | A browser page that validates a dropped file (demo, not published). |
 
 ```sh
@@ -38,7 +41,7 @@ testing and miri.
 |---|---|
 | The core has **zero runtime dependencies** | the core's [`Cargo.toml`](crates/mztab-m/Cargo.toml) has no `[dependencies]`; `deny` ([`deny.toml`](deny.toml)) and `machete` gates |
 | The core is `#![no_std]` + `alloc` | the crate attribute (the compiler rejects any use of `std` in it) |
-| The core, `mztab-m-obo` and the demo **build and pass their tests on `wasm32-unknown-unknown`** | the `wasm` gate (`task_wasm` in [`mk.local`](mk.local)), using `wasm-bindgen-test-runner` |
+| The core, `mztab-m-obo`, `mztab-m-api` and the demo **build and pass their tests on `wasm32-unknown-unknown`** | the `wasm` gate (`task_wasm` in [`mk.local`](mk.local)), using `wasm-bindgen-test-runner` |
 | No `unsafe` code | `unsafe_code = "forbid"` in the workspace lints ([`Cargo.toml`](Cargo.toml)); the `lints-inherit` gate checks every crate inherits them |
 | **Pure core:** no I/O, no global state | the core is `no_std` (no file system, no stdin) and has no dependencies; I/O lives in `mztab-m-cli` and the demo only |
 | No panics on malformed input | the `lint` gate denies `unwrap_used`, `panic` and `indexing_slicing`; four fuzz targets (`fuzz/`) |

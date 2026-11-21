@@ -9,9 +9,10 @@ use crate::diag::{Code, Detail, Severity};
 use crate::id::IdConfidenceMeasureId;
 use crate::meta::MtdKey;
 use crate::model::{
-    AbundanceColumn, ColUnit, Column, Header, List, MzTab, OptTarget, SmeColumn, SmeId, SmfColumn,
-    SmlColumn, Table,
+    AbundanceColumn, ColUnit, Column, Header, List, MzTab, OptTarget, SmeColumn, SmeId, SmeRow,
+    SmfColumn, SmlColumn, Table,
 };
+use crate::param::Param;
 use crate::value::{Cell, Decimal, Text};
 use crate::vocab::{Profile, RuleSet, Section};
 
@@ -652,6 +653,7 @@ fn sme_rows(mztab: &MzTab<'_>, rules: RuleSet, report: &mut Report<'_, '_>) {
         ] {
             r.valid(cell, &column);
         }
+        sme_references(mztab, row, &mut r);
         r.valid(&row.charge, &SmeColumn::Charge);
         r.valid(&row.rank, &SmeColumn::Rank);
         r.number(&row.exp_mass_to_charge, &SmeColumn::ExpMassToCharge);
@@ -739,6 +741,93 @@ fn colunits(mztab: &MzTab<'_>, report: &mut Report<'_, '_>) {
                 report.add(Code::ColunitColumn, Site::Nth(key, nth), label(column));
             }
         }
+    }
+}
+
+/// The keys of the native spectrum id of each `id_format` term in spec
+/// table 1, and whether each value is a non-negative integer (`false`: an
+/// id, `xsd:IDREF`).
+const NATIVE_IDS: &[(&str, &[(&str, bool)])] = &[
+    (
+        "MS:1000768",
+        &[
+            ("controllerType", true),
+            ("controllerNumber", true),
+            ("scan", true),
+        ],
+    ),
+    (
+        "MS:1000769",
+        &[("function", true), ("process", true), ("scan", true)],
+    ),
+    (
+        "MS:1000770",
+        &[
+            ("sample", true),
+            ("period", true),
+            ("cycle", true),
+            ("experiment", true),
+        ],
+    ),
+    ("MS:1000771", &[("scan", true)]),
+    ("MS:1000772", &[("scan", true)]),
+    ("MS:1000773", &[("file", false)]),
+    ("MS:1000774", &[("index", true)]),
+    ("MS:1000775", &[("file", false)]),
+    ("MS:1000776", &[("scan", true)]),
+    ("MS:1000777", &[("spectrum", true)]),
+];
+
+/// Whether `reference` has the form spec table 1 gives for the `id_format`
+/// term `accession`: space-separated `key=value` pairs, in order. `None`
+/// for a term the table does not constrain (such as `MS:1001530`, any
+/// string).
+fn native_id_ok(accession: &str, reference: &str) -> Option<bool> {
+    let (_, keys) = NATIVE_IDS.iter().find(|(a, _)| *a == accession)?;
+    let parts: Vec<&str> = reference.split(' ').collect();
+    Some(
+        parts.len() == keys.len()
+            && parts.iter().zip(keys.iter()).all(|(part, (key, number))| {
+                part.split_once('=').is_some_and(|(k, v)| {
+                    k == *key
+                        && !v.is_empty()
+                        && (!*number || v.bytes().all(|b| b.is_ascii_digit()))
+                })
+            }),
+    )
+}
+
+/// An SME row's `spectra_ref` against its runs' `id_format`, and its URI.
+fn sme_references(mztab: &MzTab<'_>, row: &SmeRow<'_>, r: &mut Rows<'_, '_, '_, SmeColumn>) {
+    let refs = row.spectra_ref.value().into_iter().flatten();
+    for reference in refs.filter_map(Cell::value) {
+        let format = mztab
+            .metadata
+            .ms_run
+            .get(reference.ms_run)
+            .and_then(|run| run.id_format.as_ref())
+            .and_then(Cell::value);
+        let accession = match format {
+            Some(Param::Cv { accession, .. }) => accession.as_str(),
+            _ => continue,
+        };
+        if native_id_ok(accession, reference.reference.as_str()) == Some(false) {
+            r.add(
+                Code::SpectraRefFormat,
+                &SmeColumn::SpectraRef,
+                label(alloc::format!(
+                    "{} ({accession})",
+                    reference.reference.as_str()
+                )),
+            );
+        }
+    }
+    if row
+        .uri
+        .value()
+        .is_some_and(|u| !super::metadata::is_uri(u.as_str()))
+    {
+        r.add(Code::Uri, &SmeColumn::Uri, Detail::None);
     }
 }
 

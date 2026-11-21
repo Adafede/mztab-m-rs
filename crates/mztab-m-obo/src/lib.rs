@@ -13,6 +13,8 @@ use mztab_m::cv::{Term, TermLookup, prefix};
 struct Entry<'a> {
     name: &'a str,
     obsolete: bool,
+    /// The local name of `xref: value-type:xsd\:…`.
+    value_type: Option<&'a str>,
     /// `is_a` and `relationship: part_of` targets.
     parents: Vec<&'a str>,
 }
@@ -71,6 +73,11 @@ impl<'a> Ontology<'a> {
                 "id" => *id = Some(target(value)),
                 "name" => entry.name = value,
                 "is_obsolete" => entry.obsolete = value == "true",
+                "xref" => {
+                    if let Some(kind) = value_type(value) {
+                        entry.value_type = Some(kind);
+                    }
+                }
                 "is_a" => entry.parents.push(target(value)),
                 "relationship" => {
                     if let Some(parent) = value.strip_prefix("part_of ") {
@@ -112,6 +119,15 @@ impl<'a> Ontology<'a> {
 
 /// The identifier in a tag value: before any `!` comment or `{`
 /// qualifiers.
+/// The local name in `value-type:xsd\:int "…"` (`int`).
+fn value_type(xref: &str) -> Option<&str> {
+    let rest = xref.strip_prefix("value-type:")?;
+    let rest = rest
+        .strip_prefix("xsd\\:")
+        .or_else(|| rest.strip_prefix("xsd:"))?;
+    rest.split([' ', '"']).next().filter(|s| !s.is_empty())
+}
+
 fn target(value: &str) -> &str {
     value.split(['!', '{']).next().map_or(value, str::trim)
 }
@@ -125,6 +141,7 @@ impl TermLookup for Ontology<'_> {
         self.terms.get(accession).map(|entry| Term {
             name: entry.name,
             obsolete: entry.obsolete,
+            value_type: entry.value_type,
         })
     }
 

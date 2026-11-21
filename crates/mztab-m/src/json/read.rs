@@ -40,9 +40,10 @@ pub(super) fn parse(input: &str) -> Parsed<'static> {
     };
     let mut tsv = Tsv::default();
     transcode(&root, &mut tsv);
+    let layout = comments(&root, &mut tsv);
     let parsed = crate::read::parse(&tsv.text);
     let mut mztab = parsed.mztab.into_owned();
-    mztab.layout = crate::model::SourceLayout::default();
+    mztab.layout = layout;
     findings.append(&mut tsv.findings);
     for mut finding in parsed.findings.into_vec() {
         finding.location = tsv.relocate(&finding.location);
@@ -52,6 +53,39 @@ pub(super) fn parse(input: &str) -> Parsed<'static> {
         mztab,
         findings: collect(findings),
     }
+}
+
+/// The document's `comment` items as a layout of `COM` lines only: written
+/// as TSV they follow the metadata (D-075).
+fn comments(root: &Node<'_>, tsv: &mut Tsv) -> crate::model::SourceLayout<'static> {
+    use crate::model::{ExtraLine, LineContent, LineEnding, SourceLine};
+    let mut layout = crate::model::SourceLayout::default();
+    let Some(node) = root.get("comment").filter(|n| !n.is_null()) else {
+        return layout;
+    };
+    let at = Path::new().key("comment");
+    for (_, item, here) in items(node, &at, tsv) {
+        let msg = match item.get("msg").map(|n| &n.value) {
+            Some(Value::String(s)) => s.to_string(),
+            Some(Value::Null) | None => String::new(),
+            Some(_) => {
+                tsv.report(Code::JsonShape, &here, Detail::Expected("a comment"));
+                continue;
+            }
+        };
+        if msg.contains(['\n', '\r']) {
+            tsv.report(Code::JsonText, &here, Detail::None);
+            continue;
+        }
+        layout.lines.push(SourceLine {
+            content: LineContent::Extra(ExtraLine::Comment(crate::value::Raw::owned(format!(
+                "COM\t{msg}"
+            )))),
+            ending: LineEnding::Lf,
+            verbatim: None,
+        });
+    }
+    layout
 }
 
 fn collect(findings: Vec<Finding>) -> Findings {
