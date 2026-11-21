@@ -8,14 +8,13 @@ struct Std;
 
 impl mztab_m_cli::Io for Std {
     fn read(&mut self, path: &str) -> Result<Vec<u8>, String> {
-        if path == "-" {
+        let result = if path == "-" {
             let mut bytes = Vec::new();
-            return std::io::stdin()
-                .read_to_end(&mut bytes)
-                .map(|_| bytes)
-                .map_err(|e| e.to_string());
-        }
-        std::fs::read(path).map_err(|e| e.to_string())
+            std::io::stdin().read_to_end(&mut bytes).map(|_| bytes)
+        } else {
+            std::fs::read(path)
+        };
+        result.map_err(|e| e.to_string())
     }
 
     fn write(&mut self, path: &str, text: &str) -> Result<(), String> {
