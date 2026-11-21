@@ -38,6 +38,9 @@ pub struct Term<'t> {
     /// name (`int`, `double`, `string`, ...), if the vocabulary gives one
     /// (PSI-MS: `xref: value-type:xsd\:int`).
     pub value_type: Option<&'t str>,
+    /// Other names that mean exactly this term (OBO `EXACT` synonyms), which
+    /// a parameter may use instead of the name.
+    pub synonyms: &'t [&'t str],
 }
 
 /// Answers questions about the terms of the vocabularies it holds.

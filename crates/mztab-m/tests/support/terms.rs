@@ -131,6 +131,11 @@ impl TermLookup for Mini {
             name,
             obsolete: *obsolete,
             value_type: value_type(accession),
+            synonyms: if *accession == "MS:1000133" {
+                &["collision-induced dissociation"]
+            } else {
+                &[]
+            },
         })
     }
 

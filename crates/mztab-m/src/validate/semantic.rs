@@ -350,7 +350,11 @@ fn term_checks(
         report.add(Code::UnknownTerm, site, term(accession, None, None));
         return;
     };
-    if name.is_some_and(|n| !n.eq_ignore_ascii_case(found.name)) {
+    let known = |n: &str| {
+        n.eq_ignore_ascii_case(found.name)
+            || found.synonyms.iter().any(|s| n.eq_ignore_ascii_case(s))
+    };
+    if name.is_some_and(|n| !known(n)) {
         report.add(
             Code::TermName,
             site,

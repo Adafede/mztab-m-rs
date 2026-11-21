@@ -13,8 +13,11 @@ use mztab_m::cv::{Term, TermLookup, prefix};
 struct Entry<'a> {
     name: &'a str,
     obsolete: bool,
-    /// The local name of `xref: value-type:xsd\:…`.
+    /// The local name of the `xsd:` value type (`relationship:
+    /// has_value_type`, or the older `xref: value-type:`).
     value_type: Option<&'a str>,
+    /// Exact synonyms (`synonym: "CID" EXACT []`).
+    synonyms: Vec<&'a str>,
     /// `is_a` and `relationship: part_of` targets.
     parents: Vec<&'a str>,
 }
@@ -26,10 +29,17 @@ struct Entry<'a> {
 /// an `id` is dropped, and a repeated `id` keeps its first stanza.
 /// Ancestors are followed through `is_a` and `relationship: part_of`
 /// (DECISIONS D-069).
+///
+/// An ontology *covers* (answers for) its own namespace only: the prefix
+/// its header's `ontology:` names (`ms` covers `MS`), or, without that
+/// header, every prefix its terms use. Terms of other vocabularies that a
+/// file carries (PSI-MS holds some UO terms) are not enough to answer for
+/// those vocabularies (D-077); [`cover`](Self::cover) widens it.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Ontology<'a> {
     terms: BTreeMap<&'a str, Entry<'a>>,
-    prefixes: BTreeSet<&'a str>,
+    covered: BTreeSet<&'a str>,
+    namespace: Option<&'a str>,
     data_version: Option<&'a str>,
 }
 
@@ -61,8 +71,10 @@ impl<'a> Ontology<'a> {
             };
             let value = value.trim();
             if in_header {
-                if tag == "data-version" {
-                    ontology.data_version = Some(value);
+                match tag {
+                    "data-version" => ontology.data_version = Some(value),
+                    "ontology" => ontology.namespace = Some(value),
+                    _ => {}
                 }
                 continue;
             }
@@ -72,6 +84,11 @@ impl<'a> Ontology<'a> {
             match tag {
                 "id" => *id = Some(target(value)),
                 "name" => entry.name = value,
+                "synonym" => {
+                    if let Some(synonym) = exact_synonym(value) {
+                        entry.synonyms.push(synonym);
+                    }
+                }
                 "is_obsolete" => entry.obsolete = value == "true",
                 "xref" => {
                     if let Some(kind) = value_type(value) {
@@ -82,6 +99,12 @@ impl<'a> Ontology<'a> {
                 "relationship" => {
                     if let Some(parent) = value.strip_prefix("part_of ") {
                         entry.parents.push(target(parent));
+                    } else if let Some(kind) = value
+                        .strip_prefix("has_value_type ")
+                        .and_then(|t| target(t).strip_prefix("xsd:"))
+                    {
+                        // PSI-MS since 4.1: `relationship: has_value_type xsd:int`.
+                        entry.value_type = Some(kind);
                     }
                 }
                 _ => {}
@@ -93,9 +116,31 @@ impl<'a> Ontology<'a> {
 
     fn close(&mut self, stanza: Option<(Option<&'a str>, Entry<'a>)>) {
         if let Some((Some(id), entry)) = stanza {
-            self.prefixes.insert(prefix(id));
+            let own = self
+                .namespace
+                .is_none_or(|ns| ns.eq_ignore_ascii_case(prefix(id)));
+            if own {
+                self.covered.insert(prefix(id));
+            }
             self.terms.entry(id).or_insert(entry);
         }
+    }
+
+    /// Also covers `prefix`: answers for that vocabulary's terms from this
+    /// file (for a file that is the whole of more than one namespace).
+    ///
+    /// ```
+    /// use mztab_m::cv::TermLookup;
+    ///
+    /// let obo = "ontology: ms\n\n[Term]\nid: MS:1\n\n[Term]\nid: PEFF:1\n";
+    /// let ms = mztab_m_obo::Ontology::parse(obo);
+    /// assert!(ms.covers("MS") && !ms.covers("PEFF"));
+    /// assert!(ms.cover("PEFF").covers("PEFF"));
+    /// ```
+    #[must_use]
+    pub fn cover(mut self, prefix: &'a str) -> Self {
+        self.covered.insert(prefix);
+        self
     }
 
     /// The number of terms.
@@ -117,9 +162,15 @@ impl<'a> Ontology<'a> {
     }
 }
 
-/// The identifier in a tag value: before any `!` comment or `{`
-/// qualifiers.
-/// The local name in `value-type:xsd\:int "…"` (`int`).
+/// The text of an exact synonym: `"CID" EXACT []` gives `CID`.
+fn exact_synonym(value: &str) -> Option<&str> {
+    let rest = value.strip_prefix('"')?;
+    let (text, scope) = rest.split_once('"')?;
+    scope.trim_start().starts_with("EXACT").then_some(text)
+}
+
+/// The local name in `value-type:xsd\:int "…"` (`int`): the older PSI-MS
+/// form, as an `xref`.
 fn value_type(xref: &str) -> Option<&str> {
     let rest = xref.strip_prefix("value-type:")?;
     let rest = rest
@@ -128,13 +179,15 @@ fn value_type(xref: &str) -> Option<&str> {
     rest.split([' ', '"']).next().filter(|s| !s.is_empty())
 }
 
+/// The identifier in a tag value: before any `!` comment or `{`
+/// qualifiers.
 fn target(value: &str) -> &str {
     value.split(['!', '{']).next().map_or(value, str::trim)
 }
 
 impl TermLookup for Ontology<'_> {
     fn covers(&self, prefix: &str) -> bool {
-        self.prefixes.contains(prefix)
+        self.covered.contains(prefix)
     }
 
     fn term(&self, accession: &str) -> Option<Term<'_>> {
@@ -142,6 +195,7 @@ impl TermLookup for Ontology<'_> {
             name: entry.name,
             obsolete: entry.obsolete,
             value_type: entry.value_type,
+            synonyms: &entry.synonyms,
         })
     }
 

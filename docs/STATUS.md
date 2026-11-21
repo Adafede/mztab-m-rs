@@ -1,6 +1,6 @@
 # Status and what is left
 
-Last updated: 2026-11-21, after closing the gaps (D-075, D-076). Milestones are defined in
+Last updated: 2026-11-21, after the PSI-MS run (D-077). Milestones are defined in
 [PLAN.md §8](PLAN.md); decisions are in [DECISIONS.md](../DECISIONS.md).
 
 ## Done
@@ -17,7 +17,8 @@ Last updated: 2026-11-21, after closing the gaps (D-075, D-076). Milestones are 
 | M7 | CLI (`mztab-m`) and browser demo | `8b5439c` | D-072 |
 | M8 | Benchmarks ([BENCHMARKS.md](BENCHMARKS.md)) | `570c987` | D-073 |
 | M9 | Docs and release preparation | `9378f48` | D-074 |
-| — | Remaining checks, API crate, Python and R packages | (pending commit) | D-075, D-076 |
+| — | Remaining checks, API crate, Python and R packages | `5eb36a0` | D-075, D-076 |
+| — | The corpus against PSI-MS 4.2.17 | (pending commit) | D-077 |
 
 All gates pass at each commit: 100% line coverage, no surviving mutants
 in the milestone's diff, and wasm32 tests for `mztab-m` and `mztab-m-obo`.
@@ -37,9 +38,9 @@ real publish waits for approval.
 - **jmzTab-m comparison and oracle outputs.** A JDK 25 is installed
   (`~/.jenv/versions/25.0.4`), so both could run locally, but building the
   jmzTab-m CLI downloads Maven and its dependencies, which needs approval.
-- **Real vocabularies.** The semantic layer has only been run with the test
-  stand-in. A run of the corpus against the real `psi-ms.obo` needs it
-  downloaded, which needs approval.
+- **Other vocabularies.** PSI-MS is checked (`./mk local:vocab`, D-077);
+  UO, OBI, NCBITaxon and the rest are not downloaded, so terms from them
+  are only checked for form and declaration.
 - **Deliberately not done:** CV term units (D-075 explains why mzTab has
   nothing to check them against); the original position of JSON comments
   (D-075).

@@ -50,3 +50,23 @@ task_demo() {
         target/wasm32-unknown-unknown/release/mztab_m_wasm.wasm
     echo "demo: serve crates/mztab-m-wasm/www (e.g. python3 -m http.server -d crates/mztab-m-wasm/www)"
 }
+
+# The corpus against the real PSI-MS vocabulary (D-077): downloads the pinned
+# release (verified by SHA-256) into target/vocab and runs the golden test.
+# Nightly, so a pull request never depends on the network beyond crates.
+PSI_MS_VERSION="v4.2.17"
+PSI_MS_SHA256="354b666d5f7277686f0c340d6d583f43021157563bde9ff61eb704d3566ffcf8"
+LOCAL_NIGHTLY_GATES=(vocab)
+
+task_vocab() {
+    local obo="target/vocab/psi-ms-${PSI_MS_VERSION}.obo"
+    mkdir -p target/vocab
+    if [ ! -f "$obo" ]; then
+        curl -fsSL -A "mztab-m-rs-vocab" -o "$obo.part" \
+            "https://raw.githubusercontent.com/HUPO-PSI/psi-ms-CV/${PSI_MS_VERSION}/psi-ms.obo"
+        mv "$obo.part" "$obo"
+    fi
+    echo "$PSI_MS_SHA256  $obo" | shasum -a 256 -c - >/dev/null ||
+        die "$obo does not match the pinned SHA-256"
+    PSI_MS_OBO="$PWD/$obo" cargo test -p mztab-m-api --test vocabulary --locked
+}

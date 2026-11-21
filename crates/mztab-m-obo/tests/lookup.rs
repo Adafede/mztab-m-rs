@@ -72,6 +72,7 @@ fn parses_terms_and_header() {
             name: "instrument model",
             obsolete: false,
             value_type: None,
+            synonyms: &[],
         }),
         "first stanza wins"
     );
@@ -96,6 +97,14 @@ fn parses_terms_and_header() {
         plain.term("X:1").and_then(|t| t.value_type),
         Some("int"),
         "unescaped form; others ignored"
+    );
+    let current = Ontology::parse(
+        "[Term]\nid: MS:1000511\nname: ms level\nrelationship: has_value_type xsd:int ! The allowed value-type\nrelationship: has_units UO:1\n",
+    );
+    assert_eq!(
+        current.term("MS:1000511").and_then(|t| t.value_type),
+        Some("int"),
+        "the current form, a relationship"
     );
     assert_eq!(ms.term("part_of"), None, "typedefs are not terms");
     assert!(Ontology::parse("").is_empty(), "empty text");
@@ -158,4 +167,47 @@ fn drives_semantic_validation() {
             .any(|f| f.code == Code::CvRule && f.to_string().contains("MS:1001911")),
         "Q Exactive is an instrument model: {findings:?}"
     );
+}
+
+/// A file covers its own namespace (its `ontology:` header), not the
+/// foreign terms it carries; `cover` widens it.
+#[test]
+fn coverage_follows_the_namespace() {
+    let text = "format-version: 1.2\nontology: ms\n\n[Term]\nid: MS:1\nname: a\n\n[Term]\nid: UO:1\nname: b\n";
+    let ms = Ontology::parse(text);
+    assert!(ms.covers("MS"), "own namespace");
+    assert!(!ms.covers("UO"), "carried, not covered");
+    assert!(ms.term("UO:1").is_some(), "the carried term is still there");
+    let widened = ms.cover("UO");
+    assert!(widened.covers("UO"), "widened");
+    let headerless = Ontology::parse("[Term]\nid: MS:1\n\n[Term]\nid: UO:1\n");
+    assert!(
+        headerless.covers("MS") && headerless.covers("UO"),
+        "every prefix"
+    );
+}
+
+/// Exact synonyms are names of the term; other scopes and malformed lines
+/// are not.
+#[test]
+fn exact_synonyms_are_names() {
+    let text = "[Term]\nid: MS:1\nname: collision-induced dissociation\n\
+                synonym: \"CID\" EXACT []\nsynonym: \"CAD\" RELATED []\n\
+                synonym: no quotes EXACT\nsynonym: \"unclosed EXACT\n";
+    let ms = Ontology::parse(text);
+    assert_eq!(
+        ms.term("MS:1").map(|t| t.synonyms.to_vec()),
+        Some(vec!["CID"]),
+        "only the exact one"
+    );
+    let input = "MTD\tmzTab-version\t2.1.0-M\nMTD\tinstrument[1]-name\t[MS, MS:1, cid, ]\n\
+                 MTD\tinstrument[1]-source\t[MS, MS:1, CAD, ]\n";
+    let model = parse(input).mztab;
+    let lookups = [&ms];
+    let names: Vec<String> = validate::semantic(&model, &Config::default(), &lookups)
+        .iter()
+        .filter(|f| f.code == Code::TermName)
+        .map(|f| f.location.to_string())
+        .collect();
+    assert_eq!(names.len(), 1, "CAD is not exact: {names:?}");
 }

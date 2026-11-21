@@ -96,8 +96,41 @@ const USE_TERM: &[(&str, &str)] = &[("ms_level_must", "MS:1000511")];
 /// DECISIONS D-068: terms the field reference allows that the mapping file
 /// lacks. `identification_method` is "the name of software, database or
 /// manual curation", and its example is `[MS, MS:1001477, SpectraST,]`.
-const EXTRA_TERMS: &[(&str, &str, &str)] =
-    &[("identification_method_must", "MS:1000531", "software")];
+/// `(rule, accession, name, use_term, allow_children)`.
+const EXTRA_TERMS: &[(&str, &str, &str, bool, bool)] = &[
+    (
+        "identification_method_must",
+        "MS:1000531",
+        "software",
+        false,
+        true,
+    ),
+    // Spec table 1 and the field reference's own example
+    // (`ms_run[1]-id_format [MS, MS:1001530, mzML unique identifier, ]`).
+    (
+        "msrun_id_format_may",
+        "MS:1001530",
+        "mzML unique identifier",
+        true,
+        false,
+    ),
+    // "Defines what type of units are reported in the ... abundance
+    // fields", with "peak area" (a quantification datatype) as the example.
+    (
+        "small_molecule_quantification_unit_must",
+        "MS:1001805",
+        "quantification datatype",
+        false,
+        true,
+    ),
+    (
+        "small_molecule_feature_quantification_unit_must",
+        "MS:1001805",
+        "quantification datatype",
+        false,
+        true,
+    ),
+];
 
 /// Removes `<!-- ... -->` comments.
 fn strip_comments(xml: &str) -> String {
@@ -192,11 +225,13 @@ fn generate(xml: &str) -> String {
             .expect("writing to a String");
             seen.push(accession);
         }
-        for (_, accession, name) in EXTRA_TERMS.iter().filter(|(rule, ..)| *rule == id) {
+        for (_, accession, name, use_term, children) in
+            EXTRA_TERMS.iter().filter(|(rule, ..)| *rule == id)
+        {
             writeln!(
                 out,
-                "            RuleTerm {{ accession: \"{accession}\", name: \"{name}\", use_term: false, \
-                 allow_children: true, repeatable: false }},"
+                "            RuleTerm {{ accession: \"{accession}\", name: \"{name}\", use_term: {use_term}, \
+                 allow_children: {children}, repeatable: false }},"
             )
             .expect("writing to a String");
         }

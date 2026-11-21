@@ -22,6 +22,7 @@ pub(super) const RULES: &[Rule] = &[
         logic: Logic::And,
         terms: &[
             RuleTerm { accession: "MS:1000767", name: "native spectrum identifier format", use_term: false, allow_children: true, repeatable: false },
+            RuleTerm { accession: "MS:1001530", name: "mzML unique identifier", use_term: true, allow_children: false, repeatable: false },
         ],
     },
     Rule {
@@ -234,6 +235,7 @@ pub(super) const RULES: &[Rule] = &[
             RuleTerm { accession: "UO:0000051", name: "concentration unit", use_term: false, allow_children: true, repeatable: false },
             RuleTerm { accession: "MS:1000043", name: "intensity unit", use_term: false, allow_children: true, repeatable: false },
             RuleTerm { accession: "UO:0000006", name: "substance unit", use_term: false, allow_children: true, repeatable: false },
+            RuleTerm { accession: "MS:1001805", name: "quantification datatype", use_term: false, allow_children: true, repeatable: false },
         ],
     },
     Rule {
@@ -246,6 +248,7 @@ pub(super) const RULES: &[Rule] = &[
             RuleTerm { accession: "UO:0000051", name: "concentration unit", use_term: false, allow_children: true, repeatable: false },
             RuleTerm { accession: "MS:1000043", name: "intensity unit", use_term: false, allow_children: true, repeatable: false },
             RuleTerm { accession: "UO:0000006", name: "substance unit", use_term: false, allow_children: true, repeatable: false },
+            RuleTerm { accession: "MS:1001805", name: "quantification datatype", use_term: false, allow_children: true, repeatable: false },
         ],
     },
     Rule {

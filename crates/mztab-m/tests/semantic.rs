@@ -158,6 +158,7 @@ fn lookups_combine() {
         name: "positive scan",
         obsolete: false,
         value_type: None,
+        synonyms: &[],
     };
     for (name, lookup) in [
         ("reference", by_ref),

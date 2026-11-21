@@ -929,3 +929,51 @@ place in `validate/` to change if you decide otherwise.
   - **CRAN:** a CRAN tarball would need the Rust sources vendored; the
     package installs from the repository.
   - **PyPI:** wheels are not uploaded. Publishing either needs approval.
+
+### D-077: The corpus against the real PSI-MS — PROPOSED
+
+- **Pinned release:** PSI-MS `v4.2.17`
+  (`HUPO-PSI/psi-ms-CV`, SHA-256 `354b666d…6ffcf8`, 6120 terms).
+  `./mk local:vocab` downloads it into `target/vocab/` (not committed),
+  checks the hash and runs `crates/mztab-m-api/tests/vocabulary.rs`, which
+  compares the semantic codes per corpus file with
+  `tests/golden/psi-ms.txt`. It is a nightly gate. Without `PSI_MS_OBO` the
+  test passes without checking.
+- **What the real file changed in the code:**
+  - PSI-MS now declares value types as `relationship: has_value_type
+    xsd:int`, not `xref: value-type:`; `mztab-m-obo` reads both.
+  - An OBO file covers **its own namespace only**: the header's
+    `ontology:` (`ms` covers `MS`). `psi-ms.obo` also carries 53 UO and 16
+    NCIT terms, and covering those prefixes made every other UO term
+    "unknown" and compared UO's declared version with PSI-MS's.
+    `Ontology::cover` widens coverage on request.
+  - **EXACT synonyms** count as the term's name (`[MS, MS:1000133, CID, ]`
+    is right: "CID" is an exact synonym of "collision-induced
+    dissociation"). There are 359 such synonyms.
+- **More mapping-file corrections, from the spec text** (D-002, as in
+  D-068):
+  - `msrun_id_format_may` also allows `MS:1001530` (mzML unique
+    identifier), which spec table 1 lists and the field reference uses as
+    its example.
+  - Both quantification-unit rules also allow descendants of `MS:1001805`
+    (quantification datatype). The field reference describes the field as
+    "what type of units are reported in the ... abundance fields" and gives
+    "peak area", a quantification datatype, as its example.
+  - That example's accession, `MS:1001113`, is "c-terminal flanking
+    residue"; peak area is `MS:1001845` (now obsolete). The example itself
+    is a defect.
+- **What it finds:**
+  - Each file gets one `X010`: its declared PSI-MS version is not 4.2.17.
+  - The rest are real problems in the files:
+    - riken: `MS:1001582` (the software XCMS) labelled "accurate mass",
+      1238 times in one file;
+    - masster: the generic "small molecule confidence measure" carrying
+      the tool's own score names, which the rules also reject as an
+      identification method;
+    - LDA: descriptions in place of term names;
+    - MTBLS263: a spectral-similarity term as a confidence measure;
+    - MS-DIAL GC-MS: `MS: 1000130` with a space;
+    - names PSI-MS has since changed (`mzML file` → `mzML format`).
+  - The base test document finds one name (the fixture's "CID", now
+    accepted), one information (its group unit, "dimensionless unit", is
+    not a time, mass or concentration unit) and its old declared version.
