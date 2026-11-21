@@ -38,6 +38,8 @@ cargo install --path crates/mztab-m-cli --locked
 mztab-m validate third_party/mzTab-M/examples/2.1/example_study_variable_group.mztab
 ```
 
+Findings go to standard output, the summary line to standard error:
+
 ```text
 0 errors, 11 warnings, 2 infos
 warning[MZT-S013] line 65, column 67, cell 3: leading or trailing spaces
