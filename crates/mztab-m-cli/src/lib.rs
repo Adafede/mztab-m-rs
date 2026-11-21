@@ -99,6 +99,9 @@ convert options:
 
 Exit codes: 0 ok, 1 findings (or `fmt --check` would change the file),
 2 bad command line, 3 a file could not be read or written.
+
+Status: early development. The rules follow a draft of mzTab-M 2.1.0-M;
+finding codes, messages and severities may change between versions.
 ";
 
 /// Runs the command line `args` (without the program name) and returns
