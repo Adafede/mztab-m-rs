@@ -26,8 +26,7 @@ fn format(input: &str) -> Format {
 pub fn validate(input: &str, obos: Vec<String>) -> String {
     let parsed = mztab_m_api::read(input.as_bytes(), format(input));
     let vocabularies: Vec<Ontology<'_>> = obos.iter().map(|t| Ontology::parse(t)).collect();
-    let terms: &[Ontology<'_>] = &vocabularies;
-    let findings = mztab_m_api::validate(&parsed, &Settings::default(), &terms);
+    let findings = mztab_m_api::validate(&parsed, &Settings::default(), &vocabularies.as_slice());
     let mut out = String::new();
     // Writing into a `String` cannot fail.
     mztab_m::json::write_findings(&findings, &mut out).unwrap_or_default();
@@ -41,6 +40,7 @@ pub fn validate(input: &str, obos: Vec<String>) -> String {
 /// Why the document cannot be written in that format.
 #[wasm_bindgen]
 pub fn convert(input: &str, to: &str) -> Result<String, String> {
-    let to = Format::parse(to).map_err(|e| e.to_string())?;
-    mztab_m_api::convert(input.as_bytes(), format(input), to, false).map_err(|e| e.to_string())
+    Format::parse(to)
+        .and_then(|to| mztab_m_api::convert(input.as_bytes(), format(input), to, false))
+        .map_err(|e| e.to_string())
 }
