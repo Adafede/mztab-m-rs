@@ -81,11 +81,10 @@ impl Spec {
         core::iter::from_fn(move || {
             lines.peek()?;
             let mut chunk = String::with_capacity(size);
-            while chunk.len() < size {
-                match lines.next() {
-                    Some(line) => chunk.push_str(&line),
-                    None => break,
-                }
+            while chunk.len() < size
+                && let Some(line) = lines.next()
+            {
+                chunk.push_str(&line);
             }
             Some(chunk)
         })
