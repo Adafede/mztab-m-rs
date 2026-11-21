@@ -36,7 +36,8 @@ submodules in `third_party/`. If you cloned without them:
 `git submodule update --init`.
 
 `./mk setup` needs [cargo-binstall](https://github.com/cargo-bins/cargo-binstall)
-installed first. `./mk help` lists every task.
+installed first (`cargo install cargo-binstall`, or see its README).
+`./mk help` lists every task.
 
 ## Checks
 

@@ -2,9 +2,7 @@
 > milestones in [PLAN.md](PLAN.md). For the current state of the project,
 > read [STATUS.md](../../STATUS.md) instead.
 
-# Milestones and local environment notes
-
-## Milestones
+# Milestones
 
 Milestones are defined in [PLAN.md §8](PLAN.md); decisions are in
 [DECISIONS.md](../../DECISIONS.md).
@@ -27,28 +25,5 @@ Milestones are defined in [PLAN.md §8](PLAN.md); decisions are in
 The agent recorded that every gate passed at each of these commits. That was
 local only: no CI run exists for any of them.
 
-## Local environment notes (macOS, sandboxed agent sessions)
-
-- When `~/.cargo` is not writable (sandboxed sessions), tools live in
-  `target/`. Create `target/env.sh` once:
-
-  ```sh
-  export CARGO_HOME="$PWD/target/.cargo-home"
-  export PATH="$PWD/target/tools/bin:$CARGO_HOME/bin:$PATH"
-  ```
-
-  then `source target/env.sh` before `./mk`. `./mk setup` reinstalls the
-  tools after `target/` is wiped (tombi, cargo-audit and cargo-fuzz may need
-  installing separately).
-- Same for Python: set `UV_CACHE_DIR` to a writable directory.
-- `deny` and `audit` fetch the RustSec advisory database from github.com;
-  without network access they fail, which says nothing about the code.
-- Commits are GPG-signed by the user's git config; the gpg agent is not
-  reachable from inside the sandbox.
-- Run `cargo fuzz` with `--target aarch64-apple-darwin` when the installed
-  cargo-fuzz is an x86_64 build.
-- The `mutants-diff` gate has been run by hand
-  (`cargo mutants --in-diff … --jobs 2 --timeout 240`); inside the sandbox its
-  `mktemp` and memory guard misbehave.
-- The jmzTab-m oracle needs a JDK 25 and a Maven download; it has never been
-  run (see [STATUS.md](../../STATUS.md)).
+Notes for running the tools in a sandboxed agent session are in
+[sandbox.md](sandbox.md).

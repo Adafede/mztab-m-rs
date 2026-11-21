@@ -20,13 +20,15 @@ here disagrees with a linked doc, the linked doc wins; fix this file.
 ## Build and test
 
 Clone with submodules; tests read the pinned spec in `third_party/`.
+**In a sandbox** (read-only `~/.cargo` or `~/.rustup`, filtered network),
+read [docs/agents/sandbox.md](docs/agents/sandbox.md) before `./mk setup`.
 
 ```sh
 git submodule update --init      # if cloned without --recurse-submodules
 ./mk setup                       # pinned toolchain and tools (mk.versions)
 ./mk check                       # fast: fmt, toml, typos, clippy
 ./mk test-fast                   # all workspace tests (nextest)
-./mk ci-fast                     # pre-push gate set
+./mk ci-fast                     # pre-push gates, about 3–4 min; skips mutants-diff and the network audit
 ./mk ci                          # full PR gate, includes mutants on the diff
 ```
 
@@ -65,10 +67,7 @@ Golden files are rewritten with `BLESS=1`; see the README in each
 
 [docs/agents/](docs/agents/) holds what agents wrote for themselves or for
 the maintainer: the original plan, recon reports, the milestone log, and
-notes for sandboxed sessions (writable `CARGO_HOME`, network for `deny`,
-GPG signing). Read
-[docs/agents/milestones.md](docs/agents/milestones.md) if `./mk` fails for
-environment reasons.
+[sandbox.md](docs/agents/sandbox.md) for sandboxed sessions.
 
 Every AI-written document that stays in the repository starts with a
 one-line `> Provenance:` note. Add one to anything new you write outside
