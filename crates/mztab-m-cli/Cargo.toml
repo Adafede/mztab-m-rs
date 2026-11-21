@@ -14,6 +14,9 @@ categories = ["command-line-utilities", "science"]
 include = ["/src", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE", "/NOTICE"]
 
 [[bin]]
+# The binary's rustdoc would be written to target/doc/mztab_m/, the core
+# library's directory. The command is documented by --help and the README.
+doc = false
 name = "mztab-m"
 path = "src/main.rs"
 
