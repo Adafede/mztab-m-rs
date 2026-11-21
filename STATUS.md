@@ -1,10 +1,9 @@
 # Status
 
-Last checked on 2026-11-21. `./mk ci-fast` (all gates and tests) passed in a
-fresh clone at `b06bd27`, which includes every code and manifest change on
-this branch so far; coverage and the Python and R tests were run at `4f31765`,
-just before the help-text and manifest changes. Everything described as
-verified was run on that date; the commands are in
+Last checked on 2026-11-21 on branch `chore/polish-docs-and-hygiene`. `./mk ci`,
+`./mk site`, `./mk coverage`, and `./mk bindings` all pass, and
+`./mk setup && ./mk ci && ./mk site` passes in a clean recursive clone.
+Everything described as verified was run on that date; the commands are in
 [Verified how](#verified-how).
 
 **In one line:** the Rust library and the `mztab-m` command work on every
@@ -22,7 +21,7 @@ Nothing here is Stable yet.
 
 | Component | Status | Verified, and how | Known limitations | Next level needs |
 |---|---|---|---|---|
-| Core TSV reader (`mztab_m::parse`, `parse_bytes`) | Working | Workspace tests (154, all pass), including findings for all 23 spec example files pinned in a golden file; property tests; wasm32 tests | Rules follow a draft spec; 9 interpretation questions are OPEN in [DECISIONS.md](DECISIONS.md) | Outside review of the decisions; a released 2.1 spec; real-world files beyond the spec examples |
+| Core TSV reader (`mztab_m::parse`, `parse_bytes`) | Working | Workspace tests (155 unit/integration and 94 doc tests, all pass), including findings for all 23 spec example files pinned in a golden file; property tests; wasm32 tests | Rules follow a draft spec; 9 interpretation questions are OPEN in [DECISIONS.md](DECISIONS.md) | Outside review of the decisions; a released 2.1 spec; real-world files beyond the spec examples |
 | Streaming reader (`StreamReader`) | Working | Tests and a property test that it equals a whole read; a 1 GB synthetic file was streamed on 2026-11-18 ([BENCHMARKS.md](docs/BENCHMARKS.md)) | Not re-run since | Same as above |
 | Writer (canonical form, byte-exact round trip) | Working | Round-trip tests and properties; `mztab-m fmt --check` run on a spec example | Non-string cells with spaces around them are not written back byte-exact (D-056) | Same as above |
 | Structure validator | Working | Tests per rule and per finding code; each code links an anchor that exists in the pinned spec (tested) | 37 decisions behind the rules are PROPOSED, 9 OPEN | Review of DECISIONS.md; comparison with jmzTab-m (see below) |
@@ -32,7 +31,7 @@ Nothing here is Stable yet.
 | `mztab-m-obo` (OBO term lookup) | Working | Own tests; used for the PSI-MS run | Reads what lookups need, not the whole OBO 1.4 format | — |
 | `mztab-m-api` | Working (internal) | Tests; used by the command and both bindings | An internal layer, not a public API | — |
 | `mztab-m` command | Working | Binary tests; installed with `cargo install --path` from a fresh clone; `validate`, `validate --cv`, `convert --to json`, `inspect`, `fmt --check` run by hand on a spec example | Only installable from source | Publish |
-| Python package (`mztab_m`) | Prototype | Wheel built with maturin 1.16 on macOS arm64, Python 3.12; 7 tests and 3 doctests pass | Not on PyPI; no wheel built for any other platform | CI run on Linux/Windows; publish |
+| Python package (`mztab_m`) | Prototype | Wheel built with maturin 1.16.0 on macOS arm64, Python 3.15 (abi3-py3.9); 7 tests and doctests pass | Not on PyPI; no wheel built for any other platform | CI run on Linux/Windows; publish |
 | R package (`mztabm`) | Prototype | `R CMD INSTALL` on R 4.6.2, macOS arm64; 27 testthat checks pass | Not on CRAN; CRAN needs the Rust sources vendored (D-076) | Vendoring; `R CMD check` |
 | Browser demo (`crates/mztab-m-wasm`) | Prototype | The wasm module builds (`./mk local:demo`), its tests pass on wasm32, and the accessible page includes a bundled example and client-side privacy note; published under `/demo/` in the docs site | Not yet tested across multiple browsers on the live GitHub Pages URL | Enable GitHub Pages and test cross-browser |
 | Docs site & findings reference (`docs/site/`, `docs/findings.md`) | Working | `./mk site` builds mdBook + WASM demo + rustdoc with `-D warnings`, verifies `docs/findings.md` matches `Code::ALL`, and passes `lychee --offline` with 0 errors | GitHub Pages workflow awaits enablement in repository settings | Enable GitHub Pages in repo settings |
@@ -64,8 +63,9 @@ Nothing here is Stable yet.
 
 ## Known issues and sharp edges
 
-No issue tracker exists yet; these are the items to file once it does
-(drafts in [docs/proposed-issues.md](docs/proposed-issues.md)).
+Draft issues for these and other open gaps are in
+[docs/proposed-issues.md](docs/proposed-issues.md) for the
+[issue tracker](https://github.com/Adafede/mztab-m-rs/issues).
 
 - The jmzTab-m comparison test passes vacuously (above).
 - `mutants.out/` from 2026-11-18 (before M5) listed 21 missed mutants. Every
@@ -77,12 +77,13 @@ No issue tracker exists yet; these are the items to file once it does
 
 | What | Result (2026-11-21) |
 |---|---|
-| Workspace tests (`./mk test-fast`) | 154 run, 154 passed, 0 skipped |
+| Workspace tests (`./mk test`) | 155 unit/integration tests and 94 doc tests run, all passed, 0 skipped |
 | Line coverage (`./mk coverage`, cargo-llvm-cov) | 100% (7834 of 7834 lines) of the five workspace crates; bindings, benches and fuzz targets are not measured; branch coverage is not measured |
-| wasm32 tests (`./mk wasm`) | pass for `mztab-m`, `mztab-m-obo`, `mztab-m-api`, `mztab-m-wasm` |
-| Lints, format, typos, licenses, MSRV, duplication (`./mk ci-fast`) | pass |
-| Python / R package tests | pass (see table) |
-| Mutation testing, miri, feature powerset, fuzzing | not run |
+| wasm32 tests (`./mk wasm`) | 128 tests pass across `mztab-m`, `mztab-m-obo`, `mztab-m-api`, `mztab-m-wasm` |
+| Full PR gate (`./mk ci`) | pass (lints, format, typos, licenses, audit, machete, MSRV, duplication, wasm, demo, fuzz/bench check, mutants-diff) |
+| Docs site & link check (`./mk site`) | pass (findings freshness, mdBook, WASM demo, rustdoc `-D warnings`, `lychee --offline` 0 errors) |
+| Python / R package tests (`./mk bindings`) | pass (Python 7 tests + doctests; R 27 testthat checks) |
+| Full mutation run, miri, feature powerset, fuzzing | not run |
 | CI on GitHub | never run |
 
 ## Platforms and toolchains tested
@@ -90,7 +91,7 @@ No issue tracker exists yet; these are the items to file once it does
 - macOS 27.2.1 on Apple Silicon (arm64)
 - Rust 1.100.0 (pinned in `rust-toolchain.toml`; also the MSRV),
   target `wasm32-unknown-unknown` through `wasm-bindgen-test-runner` 0.2.130
-- Python 3.12 with maturin 1.16.0
+- Python 3.15 with maturin 1.16.0 (abi3-py3.9 wheel)
 - R 4.6.2 with testthat
 
 Linux and Windows have not been tested.
@@ -98,8 +99,11 @@ Linux and Windows have not been tested.
 ## Verified how
 
 ```sh
-./mk ci-fast                 # deny needs network for the advisory database
+./mk ci
+./mk site
 ./mk coverage
+./mk bindings
+RUSTDOCFLAGS="--cfg docsrs -D warnings" cargo +nightly-2026-11-03 doc -p mztab-m --all-features --no-deps --locked
 cargo build -p mztab-m-cli --release
 target/release/mztab-m validate third_party/mzTab-M/examples/2.1/example_study_variable_group.mztab
 target/release/mztab-m validate --cv target/vocab/psi-ms-v4.2.17.obo third_party/mzTab-M/examples/2.1/example_study_variable_group.mztab
