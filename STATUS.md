@@ -34,11 +34,12 @@ Nothing here is Stable yet.
 | `mztab-m` command | Working | Binary tests; installed with `cargo install --path` from a fresh clone; `validate`, `validate --cv`, `convert --to json`, `inspect`, `fmt --check` run by hand on a spec example | Only installable from source | Publish |
 | Python package (`mztab_m`) | Prototype | Wheel built with maturin 1.16 on macOS arm64, Python 3.12; 7 tests and 3 doctests pass | Not on PyPI; no wheel built for any other platform | CI run on Linux/Windows; publish |
 | R package (`mztabm`) | Prototype | `R CMD INSTALL` on R 4.6.2, macOS arm64; 27 testthat checks pass | Not on CRAN; CRAN needs the Rust sources vendored (D-076) | Vendoring; `R CMD check` |
-| Browser demo (`crates/mztab-m-wasm`) | Prototype | The wasm module builds and its tests pass on wasm32; the page was served locally and validated a small file in a Chromium-based browser (the desktop app's preview pane) | Only that one browser tried; not hosted anywhere | Host it |
-| Benchmarks (`benches/`) | Working | One run on one laptop, 2026-11-18 | Generator changed after the numbers were taken (noted in BENCHMARKS.md) | Re-run, more machines |
-| Fuzz targets (`fuzz/`) | unverified | Not run in this check; the JSON target found three bugs during development (D-071) | Needs nightly Rust | Run in CI nightly |
+| Browser demo (`crates/mztab-m-wasm`) | Prototype | The wasm module builds (`./mk local:demo`), its tests pass on wasm32, and the accessible page includes a bundled example and client-side privacy note; published under `/demo/` in the docs site | Not yet tested across multiple browsers on the live GitHub Pages URL | Enable GitHub Pages and test cross-browser |
+| Docs site & findings reference (`docs/site/`, `docs/findings.md`) | Working | `./mk site` builds mdBook + WASM demo + rustdoc with `-D warnings`, verifies `docs/findings.md` matches `Code::ALL`, and passes `lychee --offline` with 0 errors | GitHub Pages workflow awaits enablement in repository settings | Enable GitHub Pages in repo settings |
+| Benchmarks (`benches/`) | Working | One run on one laptop, 2026-11-18; compiles in `./mk ci` | Generator changed after the numbers were taken (noted in BENCHMARKS.md) | Re-run, more machines |
+| Fuzz targets (`fuzz/`) | unverified | `cargo check --manifest-path fuzz/Cargo.toml` passes in `./mk ci`; the JSON target found three bugs during development (D-071) | Fuzzing itself needs nightly Rust | Run in CI nightly |
 | Comparison with jmzTab-m (`tests/oracle.rs`) | Broken / Known issues | — | **Compares nothing**: there are no jmzTab-m outputs in `crates/mztab-m/tests/oracle/`, so the test passes without checking anything. The 18 rows in `expected-disagreements.tsv` are predictions | Run `.github/workflows/oracle.yml` (or jmzTab-m locally), commit the outputs, explain each disagreement |
-| GitHub Actions workflows | unverified | Pinned by SHA; the `actions` gate (zizmor) passes | Never run: the repository has no remote yet | Push and run |
+| GitHub Actions workflows | unverified | Pinned by SHA; the `actions` gate (zizmor) passes | Workflows are ready on the branch and await running on GitHub | Merge to `main` / run on GitHub |
 | Publishing to crates.io, PyPI, CRAN | Planned | `cargo publish --dry-run` passed at M9 (D-074), not re-run | — | Maintainer decision |
 
 ## What you can rely on today
@@ -71,11 +72,6 @@ No issue tracker exists yet; these are the items to file once it does
   milestone was reported mutant-free on its own diff afterwards, but a full
   mutation run has not been done since. Treat "no surviving mutants" as
   unverified.
-- `cargo doc` warns that the command's binary and the core library both
-  write `target/doc/mztab_m/index.html`.
-- The published crates would not contain the license files or `NOTICE`.
-- The benches crate declares `mztab-m` as a dependency that cargo reports
-  unused.
 
 ## Tests, coverage and CI
 

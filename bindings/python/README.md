@@ -6,8 +6,8 @@
 
 Read, validate, convert and inspect [mzTab-M](https://github.com/HUPO-PSI/mzTab-M)
 metabolomics files, as TSV or JSON, from Python. It is the Rust library
-[`mztab-m`](https://crates.io/crates/mztab-m), compiled: the same reader,
-validator and writer as the `mztab-m` command.
+[`mztab-m`](https://github.com/Adafede/mztab-m-rs/tree/main/crates/mztab-m),
+compiled: the same reader, validator and writer as the `mztab-m` command.
 
 ```python
 import mztab_m

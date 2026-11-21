@@ -29,10 +29,14 @@ git submodule update --init      # if cloned without --recurse-submodules
 ./mk check                       # fast: fmt, toml, typos, clippy
 ./mk test-fast                   # all workspace tests (nextest)
 ./mk ci-fast                     # pre-push gates, about 3–4 min; skips mutants-diff and the network audit
-./mk ci                          # full PR gate, includes mutants on the diff
+./mk ci                          # full PR gate, includes mutants on the diff, demo, fuzz/bench check
+./mk bindings                    # build and test Python and R bindings (outside the workspace)
+./mk findings                    # regenerate docs/findings.md from Code::ALL
+./mk site                        # build mdBook docs + WASM demo + API docs and check links
+./mk site-serve                  # build and preview the site locally
 ```
 
-Bindings are outside the workspace and not run by `./mk`:
+`./mk bindings` runs the Python and R tests directly (or `./mk bindings python` / `./mk bindings r`):
 
 ```sh
 # Python (needs maturin 1.16 in a venv)

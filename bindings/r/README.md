@@ -5,9 +5,9 @@
 
 Read, validate, convert and inspect [mzTab-M](https://github.com/HUPO-PSI/mzTab-M)
 metabolomics files, as TSV or JSON, from R. It is the Rust library
-[`mztab-m`](https://crates.io/crates/mztab-m), compiled through
-[extendr](https://extendr.github.io): the same reader, validator and writer
-as the `mztab-m` command.
+[`mztab-m`](https://github.com/Adafede/mztab-m-rs/tree/main/crates/mztab-m),
+compiled through [extendr](https://extendr.github.io): the same reader,
+validator and writer as the `mztab-m` command.
 
 ```r
 library(mztabm)
