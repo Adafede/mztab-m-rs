@@ -354,7 +354,8 @@ codes! {
     /// The tables form profile `M+S+F`, which is tolerated but not recommended.
     DiscouragedProfile = "MZT-T014", Structure, Should, Format # "profiles-not-supported",
         jmztab [2057], "profile M+S+F is not recommended";
-    /// A table has a header and no rows.
+    /// A table has a header and no rows (error when a profile is declared,
+    /// warning when inferred).
     EmptyTable = "MZT-T015", Structure, Must, Format # "profiles",
         jmztab [], "header without rows; omit the section instead";
     /// A profile-dependent metadata field is present although its table is not.
@@ -390,7 +391,8 @@ codes! {
     /// An `opt_` column comes before a column that is not optional.
     OptColumnPosition = "MZT-T026", Structure, Should, Format # "adding-optional-columns",
         jmztab [], "optional column before a defined column";
-    /// A column that is not nullable holds `null`.
+    /// A column that is not nullable holds `null` (info for
+    /// `best_id_confidence_value`).
     NullValue = "MZT-T027", Structure, Must, Format # "encoding-missing-values-zeroes-nulls-infinity-and-calculation-errors",
         jmztab [2000], "null in a column that is not nullable";
     /// A model value failed to type, or is a number in a form mzTab forbids.

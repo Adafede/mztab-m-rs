@@ -68,6 +68,19 @@ const fn requirement_label(req: Requirement) -> &'static str {
     }
 }
 
+fn severity_cell(code: Code) -> String {
+    match code {
+        Code::EmptyTable => String::from("`error` / `warning` (MUST / SHOULD)"),
+        Code::NullValue => String::from("`error` / `info` (MUST / MAY)"),
+        Code::CvRule => String::from("per rule (`error` / `warning` / `info`)"),
+        _ => format!(
+            "`{}` ({})",
+            code.requirement().severity(),
+            requirement_label(code.requirement())
+        ),
+    }
+}
+
 const fn layer_heading(layer: Layer) -> (&'static str, &'static str) {
     match layer {
         Layer::Syntax => (
@@ -97,7 +110,8 @@ fn generate() -> Result<String, String> {
         out,
         "Every finding emitted by `mztab-m` carries a stable code (`MZT-S*`, `MZT-T*`, or `MZT-X*`), \
          a default severity derived from the rule's RFC 2119 requirement level (`MUST` -> `error`, \
-         `SHOULD` -> `warning`, `MAY` -> `info`), a source location, and a link to the specification \
+         `SHOULD` -> `warning`, `MAY` -> `info`; a few codes vary by rule or context, noted in the table), \
+         a source location, and a link to the specification \
          section at pinned commit [`{short}`](https://github.com/HUPO-PSI/mzTab-M/tree/{SPEC_COMMIT}) \
          (target draft `{SPEC_VERSION}`).",
         short = SPEC_COMMIT.get(..7).unwrap_or(SPEC_COMMIT),
@@ -122,8 +136,7 @@ fn generate() -> Result<String, String> {
                 .get(id)
                 .filter(|s| !s.is_empty())
                 .ok_or_else(|| format!("missing doc comment in src/diag.rs for {id}"))?;
-            let severity = code.requirement().severity();
-            let req = requirement_label(code.requirement());
+            let severity = severity_cell(code);
             let spec = code.spec_ref();
             let jmztab = if code.jmztab().is_empty() {
                 String::from("—")
@@ -139,7 +152,7 @@ fn generate() -> Result<String, String> {
             };
             writeln!(
                 out,
-                "| `{id}` | `{severity}` ({req}) | {} | [`{}`]({spec}) | {jmztab} |",
+                "| `{id}` | {severity} | {} | [`{}`]({spec}) | {jmztab} |",
                 escape_cell(meaning),
                 spec.anchor,
             )

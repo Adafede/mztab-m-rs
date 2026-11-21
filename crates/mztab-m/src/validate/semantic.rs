@@ -333,7 +333,6 @@ fn declarations(
     }
 }
 
-/// `X004`-`X006` for one accession, if the lookup covers it.
 /// `X004`-`X006` and `X011` for one accession (with the parameter's name
 /// and value, if any), if the lookup covers it.
 fn term_checks(

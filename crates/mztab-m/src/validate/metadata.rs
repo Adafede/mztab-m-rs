@@ -4,7 +4,7 @@
 use alloc::collections::BTreeMap;
 
 use super::{Report, Site, label};
-use crate::diag::{Code, Detail, Severity};
+use crate::diag::{Code, Detail};
 use crate::id::{
     AssayId, CvId, DatabaseId, InstrumentId, Ix, MsRunId, ProtocolId, SampleId,
     StudyVariableGroupId, StudyVariableId,
@@ -694,9 +694,8 @@ fn values(mztab: &MzTab<'_>, report: &mut Report<'_, '_>) {
                 .and_then(|c| c.value());
             if name.is_some_and(|text: &Text<'_>| !matches_datatype(datatype, text.as_str())) {
                 let key = MtdKey::StudyVariable(id, StudyVariableKey::Name);
-                report.add_at(
+                report.add(
                     Code::StudyVariableDatatype,
-                    Severity::Error,
                     Site::Value(key),
                     label(datatype),
                 );
