@@ -11,6 +11,10 @@ updates:
       default-days: 7 # let a compromised release be caught before we take it
     commit-message:
       prefix: "chore(deps)" # Conventional Commits, required by ./mk commits
+    ignore:
+      # criterion >= 0.6 pulls `alloca`, whose C object crashes Apple clang 21 linking (D-073).
+      - dependency-name: "criterion"
+        versions: [">= 0.6"]
 
   - package-ecosystem: "github-actions"
     directories:
