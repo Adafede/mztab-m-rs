@@ -1,3 +1,6 @@
+> Provenance: inventory compiled by an AI coding agent from the jmzTab-m
+> sources on 2026-11-17. Kept as a reference; not updated.
+
 # jmzTab-m validation-rule inventory
 
 This inventory was read at jmzTab-m commit `182e909` (2026-11-17). It

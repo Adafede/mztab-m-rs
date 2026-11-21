@@ -1,10 +1,13 @@
+> Provenance: survey of the spec and of jmzTab-m written by an AI coding
+> agent on 2026-11-17, before any code. Kept as a record; not updated.
+
 # Phase 0 – Recon report
 
 This report was compiled on 2026-11-17. Source pins are listed in
 `DECISIONS.md`. The companion documents are:
 
-- `docs/recon/jmztab-m-rules.md` – the full inventory of jmzTab-m rules.
-- `DECISIONS.md` – the ambiguities (D-xxx) and the jmzTab-m deviations (J-xx).
+- [jmztab-m-rules.md](jmztab-m-rules.md) – the full inventory of jmzTab-m rules.
+- [DECISIONS.md](../../DECISIONS.md) – the ambiguities (D-xxx) and the jmzTab-m deviations (J-xx).
 
 ## (a) Spec inventory — HUPO-PSI/mzTab-M @ e66c19e
 
@@ -56,7 +59,7 @@ traits that drive design:
 
 ## (b) jmzTab-m rule inventory
 
-The full inventory is in `docs/recon/jmztab-m-rules.md`. In summary:
+The full inventory is in [jmztab-m-rules.md](jmztab-m-rules.md). In summary:
 
 - Version 2.1.0-SNAPSHOT. It accepts `2.\d.\d-M`. The 2.1 code path exists (profiles, `study_variable_group`), but it is **not version-gated**.
 - **About 95 live codes:**

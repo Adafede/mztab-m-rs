@@ -2,7 +2,7 @@
 
 How `mztab-m` is built and why. The decisions behind each point are in
 [DECISIONS.md](../DECISIONS.md) (referred to as D-nnn); the plan they came
-from is [PLAN.md](PLAN.md).
+from is [PLAN.md](agents/PLAN.md).
 
 ## Constraints
 
@@ -153,8 +153,9 @@ Each milestone ended with all of these passing:
   only its best instantiation, the logic was made non-generic.
 - **WASM:** the core, `mztab-m-obo` and the demo build and pass their tests
   on `wasm32-unknown-unknown`.
-- **Oracle:** a workflow runs jmzTab-m over the corpus. Its outputs are
-  still to be committed and reviewed (STATUS.md).
+- **Oracle:** a workflow (`oracle.yml`) is set up to run jmzTab-m over the
+  corpus. It has never run, so no outputs are committed; until then the comparison test has
+  nothing to compare ([STATUS.md](../STATUS.md)).
 
 ## What it costs
 

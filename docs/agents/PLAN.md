@@ -1,7 +1,12 @@
+> Provenance: implementation plan written by an AI coding agent on
+> 2026-11-17 as the plan for milestones M0–M9. Kept as a record; it is
+> not updated. What was actually built is in
+> [DESIGN.md](../DESIGN.md) and [DECISIONS.md](../../DECISIONS.md).
+
 # Phase 1: Plan
 
-Status: **draft, waiting for your review.** This plan builds on
-`docs/recon/PHASE0.md` and `DECISIONS.md`.
+This plan builds on [recon-phase0.md](recon-phase0.md) and
+[DECISIONS.md](../../DECISIONS.md).
 
 Where a decision is still open, the plan uses the proposal recorded in
 DECISIONS.md and marks it **[default: D-xxx]**. You can override any of them

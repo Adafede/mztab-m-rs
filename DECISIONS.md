@@ -1,7 +1,16 @@
+> Provenance: drafted by an AI coding agent during development, with the
+> maintainer's decisions quoted where they were made. Entries are
+> addressed to the maintainer ("you").
+
 # DECISIONS
 
 A running log of spec ambiguities, conflicts between the schema and the prose,
 deviations in jmzTab-m, and the choices this crate makes about them.
+
+If you want to know why the validator reports (or ignores) something, look
+up the finding's decision here. Most entries are still `PROPOSED`: the
+code follows them, but they have not been formally approved or
+reviewed by anyone outside the project. Disagreement with any of them is a welcome issue.
 
 Status values:
 
@@ -243,7 +252,7 @@ Abbreviations used for the sources:
 
 The spec wins over jmzTab-m. Every deviation is listed here, and the
 differential test harness expects each one. Item numbers point to
-`docs/recon/jmztab-m-rules.md` §Quirks.
+`docs/agents/jmztab-m-rules.md` §Quirks.
 
 | ID | jmzTab-m behaviour | Spec | Proposal | Status |
 |---|---|---|---|---|
