@@ -102,114 +102,110 @@ fn table_shape<S: Copy + Ord + core::fmt::Display, R>(
             report.add(Code::MissingColumn, Site::Header(section), label(s));
         }
     }
-    let shape = Shape {
+    check_shape(
+        mztab,
         declared,
         section,
-        empty: table.rows.is_empty(),
-        kinds: kinds(&table.header, stable),
-    };
-    shape.check(mztab, report);
+        table.rows.is_empty(),
+        &kinds(&table.header, stable),
+        report,
+    );
 }
 
-/// What the column checks need to know about a table.
-struct Shape {
+fn check_shape(
+    mztab: &MzTab<'_>,
     declared: Option<Profile>,
     section: Section,
     empty: bool,
-    kinds: Vec<Kind>,
-}
-
-impl Shape {
-    fn check(&self, mztab: &MzTab<'_>, report: &mut Report<'_, '_>) {
-        let m = &mztab.metadata;
-        let section = self.section;
-        if report.rule_set == RuleSet::V2_1 && self.empty {
-            // DECISIONS D-019: an error when the profile is declared, a
-            // warning when it is inferred.
-            let severity = if self.declared.is_some() {
-                Severity::Error
-            } else {
-                Severity::Warning
-            };
-            report.add_at(
-                Code::EmptyTable,
-                severity,
-                Site::Header(section),
-                Detail::None,
-            );
+    kinds: &[Kind],
+    report: &mut Report<'_, '_>,
+) {
+    let m = &mztab.metadata;
+    if report.rule_set == RuleSet::V2_1 && empty {
+        // DECISIONS D-019: an error when the profile is declared, a
+        // warning when it is inferred.
+        let severity = if declared.is_some() {
+            Severity::Error
+        } else {
+            Severity::Warning
+        };
+        report.add_at(
+            Code::EmptyTable,
+            severity,
+            Site::Header(section),
+            Detail::None,
+        );
+    }
+    // Every assay and study variable needs its abundance columns, and
+    // every confidence measure its SME column: (column, its label).
+    let mut expected: Vec<(Kind, Detail)> = Vec::new();
+    let abundance = |column| (Kind::Abundance(column), label(column));
+    if matches!(section, Section::Sml | Section::Smf) {
+        expected.extend(
+            m.assay
+                .keys()
+                .map(|id| abundance(AbundanceColumn::Assay(id))),
+        );
+    }
+    if section == Section::Sml {
+        let svs = m.study_variable.keys();
+        expected.extend(svs.map(|id| abundance(AbundanceColumn::StudyVariable(id))));
+        let svs = m.study_variable.keys();
+        expected.extend(svs.map(|id| abundance(AbundanceColumn::VariationStudyVariable(id))));
+    }
+    if section == Section::Sme {
+        let measures = m.id_confidence_measure.keys();
+        expected.extend(measures.map(|id| (Kind::IdConfidence(id), label(id))));
+    }
+    for (kind, name) in expected {
+        let present = kinds.iter().any(|k| match (k, kind) {
+            (Kind::Abundance(a), Kind::Abundance(b)) => *a == b,
+            (Kind::IdConfidence(a), Kind::IdConfidence(b)) => *a == b,
+            _ => false,
+        });
+        if !present {
+            report.add(Code::MissingColumn, Site::Header(section), name);
         }
-        // Every assay and study variable needs its abundance columns, and
-        // every confidence measure its SME column: (column, its label).
-        let mut expected: Vec<(Kind, Detail)> = Vec::new();
-        let abundance = |column| (Kind::Abundance(column), label(column));
-        if matches!(section, Section::Sml | Section::Smf) {
-            expected.extend(
-                m.assay
-                    .keys()
-                    .map(|id| abundance(AbundanceColumn::Assay(id))),
-            );
-        }
-        if section == Section::Sml {
-            let svs = m.study_variable.keys();
-            expected.extend(svs.map(|id| abundance(AbundanceColumn::StudyVariable(id))));
-            let svs = m.study_variable.keys();
-            expected.extend(svs.map(|id| abundance(AbundanceColumn::VariationStudyVariable(id))));
-        }
-        if section == Section::Sme {
-            let measures = m.id_confidence_measure.keys();
-            expected.extend(measures.map(|id| (Kind::IdConfidence(id), label(id))));
-        }
-        for (kind, name) in expected {
-            let present = self.kinds.iter().any(|k| match (k, kind) {
-                (Kind::Abundance(a), Kind::Abundance(b)) => *a == b,
-                (Kind::IdConfidence(a), Kind::IdConfidence(b)) => *a == b,
-                _ => false,
-            });
-            if !present {
-                report.add(Code::MissingColumn, Site::Header(section), name);
+    }
+    let mut highest = None;
+    let mut out_of_order = false;
+    let mut seen_opt = false;
+    let mut opt_misplaced = false;
+    for (i, kind) in kinds.iter().enumerate() {
+        if let Some(r) = kind.rank() {
+            if highest.is_some_and(|h| r < h) && !out_of_order {
+                out_of_order = true;
+                report.add(Code::ColumnOrder, Site::Column(section, i), Detail::None);
             }
-        }
-        let mut highest = None;
-        let mut out_of_order = false;
-        let mut seen_opt = false;
-        let mut opt_misplaced = false;
-        for (i, kind) in self.kinds.iter().enumerate() {
-            if let Some(r) = kind.rank() {
-                if highest.is_some_and(|h| r < h) && !out_of_order {
-                    out_of_order = true;
-                    report.add(Code::ColumnOrder, Site::Column(section, i), Detail::None);
-                }
-                highest = highest.max(Some(r));
-                if seen_opt && !opt_misplaced {
-                    opt_misplaced = true;
-                    report.add(
-                        Code::OptColumnPosition,
-                        Site::Column(section, i),
-                        Detail::None,
-                    );
-                }
-            }
-            seen_opt |= matches!(kind, Kind::Opt(_));
-            let dangling = match *kind {
-                Kind::Abundance(AbundanceColumn::Assay(id)) | Kind::Opt(OptTarget::Assay(id)) => {
-                    !m.assay.contains_key(id)
-                }
-                Kind::Abundance(
-                    AbundanceColumn::StudyVariable(id)
-                    | AbundanceColumn::VariationStudyVariable(id),
-                )
-                | Kind::Opt(OptTarget::StudyVariable(id)) => !m.study_variable.contains_key(id),
-                Kind::IdConfidence(id) => !m.id_confidence_measure.contains_key(id),
-                Kind::Opt(OptTarget::MsRun(id)) => !m.ms_run.contains_key(id),
-                Kind::Opt(OptTarget::Global) | Kind::Stable(_) | Kind::Unknown => false,
-            };
-            if dangling {
+            highest = highest.max(Some(r));
+            if seen_opt && !opt_misplaced {
+                opt_misplaced = true;
                 report.add(
-                    Code::DanglingReference,
+                    Code::OptColumnPosition,
                     Site::Column(section, i),
                     Detail::None,
                 );
             }
+        }
+        seen_opt |= matches!(kind, Kind::Opt(_));
+        let dangling = match *kind {
+            Kind::Abundance(AbundanceColumn::Assay(id)) | Kind::Opt(OptTarget::Assay(id)) => {
+                !m.assay.contains_key(id)
+            }
+            Kind::Abundance(
+                AbundanceColumn::StudyVariable(id) | AbundanceColumn::VariationStudyVariable(id),
+            )
+            | Kind::Opt(OptTarget::StudyVariable(id)) => !m.study_variable.contains_key(id),
+            Kind::IdConfidence(id) => !m.id_confidence_measure.contains_key(id),
+            Kind::Opt(OptTarget::MsRun(id)) => !m.ms_run.contains_key(id),
+            Kind::Opt(OptTarget::Global) | Kind::Stable(_) | Kind::Unknown => false,
+        };
+        if dangling {
+            report.add(
+                Code::DanglingReference,
+                Site::Column(section, i),
+                Detail::None,
+            );
         }
     }
 }
@@ -265,9 +261,9 @@ impl<S: PartialEq> Rows<'_, '_, '_, S> {
 
     /// `null` in a column that is not nullable (and present in the header).
     fn not_null<T>(&mut self, cell: &Cell<'_, T>, column: &S, severity: Severity) {
-        let in_header = position(self.header, column) < self.header.columns.len();
-        if cell.is_null() && in_header {
-            let site = self.at(column);
+        let col = position(self.header, column);
+        if cell.is_null() && col < self.header.columns.len() {
+            let site = Site::Cell(self.section, self.row, col);
             self.report
                 .add_at(Code::NullValue, severity, site, Detail::None);
         }
@@ -290,16 +286,14 @@ impl<S: PartialEq> Rows<'_, '_, '_, S> {
     }
 
     fn number(&mut self, cell: &Cell<'_, Decimal<'_>>, column: &S) {
-        let forbidden = cell.value().is_some_and(|d| !d.kind().is_conforming());
-        if cell.invalid().is_some() || forbidden {
+        if bad_decimal(cell) {
             self.add(Code::InvalidValue, column, Detail::None);
         }
     }
 
     fn numbers(&mut self, cells: &[Cell<'_, Decimal<'_>>], positions: &[usize]) {
         for (cell, &at) in cells.iter().zip(positions) {
-            let forbidden = cell.value().is_some_and(|d| !d.kind().is_conforming());
-            if cell.invalid().is_some() || forbidden {
+            if bad_decimal(cell) {
                 let site = Site::Cell(self.section, self.row, at);
                 self.report.add(Code::InvalidValue, site, Detail::None);
             }
@@ -384,12 +378,8 @@ fn refs<I: Copy>(cell: &Cell<'_, List<'_, I>>) -> Vec<I> {
     })
 }
 
-fn ids<I: Ord + Copy>(cells: impl Iterator<Item = I>) -> BTreeSet<I> {
-    cells.collect()
-}
-
-fn profile(mztab: &MzTab<'_>) -> Option<Profile> {
-    mztab.inferred_profile().ok()
+fn bad_decimal(cell: &Cell<'_, Decimal<'_>>) -> bool {
+    cell.invalid().is_some() || cell.value().is_some_and(|d| !d.kind().is_conforming())
 }
 
 #[expect(
@@ -400,18 +390,19 @@ fn sml_rows(mztab: &MzTab<'_>, rules: RuleSet, report: &mut Report<'_, '_>) {
     let Some(table) = &mztab.sml else { return };
     let header = &table.header;
     let positions = Positions::of(header);
-    let smf_ids = ids(mztab
+    let smf_ids: BTreeSet<_> = mztab
         .smf
         .iter()
         .flat_map(|t| &t.rows)
-        .filter_map(|r| r.smf_id.value().copied()));
+        .filter_map(|r| r.smf_id.value().copied())
+        .collect();
     let has_smf = mztab.smf.is_some();
     let scheme = mztab
         .metadata
         .small_molecule_identification_reliability
         .as_ref();
     let default_scheme = scheme.is_none_or(Cell::is_null);
-    let profile = profile(mztab);
+    let profile = mztab.inferred_profile().ok();
     duplicates(
         report,
         Section::Sml,
@@ -515,13 +506,14 @@ fn smf_rows(mztab: &MzTab<'_>, rules: RuleSet, report: &mut Report<'_, '_>) {
     let Some(table) = &mztab.smf else { return };
     let header = &table.header;
     let positions = Positions::of(header);
-    let sme_ids: BTreeSet<SmeId> = ids(mztab
+    let sme_ids: BTreeSet<SmeId> = mztab
         .sme
         .iter()
         .flat_map(|t| &t.rows)
-        .filter_map(|r| r.sme_id.value().copied()));
+        .filter_map(|r| r.sme_id.value().copied())
+        .collect();
     let has_sme = mztab.sme.is_some();
-    let profile = profile(mztab);
+    let profile = mztab.inferred_profile().ok();
     duplicates(
         report,
         Section::Smf,
