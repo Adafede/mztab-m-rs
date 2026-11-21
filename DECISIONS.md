@@ -326,10 +326,11 @@ differential test harness expects each one. Item numbers point to
 
 - **Agent files:** `AGENTS.md`, `CLAUDE.md`, `.agents/` and `skills/` are not
   adopted (T8).
-- **`.vscode/settings.json`:** not adopted. It is editor-only, and the sandbox
-  used during development cannot write it.
-- **`CITATION.cff` and `codemeta.json`:** deferred to M9. They need author
-  metadata, which only the maintainer can supply.
+- **`.vscode/settings.json`:** initially skipped in the sandbox; adopted when
+  adopting `rusti-graben` updates on the polish branch.
+- **`CITATION.cff` and `codemeta.json`:** `CITATION.cff` was adopted once author
+  contact and ORCID details were provided (`doi`/`version`/`date-released` remain
+  marked `TODO(human)` until release); `codemeta.json` is not adopted yet.
 
 ## Model and grammars (M1)
 

@@ -32,19 +32,13 @@ jobs:
           persist-credentials: false
           submodules: true # the tests read the spec's golden documents
 
-      - name: Build the wheel
-        working-directory: bindings/python
-        run: |
-          python3 -m venv ../../target/venv
-          ../../target/venv/bin/pip install --quiet 'maturin==1.16.0'
-          ../../target/venv/bin/maturin build --release --out ../../target/wheels
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: bindings/python
 
-      - name: Install it and run the tests
-        run: |
-          target/venv/bin/pip install --quiet target/wheels/*.whl
-          cd bindings/python
-          ../../target/venv/bin/python -m unittest discover -s tests -v
-          ../../target/venv/bin/python -c "import doctest, mztab_m, sys; sys.exit(doctest.testmod(mztab_m).failed)"
+      - name: Build and test Python package
+        run: ./mk bindings python
 
   r:
     name: R package
@@ -57,13 +51,15 @@ jobs:
           persist-credentials: false
           submodules: true # the tests read the spec's golden documents
 
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: bindings/r/src/rust
+
       - name: Install R and testthat
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends r-base-dev r-cran-testthat
 
-      - name: Install the package and run the tests
-        run: |
-          mkdir -p target/rlib
-          R CMD INSTALL --no-docs --library=target/rlib bindings/r
-          R_LIBS=target/rlib Rscript -e 'library(testthat); library(mztabm); test_dir("bindings/r/tests/testthat", stop_on_failure = TRUE)'
+      - name: Build and test R package
+        run: ./mk bindings r

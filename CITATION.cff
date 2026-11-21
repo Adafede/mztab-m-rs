@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use mztab-m-rs in your work, please cite it using the metadata below."
+title: "mztab-m-rs"
+type: software
+abstract: "Pure, no_std Rust reader, writer, validator, CLI, browser demo, and Python/R bindings for the HUPO-PSI mzTab-M metabolomics format."
+authors:
+  - family-names: "Rutz"
+    given-names: "Adriano"
+    email: "adafede@gmail.com"
+    orcid: "https://orcid.org/0000-0003-0443-9902"
+    affiliation: "Institute for Molecular Systems Biology, ETH Zurich (https://ror.org/03j5gm982)"
+license:
+  - Apache-2.0
+  - MIT
+repository-code: "https://github.com/Adafede/mztab-m-rs"
+url: "https://adafede.github.io/mztab-m-rs/"
+keywords:
+  - mztab
+  - mztab-m
+  - metabolomics
+  - mass-spectrometry
+  - hupo-psi
+  - bioinformatics
+  - rust
+  - wasm
+# TODO(human): set `version`, `date-released`, and `doi` once a release and Zenodo archive exist.

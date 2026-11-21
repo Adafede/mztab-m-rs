@@ -75,6 +75,7 @@ verbose_file_reads = "warn"
 missing_debug_implementations = "warn"
 missing_docs = "warn"
 rust_2018_idioms = { level = "deny", priority = -1 }
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(docsrs)"] }
 unreachable_pub = "warn"
 unsafe_code = "forbid"
 unused_lifetimes = "warn"

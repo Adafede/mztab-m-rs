@@ -7,9 +7,6 @@ description = "R bindings for mztab-m (the `mztabm` R package, built by R CMD IN
 license = "MIT OR Apache-2.0"
 publish = false
 
-# Built by R, outside the Rust workspace: it needs R's headers (D-076).
-[workspace]
-
 [lib]
 crate-type = ["staticlib"]
 name = "mztabm"
@@ -28,3 +25,6 @@ unwrap_used = "deny"
 # `missing_docs` is not set: `#[extendr]` generates undocumented wrappers.
 [lints.rust]
 unsafe_code = "warn"
+
+# Built by R, outside the Rust workspace: it needs R's headers (D-076).
+[workspace]

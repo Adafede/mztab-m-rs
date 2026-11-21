@@ -7,10 +7,6 @@ description = "Python bindings for mztab-m (the `mztab_m` package, built with ma
 license = "MIT OR Apache-2.0"
 publish = false
 
-# Built by maturin, outside the Rust workspace: it needs a Python
-# interpreter, which the workspace gates do not (D-076).
-[workspace]
-
 [lib]
 crate-type = ["cdylib"]
 name = "_native"
@@ -35,3 +31,7 @@ unwrap_used = "deny"
 [lints.rust]
 missing_docs = "warn"
 unsafe_code = "forbid"
+
+# Built by maturin, outside the Rust workspace: it needs a Python
+# interpreter, which the workspace gates do not (D-076).
+[workspace]

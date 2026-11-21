@@ -1,33 +1,4 @@
-//! The `mztab-m` command: validate, format, convert and inspect mzTab-M
-//! files (TSV or JSON).
-//!
-//! All the work is in [`run`], which takes its arguments and an [`Io`]; the
-//! binary only supplies the real file system and standard streams. Exit
-//! codes are [`OK`], [`FINDINGS`], [`USAGE`] and [`FAILED`].
-//!
-//! ```
-//! use mztab_m_cli::{Io, OK, run};
-//!
-//! #[derive(Default)]
-//! struct Capture(String);
-//!
-//! impl Io for Capture {
-//!     fn read(&mut self, _path: &str) -> Result<Vec<u8>, String> {
-//!         Ok(b"MTD\tmzTab-version\t2.1.0-M\n".to_vec())
-//!     }
-//!     fn write(&mut self, _path: &str, _text: &str) -> Result<(), String> {
-//!         Ok(())
-//!     }
-//!     fn out(&mut self, text: &str) {
-//!         self.0.push_str(text);
-//!     }
-//!     fn err(&mut self, _text: &str) {}
-//! }
-//!
-//! let mut io = Capture::default();
-//! assert_eq!(run(&["--version".to_owned()], &mut io), OK);
-//! assert!(io.0.starts_with("mztab-m "));
-//! ```
+#![doc = include_str!("../README.md")]
 
 use mztab_m::{Parsed, Severity, json};
 use mztab_m_api::{Error, Fact, Format, Layer, Settings};
@@ -73,32 +44,45 @@ mztab-m: validate, format, convert and inspect mzTab-M files (TSV or JSON)
 
 Usage:
   mztab-m validate [options] FILE
-  mztab-m fmt [--check] [-o OUT] FILE
-  mztab-m convert --to tsv|json [--lossy] [-o OUT] FILE
-  mztab-m inspect [--format human|json] FILE
+  mztab-m fmt [--check] [-o OUT] [--input tsv|json] FILE
+  mztab-m convert --to tsv|json [--lossy] [-o OUT] [--input tsv|json] FILE
+  mztab-m inspect [--format human|json] [--input tsv|json] FILE
   mztab-m --help | --version
 
 FILE may be `-` for standard input. JSON input is recognised by a `.json`
 name or a leading `{`; `--input tsv|json` overrides.
 
+Common options:
+  --input tsv|json       force input format (default: sniff from name or `{`)
+
 validate options:
   --format human|json    findings as text lines (default) or a JSON array
   --layer syntax|structure|semantic
                          the last layer to run (default: semantic)
-  --cv FILE.obo          a vocabulary for the semantic layer (repeatable)
+  --cv FILE.obo          OBO vocabulary file for semantic checks (repeatable)
   --fail-on error|warning|info|never
                          exit 1 if a finding is at least this severe
                          (default: error)
-  --severity CODE=LEVEL  report CODE at LEVEL (error|warning|info|off);
-                         repeatable
+  --severity CODE=LEVEL  override CODE to error|warning|info|off (repeatable)
+
+fmt options:
+  --check                exit 1 if the file is not in canonical form
+  -o OUT                 write output to OUT (default: `-`, standard output)
 
 convert options:
-  --lossy                drop what the specification does not define
-                         (unknown metadata, unknown columns, extra cells)
-                         instead of refusing; says what was dropped
+  --to tsv|json          target format (required)
+  --lossy                drop metadata, columns and cells outside the schema
+                         instead of refusing; reports counts to stderr
+  -o OUT                 write output to OUT (default: `-`, standard output)
 
-Exit codes: 0 ok, 1 findings (or `fmt --check` would change the file),
-2 bad command line, 3 a file could not be read or written.
+inspect options:
+  --format human|json    summary as key/value lines (default) or JSON object
+
+Exit codes:
+  0  ok (no finding at or above `--fail-on`, or file is canonical)
+  1  findings at or above `--fail-on`, or `fmt --check` would change the file
+  2  bad command line arguments
+  3  file could not be read or written, or model cannot be written in format
 
 Status: early development. The rules follow a draft of mzTab-M 2.1.0-M;
 finding codes, messages and severities may change between versions.

@@ -12,6 +12,10 @@ categories = ["no-std", "science"]
 # Sources only (see crates/mztab-m).
 include = ["/src", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE", "/NOTICE"]
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [dependencies]
 mztab-m = { path = "../mztab-m", version = "0.1.0", features = ["json"] }
 mztab-m-obo = { path = "../mztab-m-obo", version = "0.1.0" }

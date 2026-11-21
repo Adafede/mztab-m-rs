@@ -13,6 +13,10 @@ categories = ["command-line-utilities", "science"]
 # repository (third_party/), which a package cannot carry.
 include = ["/src", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE", "/NOTICE"]
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [[bin]]
 # The binary's rustdoc would be written to target/doc/mztab_m/, the core
 # library's directory. The command is documented by --help and the README.
