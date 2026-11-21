@@ -4,6 +4,8 @@
 - [Install](install.md)
 - [Quickstart (CLI)](quickstart.md)
 - [Using the Library (Rust)](library.md)
+  - [OBO Vocabularies (`mztab-m-obo`)](library-obo.md)
+  - [Internal Shared API (`mztab-m-api`)](library-api.md)
 - [Python & R Bindings](bindings.md)
 - [Validation Findings Reference](findings.md)
 - [Spec Decisions](decisions.md)

@@ -2,11 +2,13 @@
 """mdBook preprocessor that rewrites repo-relative links to mdBook pages or GitHub."""
 
 import json
+import os
 import posixpath
 import re
 import sys
 
 REPO_BASE = "https://github.com/Adafede/mztab-m-rs"
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Map normalized repo-root paths to (book_page, default_fragment).
 SITE_PAGES = {
@@ -26,7 +28,6 @@ SITE_PAGES = {
 CHAPTER_BASE_DIRS = {
     "design.md": "docs",
     "benchmarks.md": "docs",
-    "bindings.md": "bindings/r",
 }
 
 SITE_LOCAL = {
@@ -34,6 +35,8 @@ SITE_LOCAL = {
     "install.md",
     "quickstart.md",
     "library.md",
+    "library-obo.md",
+    "library-api.md",
     "bindings.md",
     "findings.md",
     "decisions.md",
@@ -94,6 +97,7 @@ def rewrite_target(target: str, base_dir: str) -> str:
     if norm in REPO_TOP_FILES or any(
         norm.startswith(prefix) or norm == prefix.rstrip("/") for prefix in REPO_DIRS
     ):
+        is_dir = is_dir or os.path.isdir(os.path.join(REPO_ROOT, norm))
         kind = "tree" if is_dir else "blob"
         suffix = "/" if is_dir else ""
         return f"{REPO_BASE}/{kind}/main/{norm}{suffix}{fragment}"
@@ -161,9 +165,10 @@ def process_markdown(text: str, chapter_path: str) -> str:
         m = FENCE_RE.match(line)
         if m:
             marker = m.group(1)
+            stripped = line.strip()
             if fence is None:
                 fence = marker[0] * len(marker)
-            elif line.lstrip().startswith(fence) and line.strip() == fence:
+            elif len(stripped) >= len(fence) and set(stripped) == {fence[0]}:
                 fence = None
             out.append(line)
         elif fence is not None:
