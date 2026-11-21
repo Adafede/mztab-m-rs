@@ -264,7 +264,6 @@ fn mandatory(mztab: &MzTab<'_>, rules: RuleSet, report: &mut Report<'_, '_>) {
     let has_measure = !m.id_confidence_measure.is_empty();
     let first_measure = MtdKey::IdConfidenceMeasure(ONE.into());
     let first_database = MtdKey::Database(ONE.into(), DatabaseKey::Database);
-    // (field present, required by the tables, key, table present)
     let dependent = [
         (
             present(&m.quantification_method),
