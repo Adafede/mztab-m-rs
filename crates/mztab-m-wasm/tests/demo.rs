@@ -10,10 +10,14 @@ const BASE_JSON: &str = include_str!("../../mztab-m/tests/golden/full.json");
 
 #[test]
 fn validates_tsv_and_json() {
-    assert_eq!(validate(BASE, ""), "[]", "the base document is valid");
-    assert_eq!(validate(BASE_JSON, ""), "[]", "and so is its JSON");
+    assert_eq!(
+        validate(BASE, Vec::new()),
+        "[]",
+        "the base document is valid"
+    );
+    assert_eq!(validate(BASE_JSON, Vec::new()), "[]", "and so is its JSON");
     let bad = BASE.replace("\t2.1.0-M\n", "\t2.1\n");
-    let findings = validate(&bad, "");
+    let findings = validate(&bad, Vec::new());
     assert!(
         findings.starts_with("[{\"code\":\"MZT-S006\""),
         "{findings}"
@@ -21,8 +25,20 @@ fn validates_tsv_and_json() {
     assert!(!findings.contains("MZT-T028"), "reported once");
     let obo = "[Term]\nid: MS:1\nname: x\n";
     assert!(
-        validate(BASE, obo).contains("MZT-X004"),
+        validate(BASE, vec![obo.to_owned()]).contains("MZT-X004"),
         "MS terms unknown to this vocabulary"
+    );
+}
+
+#[test]
+fn validates_multiple_vocabularies_separately() {
+    let ms = "ontology: ms\n\n[Term]\nid: MS:1\nname: x\n";
+    let uo = "ontology: uo\n\n[Term]\nid: UO:1\nname: y\n";
+    let doc = "MTD\tmzTab-version\t2.1.0-M\nMTD\tcustom[1]\t[UO, UO:999, bad, ]\n";
+    let findings = validate(doc, vec![ms.to_owned(), uo.to_owned()]);
+    assert!(
+        findings.contains("MZT-X004") && findings.contains("UO:999"),
+        "second vocabulary must keep its own ontology header: {findings}"
     );
 }
 

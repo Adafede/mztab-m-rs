@@ -12,15 +12,22 @@ fn format(input: &str) -> Format {
     Format::sniff("", input.as_bytes())
 }
 
-/// Validates an mzTab-M document (TSV, or JSON if it starts with `{`)
-/// against the vocabularies in `obo` (OBO text, may be empty) and returns
-/// the findings as a JSON array (see `mztab_m::json::write_findings`).
+/// Validates an mzTab-M document and returns findings as a JSON array.
+///
+/// Accepts TSV (or JSON if it starts with `{`) and checks terms against the
+/// OBO vocabularies in `obos` (one file text per entry); see
+/// `mztab_m::json::write_findings` for the JSON shape.
 #[wasm_bindgen]
 #[must_use]
-pub fn validate(input: &str, obo: &str) -> String {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "wasm-bindgen passes JS string arrays by value"
+)]
+pub fn validate(input: &str, obos: Vec<String>) -> String {
     let parsed = mztab_m_api::read(input.as_bytes(), format(input));
-    let vocabulary = Ontology::parse(obo);
-    let findings = mztab_m_api::validate(&parsed, &Settings::default(), &vocabulary);
+    let vocabularies: Vec<Ontology<'_>> = obos.iter().map(|t| Ontology::parse(t)).collect();
+    let terms: &[Ontology<'_>] = &vocabularies;
+    let findings = mztab_m_api::validate(&parsed, &Settings::default(), &terms);
     let mut out = String::new();
     // Writing into a `String` cannot fail.
     mztab_m::json::write_findings(&findings, &mut out).unwrap_or_default();

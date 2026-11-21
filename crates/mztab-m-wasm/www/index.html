@@ -78,8 +78,8 @@
   <div id="drop" tabindex="0" role="button" aria-label="Choose an mzTab-M file" aria-describedby="drop-hint">
     <strong>Drop an mzTab-M file here</strong> or click to choose one
     <div id="drop-hint" class="note">Accepts TSV (<code>.mztab</code>, <code>.tsv</code>, <code>.txt</code>) or JSON (<code>.json</code>).</div>
-    <input id="file" type="file" accept=".mztab,.mzTab,.tsv,.txt,.json" hidden>
   </div>
+  <input id="file" type="file" accept=".mztab,.mzTab,.tsv,.txt,.json" hidden>
 
   <div class="row">
     <button id="try-example" class="primary" type="button" disabled>Try an example file</button>
@@ -118,7 +118,8 @@
   import init, { validate, convert } from "./pkg/mztab_m_wasm.js";
 
   const $ = (id) => document.getElementById(id);
-  let text = "", name = "", obo = "";
+  let text = "", name = "", obos = [];
+  let docLoadId = 0, oboLoadId = 0;
 
   function where(location) {
     if (location === null) return "document";
@@ -135,7 +136,7 @@
   }
 
   function show() {
-    const findings = JSON.parse(validate(text, obo));
+    const findings = JSON.parse(validate(text, obos));
     const body = $("findings");
     body.replaceChildren();
     const count = (s) => findings.filter((f) => f.severity === s).length;
@@ -158,23 +159,37 @@
   }
 
   async function load(file) {
-    name = file.name;
-    text = await file.text();
-    show();
+    const id = ++docLoadId;
+    $("status").textContent = `Loading ${file.name}…`;
+    try {
+      const loaded = await file.text();
+      if (id !== docLoadId) return;
+      name = file.name;
+      text = loaded;
+      show();
+      $("status").textContent = `Loaded ${name}.`;
+    } catch (reason) {
+      if (id !== docLoadId) return;
+      $("status").textContent = `Could not load ${file.name}: ${reason}`;
+    }
   }
 
   async function loadExample() {
+    const id = ++docLoadId;
     $("status").textContent = "Loading bundled example…";
     try {
       const response = await fetch("./pkg/example_study_variable_group.mztab");
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
+      const loaded = await response.text();
+      if (id !== docLoadId) return;
       name = "example_study_variable_group.mztab";
-      text = await response.text();
+      text = loaded;
       show();
       $("status").textContent = "Loaded bundled example (example_study_variable_group.mztab).";
     } catch (reason) {
+      if (id !== docLoadId) return;
       $("status").textContent = `Could not load bundled example: ${reason}`;
     }
   }
@@ -182,43 +197,64 @@
   function download(to) {
     try {
       const out = convert(text, to);
-      const base = name.replace(/\.[^.]*$/, "");
+      const base = name.replace(/(.+)\.[^.]+$/, "$1");
+      const mime = to === "json" ? "application/json" : "text/tab-separated-values";
+      const url = URL.createObjectURL(new Blob([out], { type: mime }));
       const link = document.createElement("a");
-      link.href = URL.createObjectURL(new Blob([out], { type: "text/plain" }));
+      link.href = url;
       link.download = `${base}.${to === "json" ? "json" : "mztab"}`;
       link.click();
-      URL.revokeObjectURL(link.href);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (reason) {
       $("status").textContent = `Cannot convert: ${reason}`;
     }
   }
 
-  await init();
-  $("status").textContent = "Ready.";
-  $("try-example").disabled = false;
-  const drop = $("drop");
-  drop.addEventListener("click", () => $("file").click());
-  drop.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      $("file").click();
-    }
-  });
-  drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
-  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
-  drop.addEventListener("drop", (e) => {
-    e.preventDefault(); drop.classList.remove("over");
-    if (e.dataTransfer.files[0]) load(e.dataTransfer.files[0]);
-  });
-  $("try-example").addEventListener("click", loadExample);
-  $("file").addEventListener("change", (e) => { if (e.target.files[0]) load(e.target.files[0]); });
-  $("obo").addEventListener("change", async (e) => {
-    obo = (await Promise.all([...e.target.files].map((f) => f.text()))).join("\n");
-    $("status").textContent = `${e.target.files.length} vocabulary file(s) loaded.`;
-    if (text) show();
-  });
-  $("to-json").addEventListener("click", () => download("json"));
-  $("to-tsv").addEventListener("click", () => download("tsv"));
+  try {
+    await init();
+    $("status").textContent = "Ready.";
+    $("try-example").disabled = false;
+    const drop = $("drop");
+    drop.addEventListener("click", () => $("file").click());
+    drop.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        $("file").click();
+      }
+    });
+    drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
+    drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+    drop.addEventListener("drop", (e) => {
+      e.preventDefault(); drop.classList.remove("over");
+      if (e.dataTransfer.files[0]) load(e.dataTransfer.files[0]);
+    });
+    $("try-example").addEventListener("click", loadExample);
+    $("file").addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      e.target.value = "";
+      if (file) load(file);
+    });
+    $("obo").addEventListener("change", async (e) => {
+      const files = [...e.target.files];
+      const id = ++oboLoadId;
+      $("status").textContent = "Loading vocabulary file(s)…";
+      try {
+        const loaded = await Promise.all(files.map((f) => f.text()));
+        if (id !== oboLoadId) return;
+        obos = loaded;
+        const unit = files.length === 1 ? "file" : "files";
+        $("status").textContent = `${files.length} vocabulary ${unit} loaded.`;
+        if (text) show();
+      } catch (reason) {
+        if (id !== oboLoadId) return;
+        $("status").textContent = `Could not load vocabulary files: ${reason}`;
+      }
+    });
+    $("to-json").addEventListener("click", () => download("json"));
+    $("to-tsv").addEventListener("click", () => download("tsv"));
+  } catch (reason) {
+    $("status").textContent = `Could not load WebAssembly validator: ${reason}`;
+  }
 </script>
 </body>
 </html>
