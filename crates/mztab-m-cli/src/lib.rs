@@ -169,7 +169,6 @@ impl Options {
             fail_on: Some(Severity::Error),
             settings: Settings::default(),
         };
-        // Which flags each command takes.
         let allowed: &[&str] = match command {
             "validate" => &[
                 "--format",
