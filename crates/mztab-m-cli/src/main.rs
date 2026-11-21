@@ -6,14 +6,6 @@ use std::process::ExitCode;
 
 struct Std;
 
-#[expect(
-    clippy::needless_pass_by_value,
-    reason = "a function for `map_err`, which passes the error by value"
-)]
-fn message(error: std::io::Error) -> String {
-    error.to_string()
-}
-
 impl mztab_m_cli::Io for Std {
     fn read(&mut self, path: &str) -> Result<Vec<u8>, String> {
         if path == "-" {
@@ -21,9 +13,9 @@ impl mztab_m_cli::Io for Std {
             return std::io::stdin()
                 .read_to_end(&mut bytes)
                 .map(|_| bytes)
-                .map_err(message);
+                .map_err(|e| e.to_string());
         }
-        std::fs::read(path).map_err(message)
+        std::fs::read(path).map_err(|e| e.to_string())
     }
 
     fn write(&mut self, path: &str, text: &str) -> Result<(), String> {
@@ -31,7 +23,7 @@ impl mztab_m_cli::Io for Std {
             self.out(text);
             return Ok(());
         }
-        std::fs::write(path, text).map_err(message)
+        std::fs::write(path, text).map_err(|e| e.to_string())
     }
 
     fn out(&mut self, text: &str) {

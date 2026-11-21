@@ -132,15 +132,6 @@ enum Failure {
     Failed(String),
 }
 
-/// A bad value on the command line.
-#[expect(
-    clippy::needless_pass_by_value,
-    reason = "a function for `map_err`, which passes the error by value"
-)]
-fn usage(error: Error) -> Failure {
-    Failure::Usage(error.to_string())
-}
-
 #[derive(Debug)]
 struct Options {
     command: String,
@@ -163,6 +154,7 @@ fn value<'a>(flag: &str, args: &mut impl Iterator<Item = &'a str>) -> Result<&'a
 
 impl Options {
     fn parse<'a>(command: &str, mut args: impl Iterator<Item = &'a str>) -> Result<Self, Failure> {
+        let usage = |e: Error| Failure::Usage(e.to_string());
         let mut o = Self {
             command: command.to_owned(),
             file: None,

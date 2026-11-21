@@ -27,8 +27,6 @@ exclusions (`.cargo/mutants.toml`) and no `refquiem: allow` markers.
 | `crates/mztab-m/tests/semantic.rs` (crate) | `clippy::expect_used` | test helpers | Test code; stays |
 | `crates/mztab-m/tests/writer.rs` (crate) | `clippy::expect_used` | test helpers: a fixture that does not parse is a setup error | Test code; stays |
 | `crates/mztab-m-api/tests/vocabulary.rs` (crate) | `clippy::expect_used` | test helpers | Test code; stays |
-| `crates/mztab-m-cli/src/lib.rs` `usage` | `clippy::needless_pass_by_value` | a function for `map_err`, which passes the error by value | Stays while used with `map_err` |
-| `crates/mztab-m-cli/src/main.rs` `message` | `clippy::needless_pass_by_value` | Same | Same |
 | `crates/mztab-m-wasm/src/lib.rs` `validate` | `clippy::needless_pass_by_value` | wasm-bindgen passes JS string arrays by value | Stays while wasm-bindgen requires it |
 | `bindings/python/src/lib.rs` `error` | `clippy::needless_pass_by_value` | a function for `map_err`, which passes the error by value | Stays while used with `map_err` |
 | `bindings/python/src/lib.rs` `validate` | `clippy::needless_pass_by_value` | PyO3 extracts arguments by value | Stays while PyO3 requires it |
