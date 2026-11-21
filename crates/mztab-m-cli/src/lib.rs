@@ -135,7 +135,7 @@ enum Failure {
 #[derive(Debug)]
 struct Options {
     command: String,
-    file: Option<String>,
+    file: String,
     output: String,
     input: Option<Format>,
     to: Option<Format>,
@@ -155,9 +155,10 @@ fn value<'a>(flag: &str, args: &mut impl Iterator<Item = &'a str>) -> Result<&'a
 impl Options {
     fn parse<'a>(command: &str, mut args: impl Iterator<Item = &'a str>) -> Result<Self, Failure> {
         let usage = |e: Error| Failure::Usage(e.to_string());
+        let mut file: Option<String> = None;
         let mut o = Self {
             command: command.to_owned(),
-            file: None,
+            file: String::new(),
             output: "-".to_owned(),
             input: None,
             to: None,
@@ -222,13 +223,11 @@ impl Options {
                         .set(setting)
                         .map_err(usage)?;
                 }
-                file if o.file.is_none() => o.file = Some(file.to_owned()),
+                path if file.is_none() => file = Some(path.to_owned()),
                 extra => return Err(Failure::Usage(format!("unexpected `{extra}`"))),
             }
         }
-        if o.file.is_none() {
-            return Err(Failure::Usage(format!("`{command}` needs a FILE")));
-        }
+        o.file = file.ok_or_else(|| Failure::Usage(format!("`{command}` needs a FILE")))?;
         if command == "convert" && o.to.is_none() {
             return Err(Failure::Usage("`convert` needs `--to tsv|json`".into()));
         }
@@ -236,11 +235,12 @@ impl Options {
     }
 
     fn run(&self, io: &mut dyn Io) -> Result<u8, Failure> {
-        let file = self.file.as_deref().unwrap_or("-");
         let bytes = io
-            .read(file)
-            .map_err(|e| Failure::Failed(format!("cannot read `{file}`: {e}")))?;
-        let format = self.input.unwrap_or_else(|| Format::sniff(file, &bytes));
+            .read(&self.file)
+            .map_err(|e| Failure::Failed(format!("cannot read `{}`: {e}", self.file)))?;
+        let format = self
+            .input
+            .unwrap_or_else(|| Format::sniff(&self.file, &bytes));
         let parsed = mztab_m_api::read(&bytes, format);
         match self.command.as_str() {
             "validate" => self.validate(&parsed, io),
@@ -314,8 +314,7 @@ impl Options {
             if text.as_bytes() == bytes {
                 return Ok(OK);
             }
-            let file = self.file.as_deref().unwrap_or("-");
-            io.err(&format!("{file}: not in canonical form\n"));
+            io.err(&format!("{}: not in canonical form\n", self.file));
             return Ok(FINDINGS);
         }
         self.output(&text, io)?;
