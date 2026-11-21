@@ -136,8 +136,7 @@ impl Tsv {
             })
             .map(|(_, cell)| cell)
         {
-            let at = at.clone();
-            self.report(Code::JsonText, &at, Detail::None);
+            self.report(Code::JsonText, at, Detail::None);
             return;
         }
         for (n, (text, _)) in cells.iter().enumerate() {
@@ -193,11 +192,11 @@ fn transcode(root: &Node<'_>, tsv: &mut Tsv) {
         .collect();
     unknown_keys(members, &known, &top, tsv);
     if let Some(metadata) = root.get("metadata").filter(|n| !n.is_null()) {
-        metadata_lines(metadata, &top.clone().key("metadata"), tsv);
+        metadata_lines(metadata, &Path::new().key("metadata"), tsv);
     }
     for table in &TABLES {
         if let Some(rows) = root.get(table.json).filter(|n| !n.is_null()) {
-            table_lines(table, rows, &top.clone().key(table.json), tsv);
+            table_lines(table, rows, &Path::new().key(table.json), tsv);
         }
     }
 }
@@ -265,8 +264,7 @@ fn metadata_lines(node: &Node<'_>, at: &Path, tsv: &mut Tsv) {
                 tsv.ids.insert(name, ids);
             }
             Item::Colunit(key) => {
-                for (n, unit, there) in items(value, &here, tsv) {
-                    let _ = n;
+                for (_, unit, there) in items(value, &here, tsv) {
                     let text = match &unit.value {
                         Value::String(s) => Some(s.to_string()),
                         Value::Object(_) => colunit_text(unit, &there, tsv),
@@ -305,19 +303,19 @@ fn shape_error<T>(tsv: &mut Tsv, at: &Path, expected: &'static str) -> Option<T>
 
 /// The index of an array item: its `id`, or its position + 1.
 fn item_id(item: &Node<'_>, position: u32, at: &Path, tsv: &mut Tsv) -> u32 {
-    match item.get("id").map(|n| &n.value) {
-        Some(Value::Number(n)) => match n.parse::<u32>() {
-            Ok(id) if id > 0 => return id,
-            _ => {
-                let at = at.clone().key("id");
-                tsv.report(Code::JsonShape, &at, Detail::Expected("a positive integer"));
-            }
-        },
-        Some(Value::Null) | None => {}
-        Some(_) => {
-            let at = at.clone().key("id");
-            tsv.report(Code::JsonShape, &at, Detail::Expected("a positive integer"));
+    if let Some(value) = item
+        .get("id")
+        .map(|n| &n.value)
+        .filter(|v| !matches!(v, Value::Null))
+    {
+        if let Value::Number(n) = value
+            && let Ok(id) = n.parse::<u32>()
+            && id > 0
+        {
+            return id;
         }
+        let at = at.clone().key("id");
+        tsv.report(Code::JsonShape, &at, Detail::Expected("a positive integer"));
     }
     position.saturating_add(1)
 }
@@ -639,9 +637,9 @@ fn row_cell(
     match column {
         Column::Stable(name, col) => {
             let key = schema::key(name);
-            let here = at.clone().key(key.clone());
-            let text = row
-                .get(&key)
+            let value = row.get(&key);
+            let here = at.clone().key(key);
+            let text = value
                 .and_then(|value| cell_text(value, *col, &here, tsv))
                 .unwrap_or_else(null);
             (text, here)

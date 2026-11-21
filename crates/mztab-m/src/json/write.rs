@@ -284,19 +284,13 @@ impl<'d, 't> Metadata<'d, 't> {
                     (Cow::Borrowed(*name), value)
                 }
                 Item::Colunit(key) => {
-                    let units: Vec<J> = self
-                        .lines
-                        .iter()
-                        .enumerate()
-                        .filter(|(_, (_, k, _))| k == key)
-                        .map(|(n, (_, _, v))| (n, colunit(v)))
-                        .collect::<Vec<_>>()
-                        .into_iter()
-                        .map(|(n, j)| {
+                    let mut units = Vec::new();
+                    for (n, (_, k, v)) in self.lines.iter().enumerate() {
+                        if k == key {
                             self.used.insert(n);
-                            j
-                        })
-                        .collect();
+                            units.push(colunit(v));
+                        }
+                    }
                     let value = if units.is_empty() {
                         J::Null
                     } else {
@@ -320,36 +314,33 @@ impl<'d, 't> Metadata<'d, 't> {
         let mut objects = Vec::new();
         for id in &ids {
             let mine: Vec<&Taken<'_>> = keys.iter().filter(|t| t.index == *id).collect();
-            {
-                let mut members = vec_obj();
-                members.push(("id".into(), J::Number(id.to_string())));
-                if let Some((json, shape)) = element.value {
-                    let value = mine.iter().find(|t| t.rest.is_empty());
-                    members.push((
-                        json.into(),
-                        value.map_or(J::Null, |t| shaped(t.value, shape)),
-                    ));
-                }
-                for (json, tsv, shape) in element.props {
-                    let sub = format!("-{tsv}");
-                    let value = if matches!(shape, Shape::Indexed | Shape::Strings) {
-                        let items: Vec<Taken<'_>> = mine
-                            .iter()
-                            .filter_map(|t| {
-                                let (name, n, tail) = split_key(t.rest)?;
-                                (name == sub && tail.is_empty())
-                                    .then_some(Taken { index: n, ..**t })
-                            })
-                            .collect();
-                        self.positioned(&items, *shape == Shape::Strings)
-                    } else {
-                        let value = mine.iter().find(|t| t.rest == sub);
-                        value.map_or(J::Null, |t| shaped(t.value, *shape))
-                    };
-                    members.push(((*json).into(), value));
-                }
-                objects.push(J::Obj(members));
+            let mut members = vec_obj();
+            members.push(("id".into(), J::Number(id.to_string())));
+            if let Some((json, shape)) = element.value {
+                let value = mine.iter().find(|t| t.rest.is_empty());
+                members.push((
+                    json.into(),
+                    value.map_or(J::Null, |t| shaped(t.value, shape)),
+                ));
             }
+            for (json, tsv, shape) in element.props {
+                let sub = format!("-{tsv}");
+                let value = if matches!(shape, Shape::Indexed | Shape::Strings) {
+                    let items: Vec<Taken<'_>> = mine
+                        .iter()
+                        .filter_map(|t| {
+                            let (name, n, tail) = split_key(t.rest)?;
+                            (name == sub && tail.is_empty()).then_some(Taken { index: n, ..**t })
+                        })
+                        .collect();
+                    self.positioned(&items, *shape == Shape::Strings)
+                } else {
+                    let value = mine.iter().find(|t| t.rest == sub);
+                    value.map_or(J::Null, |t| shaped(t.value, *shape))
+                };
+                members.push(((*json).into(), value));
+            }
+            objects.push(J::Obj(members));
         }
         J::Arr(objects)
     }
@@ -532,8 +523,8 @@ fn rows(
                 _ => None,
             })
             .collect();
-        let expected = ids.get(element).cloned().unwrap_or_default();
-        if !found.is_empty() && found != expected {
+        let expected = ids.get(element).map_or_default(Vec::as_slice);
+        if !found.is_empty() && found.as_slice() != expected {
             return Err(unwritable(
                 section.line,
                 "abundance columns do not match the metadata ids one to one, in order",
