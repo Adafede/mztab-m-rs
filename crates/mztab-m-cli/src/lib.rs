@@ -1,7 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 use mztab_m::{Parsed, Severity, json};
-use mztab_m_api::{Error, Fact, Format, Layer, Settings};
+use mztab_m_api::{Error, Format, Layer, Settings};
 use mztab_m_obo::Ontology;
 
 /// Success: no finding at or above `--fail-on`; the file is formatted.
@@ -205,8 +205,7 @@ impl Options {
                 "--check" => o.check = true,
                 "--lossy" => o.lossy = true,
                 "--layer" => {
-                    let layer = Layer::parse(value(arg, &mut args)?).map_err(usage)?;
-                    o.settings = core::mem::take(&mut o.settings).layer(layer);
+                    o.settings.layer = Layer::parse(value(arg, &mut args)?).map_err(usage)?;
                 }
                 "--cv" => o.cv.push(value(arg, &mut args)?.to_owned()),
                 "--fail-on" => {
@@ -276,8 +275,7 @@ impl Options {
             texts.push(String::from_utf8_lossy(&bytes).into_owned());
         }
         let vocabularies: Vec<Ontology<'_>> = texts.iter().map(|t| Ontology::parse(t)).collect();
-        let terms: &[Ontology<'_>] = &vocabularies;
-        let findings = mztab_m_api::validate(parsed, &self.settings, &terms);
+        let findings = mztab_m_api::validate(parsed, &self.settings, &vocabularies.as_slice());
         let mut out = String::new();
         if self.json {
             // Writing into a `String` cannot fail.
@@ -332,15 +330,9 @@ impl Options {
         } else {
             facts
                 .iter()
-                .flat_map(|(key, value): &(&str, Fact)| {
-                    [
-                        (*key).to_owned(),
-                        ": ".to_owned(),
-                        value.to_string(),
-                        "\n".to_owned(),
-                    ]
-                })
-                .collect()
+                .map(|(key, value)| format!("{key}: {value}\n"))
+                .collect::<Vec<_>>()
+                .concat()
         };
         io.out(&out);
         OK
