@@ -8,7 +8,7 @@ authors:
     given-names: "Adriano"
     email: "adafede@gmail.com"
     orcid: "https://orcid.org/0000-0003-0443-9902"
-    # TODO(human): add affiliation and any additional co-authors if applicable.
+    affiliation: "Institute for Molecular Systems Biology, ETH Zurich (https://ror.org/03j5gm982)"
 license:
   - Apache-2.0
   - MIT
