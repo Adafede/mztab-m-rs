@@ -57,6 +57,10 @@ task_fuzz() {
     cargo check -p mztab-m-bench --benches --all-features --locked
 }
 
+task_findings() {
+    ./scripts/generate-findings.sh
+}
+
 task_bindings() {
     local target="${1:-all}"
     case "$target" in
