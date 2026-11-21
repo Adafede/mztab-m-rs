@@ -328,8 +328,9 @@ differential test harness expects each one. Item numbers point to
   adopted (T8).
 - **`.vscode/settings.json`:** initially skipped in the sandbox; adopted when
   adopting `rusti-graben` updates on the polish branch.
-- **`CITATION.cff` and `codemeta.json`:** `codemeta.json` is not adopted yet;
-  `CITATION.cff` is deferred until author/DOI metadata is added.
+- **`CITATION.cff` and `codemeta.json`:** `CITATION.cff` was adopted once author
+  contact and ORCID details were provided (`doi`/`version`/`date-released` remain
+  marked `TODO(human)` until release); `codemeta.json` is not adopted yet.
 
 ## Model and grammars (M1)
 
