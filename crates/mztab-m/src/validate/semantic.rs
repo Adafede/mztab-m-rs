@@ -425,29 +425,28 @@ fn check_rule(
             continue;
         }
         let accession = accession.as_str();
-        let (mut hits, mut unknown) = (0_usize, false);
-        let mut repeatable = false;
-        for t in rule.terms {
-            match matches(t, accession, terms) {
-                Match::Yes => {
-                    hits += 1;
-                    repeatable |= t.repeatable;
-                }
-                Match::Unknown => unknown = true,
-                Match::No => {}
-            }
-        }
+        let judged: Vec<(Match, &RuleTerm)> = rule
+            .terms
+            .iter()
+            .map(|t| (matches(t, accession, terms), t))
+            .collect();
+        let hits: Vec<&RuleTerm> = judged
+            .iter()
+            .filter(|(m, _)| *m == Match::Yes)
+            .map(|(_, t)| *t)
+            .collect();
         let detail = || term(accession, None, Some(rule.id));
-        if hits == 0 {
-            if !unknown {
+        if hits.is_empty() {
+            if judged.iter().all(|(m, _)| *m == Match::No) {
                 let severity = rule.requirement.severity();
                 report.add_at(Code::CvRule, severity, u.site, detail());
             }
             continue;
         }
-        if rule.logic == Logic::Xor && hits > 1 {
+        if rule.logic == Logic::Xor && hits.len() > 1 {
             report.add(Code::CvRuleXor, u.site, detail());
         }
+        let repeatable = hits.iter().any(|t| t.repeatable);
         if !seen.insert((scope, accession)) && !repeatable {
             report.add(Code::CvRuleRepeat, u.site, detail());
         }
