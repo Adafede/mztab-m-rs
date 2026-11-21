@@ -18,7 +18,7 @@ Last updated: 2026-11-21, after the PSI-MS run (D-077). Milestones are defined i
 | M8 | Benchmarks ([BENCHMARKS.md](BENCHMARKS.md)) | `570c987` | D-073 |
 | M9 | Docs and release preparation | `9378f48` | D-074 |
 | — | Remaining checks, API crate, Python and R packages | `5eb36a0` | D-075, D-076 |
-| — | The corpus against PSI-MS 4.2.17 | (pending commit) | D-077 |
+| — | The corpus against PSI-MS 4.2.17 | `4a0af59` | D-077 |
 
 All gates pass at each commit: 100% line coverage, no surviving mutants
 in the milestone's diff, and wasm32 tests for `mztab-m` and `mztab-m-obo`.
