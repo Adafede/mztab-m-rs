@@ -309,81 +309,50 @@ fn mandatory(mztab: &MzTab<'_>, rules: RuleSet, report: &mut Report<'_, '_>) {
     }
 }
 
+fn check_gap(
+    report: &mut Report<'_, '_>,
+    name: &'static str,
+    indices: &mut dyn Iterator<Item = u32>,
+) {
+    if let Some((index, expected)) = indices.zip(1_u32..).find(|(i, e)| i != e) {
+        report.add(
+            Code::IndexGap,
+            Site::Element(name, index),
+            label(alloc::format!("{name}[{expected}]")),
+        );
+    }
+}
+
 /// Element indices that are not `1..=n`.
 fn gaps(mztab: &MzTab<'_>, report: &mut Report<'_, '_>) {
     let m = &mztab.metadata;
-    let sets: [(&'static str, alloc::vec::Vec<u32>); 18] = [
-        (
-            "sample_processing",
-            m.sample_processing.keys().map(Ix::get).collect(),
-        ),
-        (
-            "instrument",
-            m.instrument.keys().map(InstrumentId::get).collect(),
-        ),
-        (
-            "software",
-            m.software.keys().map(crate::id::SoftwareId::get).collect(),
-        ),
-        (
-            "publication",
-            m.publication
-                .keys()
-                .map(crate::id::PublicationId::get)
-                .collect(),
-        ),
-        (
-            "contact",
-            m.contact.keys().map(crate::id::ContactId::get).collect(),
-        ),
-        ("uri", m.uri.keys().map(Ix::get).collect()),
-        (
-            "external_study_uri",
-            m.external_study_uri.keys().map(Ix::get).collect(),
-        ),
-        ("sample", m.sample.keys().map(SampleId::get).collect()),
-        ("ms_run", m.ms_run.keys().map(MsRunId::get).collect()),
-        ("assay", m.assay.keys().map(AssayId::get).collect()),
-        (
-            "study_variable",
-            m.study_variable.keys().map(StudyVariableId::get).collect(),
-        ),
-        (
-            "study_variable_group",
-            m.study_variable_group
-                .keys()
-                .map(StudyVariableGroupId::get)
-                .collect(),
-        ),
-        ("protocol", m.protocol.keys().map(ProtocolId::get).collect()),
-        ("custom", m.custom.keys().map(Ix::get).collect()),
-        ("cv", m.cv.keys().map(CvId::get).collect()),
-        ("database", m.database.keys().map(DatabaseId::get).collect()),
-        (
-            "derivatization_agent",
-            m.derivatization_agent.keys().map(Ix::get).collect(),
-        ),
-        (
-            "id_confidence_measure",
-            m.id_confidence_measure
-                .keys()
-                .map(crate::id::IdConfidenceMeasureId::get)
-                .collect(),
-        ),
-    ];
-    for (name, indices) in sets {
-        let gap = indices
-            .iter()
-            .zip(1_u32..)
-            .find(|(index, expected)| **index != *expected);
-        if let Some((&index, expected)) = gap {
-            report.add(
-                Code::IndexGap,
-                Site::Element(name, index),
-                label(alloc::format!("{name}[{expected}]")),
+    macro_rules! gap {
+        ($field:ident, $id:ty) => {
+            check_gap(
+                report,
+                stringify!($field),
+                &mut m.$field.keys().map(<$id>::get),
             );
-        }
+        };
     }
+    gap!(sample_processing, Ix);
+    gap!(instrument, InstrumentId);
+    gap!(software, crate::id::SoftwareId);
+    gap!(publication, crate::id::PublicationId);
+    gap!(contact, crate::id::ContactId);
+    gap!(uri, Ix);
+    gap!(external_study_uri, Ix);
+    gap!(sample, SampleId);
+    gap!(ms_run, MsRunId);
+    gap!(assay, AssayId);
+    gap!(study_variable, StudyVariableId);
+    gap!(study_variable_group, StudyVariableGroupId);
+    gap!(protocol, ProtocolId);
+    gap!(custom, Ix);
+    gap!(cv, CvId);
+    gap!(database, DatabaseId);
+    gap!(derivatization_agent, Ix);
+    gap!(id_confidence_measure, crate::id::IdConfidenceMeasureId);
 }
 
 /// Reports each item of `list` that `defined` does not contain.

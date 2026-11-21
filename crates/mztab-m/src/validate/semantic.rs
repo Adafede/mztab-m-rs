@@ -7,7 +7,7 @@ use alloc::string::ToString as _;
 use alloc::vec::Vec;
 
 use super::tables::position;
-use super::{Report, Site};
+use super::{Report, Site, label};
 use crate::cv::{self, Logic, Rule, RuleTerm, Target, TermLookup};
 use crate::diag::{Code, Detail};
 use crate::meta::{
@@ -298,36 +298,23 @@ fn declarations(
         .filter_map(|(id, cv)| Some((id, cv.label.as_ref()?.value()?.as_str())))
         .collect();
     let mut labels = BTreeSet::new();
-    for u in uses {
-        if let Param::Cv { label, .. } = u.param {
-            let label = label.as_str();
-            let known = declared.iter().any(|(_, l)| *l == label);
-            if labels.insert(label) && !known {
-                report.add(
-                    Code::CvUndeclared,
-                    u.site,
-                    Detail::Label(Cow::Owned(label.to_string())),
-                );
-            }
+    let param_labels = uses.iter().filter_map(|u| match u.param {
+        Param::Cv { label, .. } => Some((label.as_str(), u.site)),
+        Param::User { .. } => None,
+    });
+    let col_labels = columns.iter().map(|c| (cv::prefix(c.accession), c.site));
+    for (cv_label, site) in param_labels.chain(col_labels) {
+        let known = declared.iter().any(|(_, l)| *l == cv_label);
+        if labels.insert(cv_label) && !known {
+            report.add(Code::CvUndeclared, site, label(cv_label));
         }
     }
-    for c in columns {
-        let label = cv::prefix(c.accession);
-        let known = declared.iter().any(|(_, l)| *l == label);
-        if labels.insert(label) && !known {
-            report.add(
-                Code::CvUndeclared,
-                c.site,
-                Detail::Label(Cow::Owned(label.to_string())),
-            );
-        }
-    }
-    for (id, label) in declared {
-        if !labels.contains(label) {
+    for (id, cv_label) in declared {
+        if !labels.contains(cv_label) {
             report.add(
                 Code::CvUnused,
                 Site::Value(MtdKey::Cv(id, CvKey::Label)),
-                Detail::Label(Cow::Owned(label.to_string())),
+                label(cv_label),
             );
         }
     }
@@ -371,7 +358,7 @@ fn term_checks(
         report.add(
             Code::TermValueType,
             site,
-            Detail::Label(Cow::Owned(alloc::format!("`{value}` is not xsd:{kind}"))),
+            label(alloc::format!("`{value}` is not xsd:{kind}")),
         );
     }
 }
@@ -471,19 +458,19 @@ fn check_rule(
 /// `X010`: a declared version that differs from the lookup's.
 fn versions(mztab: &MzTab<'_>, terms: &dyn TermLookup, report: &mut Report<'_, '_>) {
     for (id, cv) in mztab.metadata.cv.iter() {
-        let label = cv.label.as_ref().and_then(Cell::value);
+        let cv_label = cv.label.as_ref().and_then(Cell::value);
         let declared = cv.version.as_ref().and_then(Cell::value);
-        let (Some(label), Some(declared)) = (label, declared) else {
+        let (Some(cv_label), Some(declared)) = (cv_label, declared) else {
             continue;
         };
-        let Some(checked) = terms.version(label.as_str()) else {
+        let Some(checked) = terms.version(cv_label.as_str()) else {
             continue;
         };
         if checked != declared.as_str() {
             report.add(
                 Code::CvVersion,
                 Site::Value(MtdKey::Cv(id, CvKey::Version)),
-                Detail::Label(Cow::Owned(checked.to_string())),
+                label(checked),
             );
         }
     }
