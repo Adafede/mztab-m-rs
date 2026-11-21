@@ -231,33 +231,16 @@ fn chunked_reads_match_whole_reads() {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
+#[path = "support/corpus.rs"]
+mod corpus_files;
+
+#[cfg(not(target_arch = "wasm32"))]
 mod native {
     use alloc::collections::BTreeMap;
     use core::fmt::Write as _;
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
 
-    use super::check;
-
-    fn corpus() -> Vec<PathBuf> {
-        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../third_party/mzTab-M/examples");
-        let mut files = Vec::new();
-        let mut dirs = vec![root];
-        while let Some(dir) = dirs.pop() {
-            for entry in std::fs::read_dir(&dir).expect("corpus directory (git submodule)") {
-                let path = entry.expect("directory entry").path();
-                if path.is_dir() {
-                    dirs.push(path);
-                } else if path
-                    .extension()
-                    .is_some_and(|e| e.eq_ignore_ascii_case("mztab"))
-                {
-                    files.push(path);
-                }
-            }
-        }
-        files.sort();
-        files
-    }
+    use super::{check, corpus_files};
 
     fn name(path: &Path) -> String {
         let text = path.to_string_lossy();
@@ -270,7 +253,7 @@ mod native {
     /// rewrite the golden file after an intended change.
     #[test]
     fn every_corpus_file_reads_as_recorded() {
-        let files = corpus();
+        let (_, files) = corpus_files::files();
         assert_eq!(files.len(), 21, "the pinned corpus has 21 TSV files");
         let mut report = String::new();
         for path in files {

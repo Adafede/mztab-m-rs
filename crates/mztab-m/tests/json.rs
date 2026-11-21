@@ -410,6 +410,10 @@ fn invalid_values_travel_as_strings() {
     assert_eq!(back.mztab, model, "same model, invalid cells included");
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+#[path = "support/corpus.rs"]
+mod corpus_files;
+
 /// TSV → JSON → model on every corpus file: the same model, the same up
 /// to the order of columns (JSON groups each abundance kind in one array),
 /// or refused with the reason. Set `BLESS=1` to rewrite
@@ -418,23 +422,11 @@ fn invalid_values_travel_as_strings() {
 mod corpus {
     use alloc::collections::BTreeMap;
     use core::fmt::Write as _;
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
 
     use mztab_m::{SourceLayout, json, parse_bytes};
 
-    fn files(dir: &Path, out: &mut Vec<PathBuf>) {
-        for entry in std::fs::read_dir(dir).expect("corpus directory") {
-            let path = entry.expect("entry").path();
-            if path.is_dir() {
-                files(&path, out);
-            } else if path
-                .extension()
-                .is_some_and(|e| e.eq_ignore_ascii_case("mztab"))
-            {
-                out.push(path);
-            }
-        }
-    }
+    use super::corpus_files;
 
     /// Each table as column → cells, ignoring column order.
     fn by_column(tsv: &str) -> BTreeMap<String, Vec<String>> {
@@ -463,10 +455,7 @@ mod corpus {
 
     #[test]
     fn corpus_round_trips_through_json_as_recorded() {
-        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../third_party/mzTab-M/examples");
-        let mut paths = Vec::new();
-        files(&root, &mut paths);
-        paths.sort();
+        let (root, paths) = corpus_files::files();
         let mut report = String::new();
         for path in paths {
             let bytes = std::fs::read(&path).expect("readable");
