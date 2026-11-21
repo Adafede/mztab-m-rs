@@ -12,6 +12,7 @@
 //! ```
 
 use core::fmt;
+use core::num::NonZeroU32;
 
 use crate::id::{
     AssayId, ContactId, CvId, DatabaseId, IdConfidenceMeasureId, IndexMap, InstrumentId, Ix,
@@ -39,6 +40,16 @@ fn segment(text: &str) -> Option<Segment<'_>> {
     }
 }
 
+trait SubKey: Copy {
+    /// Writes `-label` or `-label[m]`, or nothing for the bare element.
+    fn fmt_suffix(self, f: &mut fmt::Formatter<'_>) -> fmt::Result;
+}
+
+fn fmt_elem(f: &mut fmt::Formatter<'_>, id: impl fmt::Display, k: impl SubKey) -> fmt::Result {
+    id.fmt(f)?;
+    k.fmt_suffix(f)
+}
+
 /// How a sub-key's variant is written: a label, and whether it takes `[m]`.
 macro_rules! sub_keys {
     ($(
@@ -60,8 +71,9 @@ macro_rules! sub_keys {
                 $( sub_keys!(@parse rest, $variant $(($ix))?, $label); )+
                 None
             }
+        }
 
-            /// Writes `-label` or `-label[m]`, or nothing for the bare element.
+        impl SubKey for $name {
             fn fmt_suffix(self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 match self {
                     $( sub_keys!(@pat m, $variant $(($ix))?) => sub_keys!(@fmt f, m, $label $(, $ix)?), )+
@@ -377,54 +389,36 @@ impl MtdKey {
         let (name, Some(n)) = first else {
             return None;
         };
+        let n = NonZeroU32::new(n)?;
         // Elements whose key is just `element[n]`.
         if rest.is_none() {
-            let indexed = match name {
-                "sample_processing" => Ix::new(n).map(Self::SampleProcessing),
-                "publication" => PublicationId::new(n).map(Self::Publication),
-                "uri" => Ix::new(n).map(Self::Uri),
-                "external_study_uri" => Ix::new(n).map(Self::ExternalStudyUri),
-                "custom" => Ix::new(n).map(Self::Custom),
-                "derivatization_agent" => Ix::new(n).map(Self::DerivatizationAgent),
-                "id_confidence_measure" => {
-                    IdConfidenceMeasureId::new(n).map(Self::IdConfidenceMeasure)
-                }
-                _ => None,
-            };
-            if indexed.is_some() {
-                return indexed;
+            match name {
+                "sample_processing" => return Some(Self::SampleProcessing(n.into())),
+                "publication" => return Some(Self::Publication(n.into())),
+                "uri" => return Some(Self::Uri(n.into())),
+                "external_study_uri" => return Some(Self::ExternalStudyUri(n.into())),
+                "custom" => return Some(Self::Custom(n.into())),
+                "derivatization_agent" => return Some(Self::DerivatizationAgent(n.into())),
+                "id_confidence_measure" => return Some(Self::IdConfidenceMeasure(n.into())),
+                _ => {}
             }
         }
         match name {
-            "instrument" => Some(Self::Instrument(
-                InstrumentId::new(n)?,
-                InstrumentKey::parse(rest)?,
-            )),
-            "software" => Some(Self::Software(
-                SoftwareId::new(n)?,
-                SoftwareKey::parse(rest)?,
-            )),
-            "contact" => Some(Self::Contact(ContactId::new(n)?, ContactKey::parse(rest)?)),
-            "sample" => Some(Self::Sample(SampleId::new(n)?, SampleKey::parse(rest)?)),
-            "ms_run" => Some(Self::MsRun(MsRunId::new(n)?, MsRunKey::parse(rest)?)),
-            "assay" => Some(Self::Assay(AssayId::new(n)?, AssayKey::parse(rest)?)),
-            "study_variable" => Some(Self::StudyVariable(
-                StudyVariableId::new(n)?,
-                StudyVariableKey::parse(rest)?,
-            )),
-            "study_variable_group" => Some(Self::StudyVariableGroup(
-                StudyVariableGroupId::new(n)?,
-                StudyVariableGroupKey::parse(rest)?,
-            )),
-            "protocol" => Some(Self::Protocol(
-                ProtocolId::new(n)?,
-                ProtocolKey::parse(rest)?,
-            )),
-            "cv" => Some(Self::Cv(CvId::new(n)?, CvKey::parse(rest)?)),
-            "database" => Some(Self::Database(
-                DatabaseId::new(n)?,
-                DatabaseKey::parse(rest)?,
-            )),
+            "instrument" => InstrumentKey::parse(rest).map(|k| Self::Instrument(n.into(), k)),
+            "software" => SoftwareKey::parse(rest).map(|k| Self::Software(n.into(), k)),
+            "contact" => ContactKey::parse(rest).map(|k| Self::Contact(n.into(), k)),
+            "sample" => SampleKey::parse(rest).map(|k| Self::Sample(n.into(), k)),
+            "ms_run" => MsRunKey::parse(rest).map(|k| Self::MsRun(n.into(), k)),
+            "assay" => AssayKey::parse(rest).map(|k| Self::Assay(n.into(), k)),
+            "study_variable" => {
+                StudyVariableKey::parse(rest).map(|k| Self::StudyVariable(n.into(), k))
+            }
+            "study_variable_group" => {
+                StudyVariableGroupKey::parse(rest).map(|k| Self::StudyVariableGroup(n.into(), k))
+            }
+            "protocol" => ProtocolKey::parse(rest).map(|k| Self::Protocol(n.into(), k)),
+            "cv" => CvKey::parse(rest).map(|k| Self::Cv(n.into(), k)),
+            "database" => DatabaseKey::parse(rest).map(|k| Self::Database(n.into(), k)),
             _ => None,
         }
     }
@@ -602,50 +596,17 @@ impl fmt::Display for MtdKey {
             Self::Custom(n) => write!(f, "custom[{}]", n.get()),
             Self::DerivatizationAgent(n) => write!(f, "derivatization_agent[{}]", n.get()),
             Self::IdConfidenceMeasure(n) => n.fmt(f),
-            Self::Instrument(n, k) => {
-                n.fmt(f)?;
-                k.fmt_suffix(f)
-            }
-            Self::Software(n, k) => {
-                n.fmt(f)?;
-                k.fmt_suffix(f)
-            }
-            Self::Contact(n, k) => {
-                n.fmt(f)?;
-                k.fmt_suffix(f)
-            }
-            Self::Sample(n, k) => {
-                n.fmt(f)?;
-                k.fmt_suffix(f)
-            }
-            Self::MsRun(n, k) => {
-                n.fmt(f)?;
-                k.fmt_suffix(f)
-            }
-            Self::Assay(n, k) => {
-                n.fmt(f)?;
-                k.fmt_suffix(f)
-            }
-            Self::StudyVariable(n, k) => {
-                n.fmt(f)?;
-                k.fmt_suffix(f)
-            }
-            Self::StudyVariableGroup(n, k) => {
-                n.fmt(f)?;
-                k.fmt_suffix(f)
-            }
-            Self::Protocol(n, k) => {
-                n.fmt(f)?;
-                k.fmt_suffix(f)
-            }
-            Self::Cv(n, k) => {
-                n.fmt(f)?;
-                k.fmt_suffix(f)
-            }
-            Self::Database(n, k) => {
-                n.fmt(f)?;
-                k.fmt_suffix(f)
-            }
+            Self::Instrument(n, k) => fmt_elem(f, n, k),
+            Self::Software(n, k) => fmt_elem(f, n, k),
+            Self::Contact(n, k) => fmt_elem(f, n, k),
+            Self::Sample(n, k) => fmt_elem(f, n, k),
+            Self::MsRun(n, k) => fmt_elem(f, n, k),
+            Self::Assay(n, k) => fmt_elem(f, n, k),
+            Self::StudyVariable(n, k) => fmt_elem(f, n, k),
+            Self::StudyVariableGroup(n, k) => fmt_elem(f, n, k),
+            Self::Protocol(n, k) => fmt_elem(f, n, k),
+            Self::Cv(n, k) => fmt_elem(f, n, k),
+            Self::Database(n, k) => fmt_elem(f, n, k),
         }
     }
 }
