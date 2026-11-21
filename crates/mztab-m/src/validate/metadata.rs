@@ -2,6 +2,7 @@
 //! fields, index gaps, references, study-variable groups, and field values.
 
 use alloc::collections::BTreeMap;
+use core::num::NonZeroU32;
 
 use super::{Report, Site, label};
 use crate::diag::{Code, Detail};
@@ -116,13 +117,14 @@ fn profile(mztab: &MzTab<'_>, rules: RuleSet, report: &mut Report<'_, '_>) {
     reason = "one block per element: the mandatory set reads best as one list"
 )]
 fn mandatory(mztab: &MzTab<'_>, rules: RuleSet, report: &mut Report<'_, '_>) {
+    const ONE: NonZeroU32 = NonZeroU32::MIN;
     let m = &mztab.metadata;
-    let one = |n| Ix::new(n);
-    let first = AssayId::new(1).map(|n| MtdKey::Assay(n, AssayKey::Name));
-    if m.assay.is_empty()
-        && let Some(key) = first
-    {
-        missing(report, Site::Document, key);
+    if m.assay.is_empty() {
+        missing(
+            report,
+            Site::Document,
+            MtdKey::Assay(ONE.into(), AssayKey::Name),
+        );
     }
     for (n, assay) in m.assay.iter() {
         if !present(&assay.name) {
@@ -140,10 +142,12 @@ fn mandatory(mztab: &MzTab<'_>, rules: RuleSet, report: &mut Report<'_, '_>) {
             );
         }
     }
-    if m.ms_run.is_empty()
-        && let Some(n) = MsRunId::new(1)
-    {
-        missing(report, Site::Document, MtdKey::MsRun(n, MsRunKey::Location));
+    if m.ms_run.is_empty() {
+        missing(
+            report,
+            Site::Document,
+            MtdKey::MsRun(ONE.into(), MsRunKey::Location),
+        );
     }
     for (n, run) in m.ms_run.iter() {
         if !present(&run.location) {
@@ -153,24 +157,19 @@ fn mandatory(mztab: &MzTab<'_>, rules: RuleSet, report: &mut Report<'_, '_>) {
                 MtdKey::MsRun(n, MsRunKey::Location),
             );
         }
-        if rules == RuleSet::V2_0
-            && run.scan_polarity.is_empty()
-            && let Some(m) = one(1)
-        {
+        if rules == RuleSet::V2_0 && run.scan_polarity.is_empty() {
             missing(
                 report,
                 Site::Element("ms_run", n.get()),
-                MtdKey::MsRun(n, MsRunKey::ScanPolarity(m)),
+                MtdKey::MsRun(n, MsRunKey::ScanPolarity(ONE.into())),
             );
         }
     }
-    if m.study_variable.is_empty()
-        && let Some(n) = StudyVariableId::new(1)
-    {
+    if m.study_variable.is_empty() {
         missing(
             report,
             Site::Document,
-            MtdKey::StudyVariable(n, StudyVariableKey::Name),
+            MtdKey::StudyVariable(ONE.into(), StudyVariableKey::Name),
         );
     }
     for (n, sv) in m.study_variable.iter() {
@@ -199,10 +198,8 @@ fn mandatory(mztab: &MzTab<'_>, rules: RuleSet, report: &mut Report<'_, '_>) {
             }
         }
     }
-    if m.cv.is_empty()
-        && let Some(n) = CvId::new(1)
-    {
-        missing(report, Site::Document, MtdKey::Cv(n, CvKey::Label));
+    if m.cv.is_empty() {
+        missing(report, Site::Document, MtdKey::Cv(ONE.into(), CvKey::Label));
     }
     for (n, cv) in m.cv.iter() {
         let site = Site::Element("cv", n.get());
@@ -232,13 +229,11 @@ fn mandatory(mztab: &MzTab<'_>, rules: RuleSet, report: &mut Report<'_, '_>) {
             }
         }
     }
-    if m.software.is_empty()
-        && let Some(n) = crate::id::SoftwareId::new(1)
-    {
+    if m.software.is_empty() {
         missing(
             report,
             Site::Document,
-            MtdKey::Software(n, crate::meta::SoftwareKey::Software),
+            MtdKey::Software(ONE.into(), crate::meta::SoftwareKey::Software),
         );
     }
     for (n, protocol) in m.protocol.iter() {
@@ -267,30 +262,29 @@ fn mandatory(mztab: &MzTab<'_>, rules: RuleSet, report: &mut Report<'_, '_>) {
             .as_ref()
             .is_some_and(|t| t.rows.iter().any(|row| !row.database_identifier.is_null()));
     let has_measure = !m.id_confidence_measure.is_empty();
-    let first_measure = crate::id::IdConfidenceMeasureId::new(1).map(MtdKey::IdConfidenceMeasure);
-    let first_database = DatabaseId::new(1).map(|n| MtdKey::Database(n, DatabaseKey::Database));
+    let first_measure = MtdKey::IdConfidenceMeasure(ONE.into());
+    let first_database = MtdKey::Database(ONE.into(), DatabaseKey::Database);
     // (field present, required by the tables, key, table present)
     let dependent = [
         (
             present(&m.quantification_method),
-            Some(MtdKey::QuantificationMethod),
+            MtdKey::QuantificationMethod,
             sml || smf,
         ),
         (
             present(&m.small_molecule_quantification_unit),
-            Some(MtdKey::SmallMoleculeQuantificationUnit),
+            MtdKey::SmallMoleculeQuantificationUnit,
             sml,
         ),
         (
             present(&m.small_molecule_feature_quantification_unit),
-            Some(MtdKey::SmallMoleculeFeatureQuantificationUnit),
+            MtdKey::SmallMoleculeFeatureQuantificationUnit,
             smf,
         ),
         (has_measure, first_measure, sme),
         (!m.database.is_empty(), first_database, identified),
     ];
     for (is_present, key, needed) in dependent {
-        let Some(key) = key else { continue };
         let needed = match rules {
             // 2.0 required these regardless of the tables (DECISIONS D-014).
             RuleSet::V2_0 => {
