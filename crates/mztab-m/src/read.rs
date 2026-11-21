@@ -345,16 +345,16 @@ fn metadata<'a>(
         Some(_) => true,
     };
     let typed = parsed.map(|k| {
-        let raw = value.unwrap_or(RawCell {
-            text: "",
-            number: 3,
-            offset: text.len(),
-        });
-        let value = if value.is_some() {
+        let value = if let Some(raw) = value {
             typing::mtd_value(cx, k.kind(), raw)
         } else {
             // Already reported as a missing cell; typing the empty text would
             // report it a second time.
+            let raw = RawCell {
+                text: "",
+                number: 3,
+                offset: text.len(),
+            };
             let mut quiet = Vec::new();
             let mut silent = Cx {
                 line: cx.line,

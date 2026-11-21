@@ -593,11 +593,8 @@ fn values(mztab: &MzTab<'_>, report: &mut Report<'_, '_>) {
     let mut seen = BTreeMap::<MtdKey, usize>::new();
     for (key, value) in m.entries() {
         let nth = seen.entry(key).or_default();
-        let text = match value {
-            ValueRef::Text(Cell::Value(text)) => Some(text.as_str()),
-            _ => None,
-        };
-        if let Some(text) = text {
+        if let ValueRef::Text(Cell::Value(text)) = value {
+            let text = text.as_str();
             let uri = matches!(
                 key,
                 MtdKey::Uri(_)

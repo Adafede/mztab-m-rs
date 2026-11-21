@@ -246,11 +246,11 @@ impl MzTab<'_> {
         macro_rules! strip {
             ($table:expr) => {
                 if let Some(t) = $table {
-                    let unknown = |c: &&Column<'_, _>| matches!(c, Column::Unknown(_));
-                    dropped.columns += t.header.columns.iter().filter(unknown).count();
+                    let before = t.header.columns.len();
                     t.header
                         .columns
                         .retain(|c| !matches!(c, Column::Unknown(_)));
+                    dropped.columns += before - t.header.columns.len();
                     for row in &mut t.rows {
                         dropped.cells += row.unknown.len() + row.extra.len();
                         row.unknown.clear();
