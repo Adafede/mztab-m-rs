@@ -12,6 +12,10 @@
 - flaws in the CLI's file handling, the build scripts (`mk`, `mk.local`), or
   the CI workflows in [`.github/workflows/`](./.github/workflows/).
 
+## Supported versions
+
+Nothing has been released yet. Fixes go to `main` only.
+
 ## Reporting a Vulnerability
 
 Please do not report security vulnerabilities in public GitHub issues.
@@ -20,3 +24,6 @@ Please do not report security vulnerabilities in public GitHub issues.
    [GitHub Security Advisories](https://github.com/Adafede/mztab-m-rs/security/advisories/new).
 2. Include a minimal input that reproduces the problem, the crate version or
    commit, and what you expected to happen versus what happened.
+
+If private advisories are not available, write to
+TODO(human): security contact address.

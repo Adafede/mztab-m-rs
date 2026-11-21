@@ -1,10 +1,13 @@
-## Summary
+## What and why
 
-- 
+<!-- One or two sentences. Link the issue if there is one. -->
 
-## Definition of Done
+## How it was checked
 
-- [ ] `./mk ci` passes locally
-- [ ] New or changed behavior is covered by deterministic tests (`./mk mutants-diff`)
-- [ ] No gate weakened (`#[expect(..., reason = "...")]` used instead of `#[allow]`; any unavoidable exception recorded in `docs/DEBT.md`)
-- [ ] Commit messages follow Conventional Commits (`./mk commits`)
+<!-- Commands you ran and what they printed, e.g. `./mk ci-fast`. -->
+
+- [ ] `./mk ci-fast` passes locally (or `./mk ci` if you can run mutants)
+- [ ] New behaviour has tests
+- [ ] Spec readings that are not obvious are in DECISIONS.md
+- [ ] Lint exceptions use `#[expect(..., reason = "...")]` and are listed in `docs/DEBT.md`
+- [ ] AI assistance, if any, is mentioned here

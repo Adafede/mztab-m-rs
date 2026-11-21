@@ -1,25 +1,29 @@
 ---
 name: Bug report
-about: Report a broken gate, adoption bug, or runner regression
+about: A file is read, validated, written or converted wrongly, or something crashes
+labels: bug
 ---
 
-## Summary
+## What happened
 
-Describe the unexpected behavior clearly.
+<!-- The command or code you ran, and what it printed. -->
 
-## Reproduction
-
-```bash
-# Exact command and flags run (e.g., NO_COLOR=1 ./mk ci)
+```sh
+mztab-m validate study.mztab
 ```
 
-## Observed vs. Expected Output
+## What you expected
 
-Paste the relevant error output and state what you expected to happen.
+<!-- If you think a finding is wrong, say which part of the mzTab-M spec,
+     jmzTab-m behaviour or DECISIONS.md entry you are comparing with. -->
 
-## Environment
+## The file
 
-- OS and shell:
-- `rustc --version`:
-- `mztab-m-rs` commit or tag:
-- `./mk tools` / `cargo-binstall` status:
+<!-- Attach the file, or the smallest part of it that shows the problem.
+     Remove anything confidential first. -->
+
+## Versions
+
+- `mztab-m --version`:
+- How you installed it (cargo install / Python / R / browser demo):
+- OS:
