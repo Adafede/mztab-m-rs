@@ -147,5 +147,5 @@ task_vocab() {
     fi
     echo "$PSI_MS_SHA256  $obo" | shasum -a 256 -c - >/dev/null ||
         die "$obo does not match the pinned SHA-256"
-    PSI_MS_OBO="$PWD/$obo" cargo test -p mztab-m-api --test vocabulary --locked
+    PSI_MS_OBO="$PWD/$obo" cargo test -p mztab-m-api --test vocabulary --locked -- --ignored
 }

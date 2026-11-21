@@ -6,5 +6,5 @@ which needs the vocabulary file: `./mk local:vocab` downloads it and runs the
 test. To rewrite after an intended change:
 
 ```sh
-BLESS=1 PSI_MS_OBO=target/vocab/psi-ms-v4.2.17.obo cargo test -p mztab-m-api --test vocabulary
+BLESS=1 PSI_MS_OBO=target/vocab/psi-ms-v4.2.17.obo cargo test -p mztab-m-api --test vocabulary -- --ignored
 ```

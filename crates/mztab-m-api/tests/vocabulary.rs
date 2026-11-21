@@ -1,9 +1,10 @@
 //! The corpus against the real PSI-MS vocabulary (D-077).
 //!
-//! Runs only when `PSI_MS_OBO` names a `psi-ms.obo` (`./mk local:vocab`
-//! downloads the pinned release, checks its SHA-256 and sets it); otherwise
-//! it passes without checking anything. The semantic codes per corpus file
-//! must match `tests/golden/psi-ms.txt`; set `BLESS=1` to rewrite it.
+//! Marked `#[ignore]` so regular workspace test runs do not report a vacuous
+//! pass without `PSI_MS_OBO`. `./mk local:vocab` downloads the pinned
+//! `psi-ms.obo`, verifies its SHA-256, and runs this test with `-- --ignored`.
+//! The semantic codes per corpus file must match `tests/golden/psi-ms.txt`;
+//! set `BLESS=1` to rewrite it.
 
 #![cfg(not(target_arch = "wasm32"))]
 #![expect(clippy::expect_used, reason = "test helpers")]
@@ -31,10 +32,9 @@ fn files(dir: &Path, out: &mut Vec<PathBuf>) {
 }
 
 #[test]
+#[ignore = "requires PSI_MS_OBO; run ./mk local:vocab"]
 fn corpus_against_psi_ms() {
-    let Some(obo) = std::env::var_os("PSI_MS_OBO") else {
-        return;
-    };
+    let obo = std::env::var_os("PSI_MS_OBO").expect("set PSI_MS_OBO or run ./mk local:vocab");
     let vocabulary = std::fs::read_to_string(obo).expect("readable OBO");
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../third_party/mzTab-M/examples");
     let mut paths = Vec::new();

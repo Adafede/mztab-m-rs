@@ -97,6 +97,7 @@ fn every_reference_names_a_decision() {
 }
 
 #[test]
+#[ignore = "no committed jmzTab-m outputs in tests/oracle/ yet; run .github/workflows/oracle.yml"]
 fn disagreements_with_jmztab_are_explained() {
     let expected = expected();
     let dir = root().join("tests/oracle");
@@ -106,6 +107,10 @@ fn disagreements_with_jmztab_are_explained() {
         .filter(|path| path.extension().is_some_and(|e| e == "txt"))
         .collect();
     outputs.sort();
+    assert!(
+        !outputs.is_empty(),
+        "expected at least one jmzTab-m output in tests/oracle/"
+    );
     let mut unexplained = Vec::new();
     for output in outputs {
         let name = output
