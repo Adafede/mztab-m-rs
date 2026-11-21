@@ -63,6 +63,43 @@ task_findings() {
     ./scripts/generate-findings.sh
 }
 
+task_site() {
+    need mdbook
+    need lychee
+    cargo test -p mztab-m --test findings_doc --locked
+    rm -rf target/site
+    mdbook build docs/site -d "$PWD/target/site"
+    task_demo
+    mkdir -p target/site/demo
+    cp -R crates/mztab-m-wasm/www/. target/site/demo/
+    RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps --locked
+    mkdir -p target/site/api
+    cp -R target/doc/. target/site/api/
+    cat >target/site/api/index.html <<'HTML'
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="refresh" content="0; url=mztab_m/index.html">
+<title>mztab-m-rs API documentation</title>
+</head>
+<body>
+<p>Redirecting to <a href="mztab_m/index.html"><code>mztab_m</code> API documentation</a>…</p>
+</body>
+</html>
+HTML
+    : >target/site/.nojekyll
+    lychee --offline --include-fragments --root-dir "$PWD/target/site" --exclude-path 'target/site/api' target/site
+}
+
+task_site-serve() {
+    task_site
+    local port="${PORT:-8000}"
+    echo "docs: http://127.0.0.1:${port}/"
+    echo "demo: http://127.0.0.1:${port}/demo/"
+    python3 -m http.server --bind 127.0.0.1 "$port" --directory target/site
+}
+
 task_bindings() {
     local target="${1:-all}"
     case "$target" in

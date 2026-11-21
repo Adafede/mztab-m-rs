@@ -1,0 +1,15 @@
+[book]
+title = "mztab-m-rs"
+description = "Read, write, validate, and convert HUPO-PSI mzTab-M metabolomics files in Rust, CLI, Python, R, and WebAssembly."
+language = "en"
+src = "src"
+
+[preprocessor.repo-links]
+command = "python3 ../../scripts/mdbook-links.py"
+after = ["links"]
+
+[output.html]
+git-repository-url = "https://github.com/Adafede/mztab-m-rs"
+edit-url-template = "https://github.com/Adafede/mztab-m-rs/edit/main/docs/site/{path}"
+default-theme = "light"
+preferred-dark-theme = "navy"
