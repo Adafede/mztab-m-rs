@@ -237,29 +237,16 @@ impl Spec {
         line
     }
 
-    fn abundances(&self, line: &mut String, rng: &mut Rng) {
-        for _ in 0..self.assays {
-            line.push('\t');
-            line.push_str(&rng.decimal(1_000_000));
-        }
-    }
-
     fn sml(&self, n: u32, rng: &mut Rng) -> String {
         let mass = rng.decimal(1000);
         let score = rng.decimal(1);
         let mut line = format!(
             "SML\t{n}\t{n}\tHMDB:HMDB{n:07}\tC6H12O6\tnull\tnull\tcompound {n}\tnull\t{mass}\t[M+H]1+\t2\t[MS, MS:1002890, fragmentation score, ]\t{score}"
         );
-        self.abundances(&mut line, rng);
+        push_decimals(&mut line, rng, self.assays, 1_000_000);
         // Study-variable abundances, then their variations.
-        for _ in 0..STUDY_VARIABLES {
-            line.push('\t');
-            line.push_str(&rng.decimal(1_000_000));
-        }
-        for _ in 0..STUDY_VARIABLES {
-            line.push('\t');
-            line.push_str(&rng.decimal(100));
-        }
+        push_decimals(&mut line, rng, STUDY_VARIABLES, 1_000_000);
+        push_decimals(&mut line, rng, STUDY_VARIABLES, 100);
         line.push('\n');
         line
     }
@@ -268,7 +255,7 @@ impl Spec {
         let mz = rng.decimal(1000);
         let rt = rng.decimal(600);
         let mut line = format!("SMF\t{n}\t{n}\tnull\t[M+H]1+\tnull\t{mz}\t1\t{rt}\t{rt}\t{rt}");
-        self.abundances(&mut line, rng);
+        push_decimals(&mut line, rng, self.assays, 1_000_000);
         line.push('\n');
         line
     }
@@ -280,6 +267,14 @@ impl Spec {
         format!(
             "SME\t{n}\tinput {n}\tHMDB:HMDB{n:07}\tC6H12O6\tnull\tnull\tcompound {n}\tnull\tnull\t[M+H]1+\t{mz}\t1\t{mz}\tms_run[{run}]:index={n}\t[MS, MS:1001477, SpectraST, ]\t[MS, MS:1000511, ms level, 2]\t{score}\t1\n"
         )
+    }
+}
+
+/// Appends `count` tab-separated random decimals up to `scale` onto `line`.
+fn push_decimals(line: &mut String, rng: &mut Rng, count: u32, scale: u64) {
+    for _ in 0..count {
+        line.push('\t');
+        line.push_str(&rng.decimal(scale));
     }
 }
 
