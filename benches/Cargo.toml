@@ -16,9 +16,6 @@ name = "throughput"
 harness = false
 name = "heap"
 
-[dependencies]
-mztab-m = { path = "../crates/mztab-m", features = ["json"] }
-
 [dev-dependencies]
 # Measurement only (PLAN §5): timing, heap profiling, and a SIMD line-scan
 # baseline to compare the reader's own scanning with (D-073).
@@ -27,6 +24,7 @@ mztab-m = { path = "../crates/mztab-m", features = ["json"] }
 criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }
 dhat = "0.3"
 memchr = "2"
+mztab-m = { path = "../crates/mztab-m", features = ["json"] }
 
 [lints]
 workspace = true
