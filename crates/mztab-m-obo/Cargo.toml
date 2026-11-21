@@ -13,6 +13,10 @@ categories = ["no-std", "parser-implementations", "science", "wasm"]
 # repository (third_party/), which a package cannot carry.
 include = ["/src", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE", "/NOTICE"]
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [dependencies]
 mztab-m = { path = "../mztab-m", version = "0.1.0" }
 

@@ -91,9 +91,9 @@ assert!(back.findings.is_empty());
 ```
 
 To check terms against real vocabularies, parse OBO files with
-[`mztab-m-obo`](https://crates.io/crates/mztab-m-obo) and pass them to
-`validate::semantic` or `validate::all`. The command-line tool is
-[`mztab-m-cli`](https://crates.io/crates/mztab-m-cli).
+[`mztab-m-obo`](https://github.com/Adafede/mztab-m-rs/tree/main/crates/mztab-m-obo)
+and pass them to `validate::semantic` or `validate::all`. The command-line tool
+is [`mztab-m-cli`](https://github.com/Adafede/mztab-m-rs/tree/main/crates/mztab-m-cli).
 
 ## Features
 
@@ -104,13 +104,17 @@ To check terms against real vocabularies, parse OBO files with
 ## Where the rules come from
 
 - Every finding code's documentation links the section of the pinned
-  specification that states its rule.
+  specification that states its rule; the generated
+  [findings reference](https://adafede.github.io/mztab-m-rs/findings.html)
+  lists them all.
 - Where the specification is ambiguous, or where this crate deviates from
   the reference implementation [jmzTab-m](https://github.com/lifs-tools/jmzTab-m),
   the choice is recorded in
   [DECISIONS.md](https://github.com/Adafede/mztab-m-rs/blob/main/DECISIONS.md).
 - [DESIGN.md](https://github.com/Adafede/mztab-m-rs/blob/main/docs/DESIGN.md)
-  explains the architecture.
+  explains the architecture; the full
+  [documentation site](https://adafede.github.io/mztab-m-rs/) includes the live
+  browser demo.
 
 ## License
 

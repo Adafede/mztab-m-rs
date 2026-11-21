@@ -13,6 +13,10 @@ categories = ["no-std", "parser-implementations", "science", "wasm"]
 # repository (third_party/), which a package cannot carry.
 include = ["/src", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE", "/NOTICE"]
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [features]
 # JSON in the shape of the specification's JSON schema (DECISIONS D-071).
 json = []

@@ -1,33 +1,4 @@
-//! The `mztab-m` command: validate, format, convert and inspect mzTab-M
-//! files (TSV or JSON).
-//!
-//! All the work is in [`run`], which takes its arguments and an [`Io`]; the
-//! binary only supplies the real file system and standard streams. Exit
-//! codes are [`OK`], [`FINDINGS`], [`USAGE`] and [`FAILED`].
-//!
-//! ```
-//! use mztab_m_cli::{Io, OK, run};
-//!
-//! #[derive(Default)]
-//! struct Capture(String);
-//!
-//! impl Io for Capture {
-//!     fn read(&mut self, _path: &str) -> Result<Vec<u8>, String> {
-//!         Ok(b"MTD\tmzTab-version\t2.1.0-M\n".to_vec())
-//!     }
-//!     fn write(&mut self, _path: &str, _text: &str) -> Result<(), String> {
-//!         Ok(())
-//!     }
-//!     fn out(&mut self, text: &str) {
-//!         self.0.push_str(text);
-//!     }
-//!     fn err(&mut self, _text: &str) {}
-//! }
-//!
-//! let mut io = Capture::default();
-//! assert_eq!(run(&["--version".to_owned()], &mut io), OK);
-//! assert!(io.0.starts_with("mztab-m "));
-//! ```
+#![doc = include_str!("../README.md")]
 
 use mztab_m::{Parsed, Severity, json};
 use mztab_m_api::{Error, Fact, Format, Layer, Settings};
