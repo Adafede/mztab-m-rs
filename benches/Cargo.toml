@@ -21,7 +21,7 @@ name = "heap"
 # baseline to compare the reader's own scanning with (D-073).
 # 0.5, not 0.8: 0.8 builds the `alloca` crate's C object, which this
 # toolchain (Xcode clang 21) cannot link (D-073).
-criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }
+criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }
 dhat = "0.3"
 memchr = "2"
 mztab-m = { path = "../crates/mztab-m", features = ["json"] }
