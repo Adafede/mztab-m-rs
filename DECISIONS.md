@@ -797,7 +797,7 @@ place in `validate/` to change if you decide otherwise.
   `--to tsv|json`. **`inspect`:** version, profile (declared and implied
   by the tables), element counts, rows per table, and the reader's finding
   counts, as text or JSON.
-- **`mztab-m-wasm`** (`publish = false`): `validate(text, obo)` returns
+- **`mztab-m-wasm`** (`publish = false`): `validate(text, obos)` returns
   the findings as JSON, `convert(text, to)` the converted text. Its one
   extra dependency is `wasm-bindgen`, pinned to the version of the
   test runner. `www/index.html` is a self-contained page (no external
@@ -947,8 +947,8 @@ place in `validate/` to change if you decide otherwise.
   `./mk local:vocab` downloads it into `target/vocab/` (not committed),
   checks the hash and runs `crates/mztab-m-api/tests/vocabulary.rs`, which
   compares the semantic codes per corpus file with
-  `tests/golden/psi-ms.txt`. It is a nightly gate. Without `PSI_MS_OBO` the
-  test passes without checking.
+  `tests/golden/psi-ms.txt`. It is a nightly gate. It is marked `#[ignore]`
+  so normal test runs report it honestly instead of passing without checking.
 - **What the real file changed in the code:**
   - PSI-MS now declares value types as `relationship: has_value_type
     xsd:int`, not `xref: value-type:`; `mztab-m-obo` reads both.

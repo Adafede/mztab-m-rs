@@ -1,7 +1,7 @@
 # mztab-m (Python)
 
 **Status: prototype.** Builds from source and passes its tests on macOS
-(arm64); not on PyPI, and not yet built or tested on other platforms. See
+(arm64) and Linux (`x86_64` in CI); not on PyPI, and Windows is untested. See
 [STATUS.md](https://github.com/Adafede/mztab-m-rs/blob/main/STATUS.md).
 
 Read, validate, convert and inspect [mzTab-M](https://github.com/HUPO-PSI/mzTab-M)
@@ -10,10 +10,12 @@ metabolomics files, as TSV or JSON, from Python. It is the Rust library
 compiled: the same reader, validator and writer as the `mztab-m` command.
 
 ```python
+from pathlib import Path
 import mztab_m
 
-text = open("study.mztab").read()
-for f in mztab_m.validate(text, vocabularies=[open("psi-ms.obo").read()]):
+text = Path("study.mztab").read_text()
+obo = Path("psi-ms.obo").read_text()
+for f in mztab_m.validate(text, vocabularies=[obo]):
     print(f["severity"], f["code"], f["location"], f["summary"], f["detail"])
 
 json_text = mztab_m.convert(text, "json")          # refuses what JSON cannot carry

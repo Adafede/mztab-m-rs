@@ -26,7 +26,7 @@ Draft issues for these are in [docs/proposed-issues.md](docs/proposed-issues.md)
 ### Label plan
 
 - **`good first issue`**: self-contained tasks with clear files and checks
-  (for example, items 2, 3, 5, 8, and 10 in [docs/proposed-issues.md](docs/proposed-issues.md)).
+  (for example, items 3 and 6 in [docs/proposed-issues.md](docs/proposed-issues.md)).
 - **`help wanted`**: larger or domain-specific tasks where community input or
   platform access helps (such as real-world mzTab-M files, reviewing `DECISIONS.md`,
   running the jmzTab-m oracle, or testing Windows wheels).

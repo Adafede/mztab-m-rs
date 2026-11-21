@@ -18,10 +18,20 @@ exclusions (`.cargo/mutants.toml`) and no `refquiem: allow` markers.
 | `crates/mztab-m/src/read.rs` `Event` | `clippy::large_enum_variant` | Events are consumed one at a time; boxing rows would cost an allocation per row | If a benchmark shows boxing is free |
 | `crates/mztab-m/src/validate/metadata.rs` `mandatory` | `clippy::too_many_lines` | One block per element: the mandatory set reads best as one list | If the mandatory set becomes a data table |
 | `crates/mztab-m/src/validate/tables.rs` `sml_rows` | `clippy::too_many_lines` | One check per SML column, in column order | Same, for SML columns |
+| `crates/mztab-m/tests/cv_rules.rs` (crate) | `clippy::expect_used` | test helpers | Test code; stays |
+| `crates/mztab-m/tests/json.rs` (crate) | `clippy::expect_used` | test helpers | Test code; stays |
+| `crates/mztab-m/tests/oracle.rs` (crate) | `clippy::expect_used` | test setup: unreadable oracle files are a broken checkout | Test code; stays |
+| `crates/mztab-m/tests/rules.rs` (crate) | `clippy::expect_used`, `clippy::indexing_slicing` | test helpers edit a known document; a miss is a broken test | Test code; stays |
 | `crates/mztab-m/tests/rules.rs` `cases` | `clippy::too_many_lines` | One line per code | Test data; stays |
 | `crates/mztab-m/tests/rules.rs` `more_cases` | `clippy::too_many_lines` | One line per branch | Test data; stays |
-| `crates/mztab-m-cli/src/lib.rs` `usage` | `clippy::needless_pass_by_value` | A function for `map_err`, which passes the error by value | Stays while used with `map_err` |
+| `crates/mztab-m/tests/semantic.rs` (crate) | `clippy::expect_used` | test helpers | Test code; stays |
+| `crates/mztab-m/tests/writer.rs` (crate) | `clippy::expect_used` | test helpers: a fixture that does not parse is a setup error | Test code; stays |
+| `crates/mztab-m-api/tests/vocabulary.rs` (crate) | `clippy::expect_used` | test helpers | Test code; stays |
+| `crates/mztab-m-cli/src/lib.rs` `usage` | `clippy::needless_pass_by_value` | a function for `map_err`, which passes the error by value | Stays while used with `map_err` |
 | `crates/mztab-m-cli/src/main.rs` `message` | `clippy::needless_pass_by_value` | Same | Same |
-| `bindings/python/src/lib.rs` `error` | `clippy::needless_pass_by_value` | Same | Same |
+| `crates/mztab-m-wasm/src/lib.rs` `validate` | `clippy::needless_pass_by_value` | wasm-bindgen passes JS string arrays by value | Stays while wasm-bindgen requires it |
+| `bindings/python/src/lib.rs` `error` | `clippy::needless_pass_by_value` | a function for `map_err`, which passes the error by value | Stays while used with `map_err` |
 | `bindings/python/src/lib.rs` `validate` | `clippy::needless_pass_by_value` | PyO3 extracts arguments by value | Stays while PyO3 requires it |
-| `benches/benches/heap.rs` `row` | `clippy::cast_precision_loss` | A ratio for display | Stays |
+| `bindings/r/src/rust/src/lib.rs` (crate) | `clippy::needless_pass_by_value`, `clippy::used_underscore_binding` | `#[extendr]` passes R vectors by value and names bindings with underscores | Stays while extendr requires it |
+| `benches/benches/heap.rs` (crate) | `clippy::print_stdout` | the bench prints its report table | Bench output; stays |
+| `benches/benches/heap.rs` `row` | `clippy::cast_precision_loss` | a ratio for display | Stays |

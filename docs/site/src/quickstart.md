@@ -48,8 +48,8 @@ from a `.json` suffix or a leading `{`, and `--input tsv|json` overrides detecti
 
 | Code | Meaning |
 |---|---|
-| `0` | Success (no finding at or above `--fail-on`, and `fmt --check` found canonical input) |
-| `1` | Validation found an issue at or above `--fail-on`, or `fmt --check` would modify the file |
+| `0` | Success (no finding at or above `--fail-on` (default: `error`), and `fmt --check` found canonical input) |
+| `1` | Validation found an issue at or above `--fail-on` (default: `error`), or `fmt --check` would modify the file |
 | `2` | Invalid command line arguments |
 | `3` | Input/output error, or the model cannot be represented in the requested format |
 

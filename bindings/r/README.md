@@ -1,7 +1,8 @@
 # mztabm (R)
 
 **Status: prototype.** Installs from source and passes its tests on macOS
-(arm64); not on CRAN. See [STATUS.md](../../STATUS.md).
+(arm64) and Linux (`x86_64` in CI); not on CRAN, and Windows is untested. See
+[STATUS.md](https://github.com/Adafede/mztab-m-rs/blob/main/STATUS.md).
 
 Read, validate, convert and inspect [mzTab-M](https://github.com/HUPO-PSI/mzTab-M)
 metabolomics files, as TSV or JSON, from R. It is the Rust library
@@ -11,8 +12,8 @@ validator and writer as the `mztab-m` command.
 
 ```r
 library(mztabm)
-text <- paste(readLines("study.mztab"), collapse = "\n")
-findings <- validate(text, vocabularies = paste(readLines("psi-ms.obo"), collapse = "\n"))
+text <- paste(readLines("study.mztab", warn = FALSE), collapse = "\n")
+findings <- validate(text, vocabularies = paste(readLines("psi-ms.obo", warn = FALSE), collapse = "\n"))
 findings[findings$severity == "error", c("code", "location", "summary")]
 json <- convert(text, "json", lossy = TRUE)
 inspect(text)$sml_rows

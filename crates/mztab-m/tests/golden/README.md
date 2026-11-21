@@ -9,4 +9,4 @@ with `BLESS=1` after an intended change and review the diff.
 | `broken.txt` | `tests/reader.rs` (findings for `fixtures/broken.mztab`) | same |
 | `full.json` | `tests/json.rs` | `BLESS=1 cargo test -p mztab-m --all-features --test json` |
 | `json-corpus.txt` | `tests/json.rs` (JSON outcome per spec example) | same |
-| `full.canonical.mztab` | hand-maintained base document (DECISIONS D-070), used by tests in several crates | edit by hand |
+| `full.canonical.mztab` | `tests/writer.rs` (canonical form of `fixtures/full.mztab`, used as base document across crates) | `BLESS=1 cargo test -p mztab-m --test writer` |

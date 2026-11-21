@@ -36,7 +36,7 @@ git submodule update --init      # if cloned without --recurse-submodules
 ./mk site-serve                  # build and preview the site locally
 ```
 
-`./mk bindings` runs the Python and R tests directly (or `./mk bindings python` / `./mk bindings r`):
+`./mk bindings` (or `./mk bindings python` / `./mk bindings r`) runs the Python and R builds and tests; to run them manually:
 
 ```sh
 # Python (needs maturin 1.16 in a venv)

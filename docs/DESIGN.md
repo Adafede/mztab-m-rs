@@ -26,9 +26,11 @@ from is [PLAN.md](agents/PLAN.md).
 ```
 mztab-m        core: model, reader, writer, validator, JSON (feature)
 mztab-m-obo    OBO 1.4 text -> TermLookup (no_std, zero-copy)
+mztab-m-api    internal text-in/text-out API shared by CLI and bindings
 mztab-m-cli    the `mztab-m` command: files and streams around the core
 mztab-m-wasm   browser demo (not published)
 benches        generator and benchmarks (not published)
+bindings       Python (`mztab-m`) and R (`mztabm`) packages (outside the workspace)
 fuzz           cargo-fuzz targets (outside the workspace)
 ```
 
@@ -42,7 +44,7 @@ fuzz           cargo-fuzz targets (outside the workspace)
   reproduce it. A well-formed model has no `Invalid` cells. That is checked
   by the structure layer, not by the type system (PLAN §3).
 - **Lexemes are kept:** `Decimal` keeps `1.50` as written, so writing is
-  exact (D-052).
+  exact (D-021, D-060).
 - **Ids are typed** (`AssayId`, `MsRunId`, ...), one-based and never zero.
   An `IndexMap` keeps them sorted.
 - **The model borrows from the input text.** `parse(&str)` copies nothing
@@ -151,8 +153,8 @@ Each milestone ended with all of these passing:
   them.
 - **Coverage:** 100% of lines, enforced. Where a generic function counted
   only its best instantiation, the logic was made non-generic.
-- **WASM:** the core, `mztab-m-obo` and the demo build and pass their tests
-  on `wasm32-unknown-unknown`.
+- **WASM:** the core, `mztab-m-obo`, `mztab-m-api` and the demo build and
+  pass their tests on `wasm32-unknown-unknown`.
 - **Oracle:** a workflow (`oracle.yml`) is set up to run jmzTab-m over the
   corpus. It has never run, so no outputs are committed, and until then
   the comparison test has nothing to compare ([STATUS.md](../STATUS.md)).

@@ -15,9 +15,9 @@ mztab-m inspect study.mztab
 
 Run `mztab-m --help` for every option.
 
-- **Exit codes:** `0` ok, `1` findings at or above `--fail-on` (or `fmt --check`
-  would change the file), `2` bad command line, `3` a file could not be read
-  or written (or the model cannot be represented in the target format).
+- **Exit codes:** `0` ok, `1` findings at or above `--fail-on` (default: `error`,
+  or `fmt --check` would change the file), `2` bad command line, `3` a file could
+  not be read or written (or the model cannot be represented in the target format).
 - **Vocabularies:** the command never goes to the network; pass local OBO files
   with `--cv` (for example `psi-ms.obo` from
   [HUPO-PSI/psi-ms-CV](https://github.com/HUPO-PSI/psi-ms-CV), tested against

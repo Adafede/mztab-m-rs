@@ -49,13 +49,13 @@ validation runs locally in WebAssembly so files never leave your computer.
 
 | Command | What it does | Example |
 |---|---|---|
-| `validate` | Check syntax, structure, profiles, and OBO terms; exit `1` on findings | `mztab-m validate --cv psi-ms.obo study.mztab` |
+| `validate` | Check syntax, structure, profiles, and OBO terms; exit `1` on errors (configurable with `--fail-on`) | `mztab-m validate --cv psi-ms.obo study.mztab` |
 | `fmt` | Emit canonical TSV/JSON or check formatting (`--check`) | `mztab-m fmt --check study.mztab` |
 | `convert` | Convert between TSV and JSON (add `--lossy` to strip unknown fields) | `mztab-m convert --to json -o study.json study.mztab` |
 | `inspect` | Print version, profile, element counts, and table row counts | `mztab-m inspect study.mztab` |
 
-Exit codes: `0` ok, `1` findings at or above `--fail-on` (or `fmt --check`
-differs), `2` bad command line, `3` I/O or unwritable output error. Run
+Exit codes: `0` ok, `1` findings at or above `--fail-on` (default: `error`) or
+`fmt --check` differs, `2` bad command line, `3` I/O or unwritable output error. Run
 `mztab-m --help` for all options. The CLI never makes network requests; pass
 local OBO files such as `psi-ms.obo` from
 [HUPO-PSI/psi-ms-CV](https://github.com/HUPO-PSI/psi-ms-CV) via `--cv`.
