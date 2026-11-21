@@ -17,7 +17,7 @@ COVERAGE_FAIL_UNDER_LINES="100"
 # with and without optional features. Crates with OS I/O (CLI) are not wasm targets.
 LOCAL_OVERRIDES=(wasm=wasm)
 # Must equal the wasm-bindgen version in Cargo.lock (task_wasm checks it).
-LOCAL_CARGO_TOOLS=(wasm-bindgen-cli@0.2.130:wasm-bindgen-test-runner)
+LOCAL_CARGO_TOOLS=(wasm-bindgen-cli@0.2.130:wasm-bindgen-test-runner mdbook@0.5.4 lychee@0.24.2)
 WASM_CRATES=(mztab-m mztab-m-obo mztab-m-api mztab-m-wasm)
 
 task_wasm() {
@@ -39,8 +39,9 @@ task_wasm() {
 
 # The browser demo (crates/mztab-m-wasm/www): builds the module and its
 # JavaScript glue into www/pkg (not committed). `./mk local:demo`; CI runs it
-# so the page's module always builds.
-LOCAL_CI_GATES=(demo)
+# so the page's module always builds. `fuzz` keeps fuzz targets and benches
+# compiling in CI.
+LOCAL_CI_GATES=(demo fuzz)
 
 task_demo() {
     rustup target add wasm32-unknown-unknown
@@ -49,6 +50,41 @@ task_demo() {
         --out-dir crates/mztab-m-wasm/www/pkg \
         target/wasm32-unknown-unknown/release/mztab_m_wasm.wasm
     echo "demo: serve crates/mztab-m-wasm/www (e.g. python3 -m http.server -d crates/mztab-m-wasm/www)"
+}
+
+task_fuzz() {
+    cargo check --manifest-path fuzz/Cargo.toml --locked
+    cargo check -p mztab-m-bench --benches --all-features --locked
+}
+
+task_bindings() {
+    local target="${1:-all}"
+    case "$target" in
+        all | python | r) ;;
+        *) die "usage: ./mk bindings [all|python|r]" ;;
+    esac
+    if [ "$target" = all ] || [ "$target" = python ]; then
+        command -v python3 >/dev/null || die "python3 is required for Python bindings"
+        local venv="$PWD/target/venv"
+        local wheels="$PWD/target/wheels"
+        rm -f "$wheels"/*.whl
+        python3 -m venv "$venv"
+        "$venv/bin/pip" install --quiet 'maturin==1.16.0'
+        (cd bindings/python && "$venv/bin/maturin" build --release --out "$wheels")
+        "$venv/bin/pip" install --quiet --force-reinstall "$wheels"/*.whl
+        (
+            cd bindings/python
+            "$venv/bin/python" -m unittest discover -s tests -v
+            "$venv/bin/python" -c "import doctest, mztab_m, sys; sys.exit(doctest.testmod(mztab_m).failed)"
+        )
+    fi
+    if [ "$target" = all ] || [ "$target" = r ]; then
+        command -v R >/dev/null || die "R is required for R bindings"
+        command -v Rscript >/dev/null || die "Rscript is required for R bindings"
+        mkdir -p target/rlib
+        R CMD INSTALL --no-docs --library=target/rlib bindings/r
+        R_LIBS=target/rlib Rscript -e 'library(testthat); library(mztabm); test_dir("bindings/r/tests/testthat", stop_on_failure = TRUE)'
+    fi
 }
 
 # The corpus against the real PSI-MS vocabulary (D-077): downloads the pinned
