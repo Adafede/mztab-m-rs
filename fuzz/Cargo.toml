@@ -9,9 +9,6 @@ publish = false
 [package.metadata]
 cargo-fuzz = true
 
-# Keep this crate out of the parent workspace.
-[workspace]
-
 [[bin]]
 bench = false
 doc = false
@@ -43,3 +40,6 @@ test = false
 [dependencies]
 libfuzzer-sys = "0.4"
 mztab-m = { path = "../crates/mztab-m", features = ["json"] }
+
+# Keep this crate out of the parent workspace.
+[workspace]

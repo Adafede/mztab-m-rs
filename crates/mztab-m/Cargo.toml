@@ -13,6 +13,10 @@ categories = ["no-std", "parser-implementations", "science", "wasm"]
 # repository (third_party/), which a package cannot carry.
 include = ["/src", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE", "/NOTICE"]
 
+[features]
+# JSON in the shape of the specification's JSON schema (DECISIONS D-071).
+json = []
+
 # Test-only: property tests (round trips, no panics). Native targets only: on
 # wasm32-unknown-unknown proptest needs a JS-backed RNG; the wasm gate runs
 # the unit, doc-free integration and corpus tests instead (DECISIONS D-052).
@@ -23,10 +27,6 @@ proptest = { version = "1", default-features = false, features = ["std"] }
 # (Node, through wasm-bindgen-test-runner). Never a runtime dependency.
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 wasm-bindgen-test = "0.3"
-
-[features]
-# JSON in the shape of the specification's JSON schema (DECISIONS D-071).
-json = []
 
 [lints]
 workspace = true
