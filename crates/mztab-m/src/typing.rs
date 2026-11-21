@@ -193,10 +193,10 @@ pub(crate) fn spectra_ref<'a>(cx: &mut Cx<'_>, raw: RawCell<'a>) -> Cell<'a, Spe
     })
 }
 
-/// Parses `element[n]` for the element of `I`.
-fn element_ref<I: ElementId>(text: &str) -> Option<I> {
-    let inner = text
-        .strip_prefix(I::ELEMENT)?
+/// Parses `prefix[n]` for `I`.
+pub(crate) fn indexed<I: ElementId>(label: &str, prefix: &str) -> Option<I> {
+    let inner = label
+        .strip_prefix(prefix)?
         .strip_prefix('[')?
         .strip_suffix(']')?;
     I::from_index(parse_index(inner)?)
@@ -211,7 +211,7 @@ pub(crate) fn reference<'a, I: ElementId>(
         cx,
         raw,
         Spaces::Trim,
-        |s| element_ref::<I>(s).ok_or(()),
+        |s| indexed::<I>(s, I::ELEMENT).ok_or(()),
         |()| (Code::ValueSyntax, 0, Detail::Expected(expected)),
     )
 }

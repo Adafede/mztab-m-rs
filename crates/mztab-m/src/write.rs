@@ -414,16 +414,7 @@ pub(crate) fn header_line<S: fmt::Display>(
 
 /// The reader's slots for a header: what each column holds.
 pub(crate) fn slots<S: Copy>(header: &Header<'_, S>) -> Vec<Slot<S>> {
-    header
-        .columns
-        .iter()
-        .map(|column| match column {
-            Column::Stable(s) => Slot::Stable(*s),
-            Column::Abundance(_) | Column::IdConfidence(_) => Slot::Number,
-            Column::Opt(_) => Slot::Opt,
-            Column::Unknown(_) => Slot::Unknown,
-        })
-        .collect()
+    header.columns.iter().map(Slot::of).collect()
 }
 
 /// Writes a row line (no line ending). Cells missing from a short row are

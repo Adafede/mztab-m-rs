@@ -25,13 +25,15 @@ pub(crate) enum Slot<S> {
     Unknown,
 }
 
-/// Parses `prefix[n]` with the given element prefix, e.g. `abundance_assay`.
-fn indexed<I: ElementId>(label: &str, prefix: &str) -> Option<I> {
-    let inner = label
-        .strip_prefix(prefix)?
-        .strip_prefix('[')?
-        .strip_suffix(']')?;
-    I::from_index(parse_index(inner)?)
+impl<S: Copy> Slot<S> {
+    pub(crate) const fn of(column: &Column<'_, S>) -> Self {
+        match column {
+            Column::Stable(s) => Self::Stable(*s),
+            Column::Abundance(_) | Column::IdConfidence(_) => Self::Number,
+            Column::Opt(_) => Self::Opt,
+            Column::Unknown(_) => Self::Unknown,
+        }
+    }
 }
 
 /// Parses `element[n]_` at the start of `text`, returning the id and the rest.
@@ -85,17 +87,17 @@ fn special_column(label: &str, section: Section) -> Option<Special<'_>> {
         return Some(Special::Opt(opt));
     }
     if section == Section::Sme {
-        let id = indexed::<IdConfidenceMeasureId>(label, "id_confidence_measure")?;
+        let id = typing::indexed::<IdConfidenceMeasureId>(label, "id_confidence_measure")?;
         return Some(Special::IdConfidence(id));
     }
-    let abundance = if let Some(id) = indexed(label, "abundance_assay") {
+    let abundance = if let Some(id) = typing::indexed(label, "abundance_assay") {
         AbundanceColumn::Assay(id)
     } else if section == Section::Smf {
         return None;
-    } else if let Some(id) = indexed(label, "abundance_study_variable") {
+    } else if let Some(id) = typing::indexed(label, "abundance_study_variable") {
         AbundanceColumn::StudyVariable(id)
     } else {
-        AbundanceColumn::VariationStudyVariable(indexed(
+        AbundanceColumn::VariationStudyVariable(typing::indexed(
             label,
             "abundance_variation_study_variable",
         )?)
@@ -133,12 +135,7 @@ pub(crate) fn header<'a, S: Copy + Ord>(
             );
             Column::Unknown(Raw::new(label))
         };
-        slots.push(match &column {
-            Column::Stable(s) => Slot::Stable(*s),
-            Column::Abundance(_) | Column::IdConfidence(_) => Slot::Number,
-            Column::Opt(_) => Slot::Opt,
-            Column::Unknown(_) => Slot::Unknown,
-        });
+        slots.push(Slot::of(&column));
         columns.push(column);
     }
     (Header { columns }, slots)
@@ -227,326 +224,132 @@ fn u32_of(n: usize) -> u32 {
     u32::try_from(n).unwrap_or(u32::MAX)
 }
 
-fn sml_id<'a>(cx: &mut Cx<'_>, raw: RawCell<'a>) -> Cell<'a, SmlId> {
-    typing::integer(cx, raw).map(SmlId)
+macro_rules! table_row {
+    ($row:ident, $col:ident, $numbers:ident, {
+        $($variant:ident => $field:ident : $p:ident $(::$sub:ident)? $(($arg:path))?),+ $(,)?
+    }) => {
+        impl<'a> TableRow<'a> for $row<'a> {
+            type Column = $col;
+
+            fn empty() -> Self {
+                Self {
+                    $($field: Cell::Null,)+
+                    $numbers: Vec::new(),
+                    opt: Vec::new(),
+                    unknown: Vec::new(),
+                    extra: Vec::new(),
+                }
+            }
+
+            fn set(&mut self, column: $col, cx: &mut Cx<'_>, raw: RawCell<'a>) {
+                match column {
+                    $($col::$variant => {
+                        self.$field = table_row!(@parse cx, raw, $p $(::$sub)? $(($arg))?);
+                    })+
+                }
+            }
+
+            fn numbers(&mut self) -> &mut Vec<Cell<'a, Decimal<'a>>> {
+                &mut self.$numbers
+            }
+
+            fn opt(&mut self) -> &mut Vec<Cell<'a, Text<'a>>> {
+                &mut self.opt
+            }
+
+            fn unknown(&mut self) -> &mut Vec<Raw<'a>> {
+                &mut self.unknown
+            }
+
+            fn extra(&mut self) -> &mut Vec<Raw<'a>> {
+                &mut self.extra
+            }
+
+            fn render_stable(&self, column: $col, out: &mut Out<'_>) -> Result<(), WriteError> {
+                match column {
+                    $($col::$variant => self.$field.render(out),)+
+                }
+            }
+
+            fn numbers_ref(&self) -> &[Cell<'a, Decimal<'a>>] {
+                &self.$numbers
+            }
+
+            fn opt_ref(&self) -> &[Cell<'a, Text<'a>>] {
+                &self.opt
+            }
+
+            fn unknown_ref(&self) -> &[Raw<'a>] {
+                &self.unknown
+            }
+
+            fn extra_ref(&self) -> &[Raw<'a>] {
+                &self.extra
+            }
+        }
+    };
+    (@parse $cx:ident, $raw:ident, id($wrap:path)) => {
+        typing::integer($cx, $raw).map($wrap)
+    };
+    (@parse $cx:ident, $raw:ident, list_id($wrap:path)) => {
+        typing::list($cx, $raw, false, |cx, raw| typing::integer(cx, raw).map($wrap))
+    };
+    (@parse $cx:ident, $raw:ident, list($parser:path)) => {
+        typing::list($cx, $raw, false, $parser)
+    };
+    (@parse $cx:ident, $raw:ident, $parser:path) => {
+        $parser($cx, $raw)
+    };
 }
 
-fn smf_id<'a>(cx: &mut Cx<'_>, raw: RawCell<'a>) -> Cell<'a, SmfId> {
-    typing::integer(cx, raw).map(SmfId)
-}
+table_row!(SmlRow, SmlColumn, abundance, {
+    SmlId => sml_id: id(SmlId),
+    SmfIdRefs => smf_id_refs: list_id(SmfId),
+    DatabaseIdentifier => database_identifier: list(typing::text),
+    ChemicalFormula => chemical_formula: list(typing::text),
+    Smiles => smiles: list(typing::text),
+    Inchi => inchi: list(typing::text),
+    ChemicalName => chemical_name: list(typing::text),
+    Uri => uri: list(typing::text),
+    TheoreticalNeutralMass => theoretical_neutral_mass: list(typing::decimal),
+    AdductIons => adduct_ions: list(typing::text),
+    Reliability => reliability: typing::text,
+    BestIdConfidenceMeasure => best_id_confidence_measure: typing::param,
+    BestIdConfidenceValue => best_id_confidence_value: typing::decimal,
+});
 
-fn sme_id<'a>(cx: &mut Cx<'_>, raw: RawCell<'a>) -> Cell<'a, SmeId> {
-    typing::integer(cx, raw).map(SmeId)
-}
+table_row!(SmfRow, SmfColumn, abundance, {
+    SmfId => smf_id: id(SmfId),
+    SmeIdRefs => sme_id_refs: list_id(SmeId),
+    SmeIdRefAmbiguityCode => sme_id_ref_ambiguity_code: typing::ambiguity,
+    AdductIon => adduct_ion: typing::text,
+    Isotopomer => isotopomer: typing::param,
+    ExpMassToCharge => exp_mass_to_charge: typing::decimal,
+    Charge => charge: typing::integer,
+    RetentionTimeInSeconds => retention_time_in_seconds: typing::decimal,
+    RetentionTimeInSecondsStart => retention_time_in_seconds_start: typing::decimal,
+    RetentionTimeInSecondsEnd => retention_time_in_seconds_end: typing::decimal,
+});
 
-fn texts<'a>(cx: &mut Cx<'_>, raw: RawCell<'a>) -> Cell<'a, Vec<Cell<'a, Text<'a>>>> {
-    typing::list(cx, raw, false, typing::text)
-}
-
-impl<'a> TableRow<'a> for SmlRow<'a> {
-    type Column = SmlColumn;
-
-    fn empty() -> Self {
-        Self {
-            sml_id: Cell::Null,
-            smf_id_refs: Cell::Null,
-            database_identifier: Cell::Null,
-            chemical_formula: Cell::Null,
-            smiles: Cell::Null,
-            inchi: Cell::Null,
-            chemical_name: Cell::Null,
-            uri: Cell::Null,
-            theoretical_neutral_mass: Cell::Null,
-            adduct_ions: Cell::Null,
-            reliability: Cell::Null,
-            best_id_confidence_measure: Cell::Null,
-            best_id_confidence_value: Cell::Null,
-            abundance: Vec::new(),
-            opt: Vec::new(),
-            unknown: Vec::new(),
-            extra: Vec::new(),
-        }
-    }
-
-    fn set(&mut self, column: SmlColumn, cx: &mut Cx<'_>, raw: RawCell<'a>) {
-        match column {
-            SmlColumn::SmlId => self.sml_id = sml_id(cx, raw),
-            SmlColumn::SmfIdRefs => self.smf_id_refs = typing::list(cx, raw, false, smf_id),
-            SmlColumn::DatabaseIdentifier => self.database_identifier = texts(cx, raw),
-            SmlColumn::ChemicalFormula => self.chemical_formula = texts(cx, raw),
-            SmlColumn::Smiles => self.smiles = texts(cx, raw),
-            SmlColumn::Inchi => self.inchi = texts(cx, raw),
-            SmlColumn::ChemicalName => self.chemical_name = texts(cx, raw),
-            SmlColumn::Uri => self.uri = texts(cx, raw),
-            SmlColumn::TheoreticalNeutralMass => {
-                self.theoretical_neutral_mass = typing::list(cx, raw, false, typing::decimal);
-            }
-            SmlColumn::AdductIons => self.adduct_ions = texts(cx, raw),
-            SmlColumn::Reliability => self.reliability = typing::text(cx, raw),
-            SmlColumn::BestIdConfidenceMeasure => {
-                self.best_id_confidence_measure = typing::param(cx, raw);
-            }
-            SmlColumn::BestIdConfidenceValue => {
-                self.best_id_confidence_value = typing::decimal(cx, raw);
-            }
-        }
-    }
-
-    fn numbers(&mut self) -> &mut Vec<Cell<'a, Decimal<'a>>> {
-        &mut self.abundance
-    }
-
-    fn opt(&mut self) -> &mut Vec<Cell<'a, Text<'a>>> {
-        &mut self.opt
-    }
-
-    fn unknown(&mut self) -> &mut Vec<Raw<'a>> {
-        &mut self.unknown
-    }
-
-    fn extra(&mut self) -> &mut Vec<Raw<'a>> {
-        &mut self.extra
-    }
-
-    fn render_stable(&self, column: SmlColumn, out: &mut Out<'_>) -> Result<(), WriteError> {
-        match column {
-            SmlColumn::SmlId => self.sml_id.render(out),
-            SmlColumn::SmfIdRefs => self.smf_id_refs.render(out),
-            SmlColumn::DatabaseIdentifier => self.database_identifier.render(out),
-            SmlColumn::ChemicalFormula => self.chemical_formula.render(out),
-            SmlColumn::Smiles => self.smiles.render(out),
-            SmlColumn::Inchi => self.inchi.render(out),
-            SmlColumn::ChemicalName => self.chemical_name.render(out),
-            SmlColumn::Uri => self.uri.render(out),
-            SmlColumn::TheoreticalNeutralMass => self.theoretical_neutral_mass.render(out),
-            SmlColumn::AdductIons => self.adduct_ions.render(out),
-            SmlColumn::Reliability => self.reliability.render(out),
-            SmlColumn::BestIdConfidenceMeasure => self.best_id_confidence_measure.render(out),
-            SmlColumn::BestIdConfidenceValue => self.best_id_confidence_value.render(out),
-        }
-    }
-
-    fn numbers_ref(&self) -> &[Cell<'a, Decimal<'a>>] {
-        &self.abundance
-    }
-
-    fn opt_ref(&self) -> &[Cell<'a, Text<'a>>] {
-        &self.opt
-    }
-
-    fn unknown_ref(&self) -> &[Raw<'a>] {
-        &self.unknown
-    }
-
-    fn extra_ref(&self) -> &[Raw<'a>] {
-        &self.extra
-    }
-}
-
-impl<'a> TableRow<'a> for SmfRow<'a> {
-    type Column = SmfColumn;
-
-    fn empty() -> Self {
-        Self {
-            smf_id: Cell::Null,
-            sme_id_refs: Cell::Null,
-            sme_id_ref_ambiguity_code: Cell::Null,
-            adduct_ion: Cell::Null,
-            isotopomer: Cell::Null,
-            exp_mass_to_charge: Cell::Null,
-            charge: Cell::Null,
-            retention_time_in_seconds: Cell::Null,
-            retention_time_in_seconds_start: Cell::Null,
-            retention_time_in_seconds_end: Cell::Null,
-            abundance: Vec::new(),
-            opt: Vec::new(),
-            unknown: Vec::new(),
-            extra: Vec::new(),
-        }
-    }
-
-    fn set(&mut self, column: SmfColumn, cx: &mut Cx<'_>, raw: RawCell<'a>) {
-        match column {
-            SmfColumn::SmfId => self.smf_id = smf_id(cx, raw),
-            SmfColumn::SmeIdRefs => self.sme_id_refs = typing::list(cx, raw, false, sme_id),
-            SmfColumn::SmeIdRefAmbiguityCode => {
-                self.sme_id_ref_ambiguity_code = typing::ambiguity(cx, raw);
-            }
-            SmfColumn::AdductIon => self.adduct_ion = typing::text(cx, raw),
-            SmfColumn::Isotopomer => self.isotopomer = typing::param(cx, raw),
-            SmfColumn::ExpMassToCharge => self.exp_mass_to_charge = typing::decimal(cx, raw),
-            SmfColumn::Charge => self.charge = typing::integer(cx, raw),
-            SmfColumn::RetentionTimeInSeconds => {
-                self.retention_time_in_seconds = typing::decimal(cx, raw);
-            }
-            SmfColumn::RetentionTimeInSecondsStart => {
-                self.retention_time_in_seconds_start = typing::decimal(cx, raw);
-            }
-            SmfColumn::RetentionTimeInSecondsEnd => {
-                self.retention_time_in_seconds_end = typing::decimal(cx, raw);
-            }
-        }
-    }
-
-    fn numbers(&mut self) -> &mut Vec<Cell<'a, Decimal<'a>>> {
-        &mut self.abundance
-    }
-
-    fn opt(&mut self) -> &mut Vec<Cell<'a, Text<'a>>> {
-        &mut self.opt
-    }
-
-    fn unknown(&mut self) -> &mut Vec<Raw<'a>> {
-        &mut self.unknown
-    }
-
-    fn extra(&mut self) -> &mut Vec<Raw<'a>> {
-        &mut self.extra
-    }
-
-    fn render_stable(&self, column: SmfColumn, out: &mut Out<'_>) -> Result<(), WriteError> {
-        match column {
-            SmfColumn::SmfId => self.smf_id.render(out),
-            SmfColumn::SmeIdRefs => self.sme_id_refs.render(out),
-            SmfColumn::SmeIdRefAmbiguityCode => self.sme_id_ref_ambiguity_code.render(out),
-            SmfColumn::AdductIon => self.adduct_ion.render(out),
-            SmfColumn::Isotopomer => self.isotopomer.render(out),
-            SmfColumn::ExpMassToCharge => self.exp_mass_to_charge.render(out),
-            SmfColumn::Charge => self.charge.render(out),
-            SmfColumn::RetentionTimeInSeconds => self.retention_time_in_seconds.render(out),
-            SmfColumn::RetentionTimeInSecondsStart => {
-                self.retention_time_in_seconds_start.render(out)
-            }
-            SmfColumn::RetentionTimeInSecondsEnd => self.retention_time_in_seconds_end.render(out),
-        }
-    }
-
-    fn numbers_ref(&self) -> &[Cell<'a, Decimal<'a>>] {
-        &self.abundance
-    }
-
-    fn opt_ref(&self) -> &[Cell<'a, Text<'a>>] {
-        &self.opt
-    }
-
-    fn unknown_ref(&self) -> &[Raw<'a>] {
-        &self.unknown
-    }
-
-    fn extra_ref(&self) -> &[Raw<'a>] {
-        &self.extra
-    }
-}
-
-impl<'a> TableRow<'a> for SmeRow<'a> {
-    type Column = SmeColumn;
-
-    fn empty() -> Self {
-        Self {
-            sme_id: Cell::Null,
-            evidence_input_id: Cell::Null,
-            database_identifier: Cell::Null,
-            chemical_formula: Cell::Null,
-            smiles: Cell::Null,
-            inchi: Cell::Null,
-            chemical_name: Cell::Null,
-            uri: Cell::Null,
-            derivatized_form: Cell::Null,
-            adduct_ion: Cell::Null,
-            exp_mass_to_charge: Cell::Null,
-            charge: Cell::Null,
-            theoretical_mass_to_charge: Cell::Null,
-            spectra_ref: Cell::Null,
-            identification_method: Cell::Null,
-            ms_level: Cell::Null,
-            rank: Cell::Null,
-            id_confidence: Vec::new(),
-            opt: Vec::new(),
-            unknown: Vec::new(),
-            extra: Vec::new(),
-        }
-    }
-
-    fn set(&mut self, column: SmeColumn, cx: &mut Cx<'_>, raw: RawCell<'a>) {
-        match column {
-            SmeColumn::SmeId => self.sme_id = sme_id(cx, raw),
-            SmeColumn::EvidenceInputId => self.evidence_input_id = typing::text(cx, raw),
-            SmeColumn::DatabaseIdentifier => self.database_identifier = typing::text(cx, raw),
-            SmeColumn::ChemicalFormula => self.chemical_formula = typing::text(cx, raw),
-            SmeColumn::Smiles => self.smiles = typing::text(cx, raw),
-            SmeColumn::Inchi => self.inchi = typing::text(cx, raw),
-            SmeColumn::ChemicalName => self.chemical_name = typing::text(cx, raw),
-            SmeColumn::Uri => self.uri = typing::text(cx, raw),
-            SmeColumn::DerivatizedForm => self.derivatized_form = typing::param(cx, raw),
-            SmeColumn::AdductIon => self.adduct_ion = typing::text(cx, raw),
-            SmeColumn::ExpMassToCharge => self.exp_mass_to_charge = typing::decimal(cx, raw),
-            SmeColumn::Charge => self.charge = typing::integer(cx, raw),
-            SmeColumn::TheoreticalMassToCharge => {
-                self.theoretical_mass_to_charge = typing::decimal(cx, raw);
-            }
-            SmeColumn::SpectraRef => {
-                self.spectra_ref = typing::list(cx, raw, false, typing::spectra_ref);
-            }
-            SmeColumn::IdentificationMethod => self.identification_method = typing::param(cx, raw),
-            SmeColumn::MsLevel => self.ms_level = typing::param(cx, raw),
-            SmeColumn::Rank => self.rank = typing::integer(cx, raw),
-        }
-    }
-
-    fn numbers(&mut self) -> &mut Vec<Cell<'a, Decimal<'a>>> {
-        &mut self.id_confidence
-    }
-
-    fn opt(&mut self) -> &mut Vec<Cell<'a, Text<'a>>> {
-        &mut self.opt
-    }
-
-    fn unknown(&mut self) -> &mut Vec<Raw<'a>> {
-        &mut self.unknown
-    }
-
-    fn extra(&mut self) -> &mut Vec<Raw<'a>> {
-        &mut self.extra
-    }
-
-    fn render_stable(&self, column: SmeColumn, out: &mut Out<'_>) -> Result<(), WriteError> {
-        match column {
-            SmeColumn::SmeId => self.sme_id.render(out),
-            SmeColumn::EvidenceInputId => self.evidence_input_id.render(out),
-            SmeColumn::DatabaseIdentifier => self.database_identifier.render(out),
-            SmeColumn::ChemicalFormula => self.chemical_formula.render(out),
-            SmeColumn::Smiles => self.smiles.render(out),
-            SmeColumn::Inchi => self.inchi.render(out),
-            SmeColumn::ChemicalName => self.chemical_name.render(out),
-            SmeColumn::Uri => self.uri.render(out),
-            SmeColumn::DerivatizedForm => self.derivatized_form.render(out),
-            SmeColumn::AdductIon => self.adduct_ion.render(out),
-            SmeColumn::ExpMassToCharge => self.exp_mass_to_charge.render(out),
-            SmeColumn::Charge => self.charge.render(out),
-            SmeColumn::TheoreticalMassToCharge => self.theoretical_mass_to_charge.render(out),
-            SmeColumn::SpectraRef => self.spectra_ref.render(out),
-            SmeColumn::IdentificationMethod => self.identification_method.render(out),
-            SmeColumn::MsLevel => self.ms_level.render(out),
-            SmeColumn::Rank => self.rank.render(out),
-        }
-    }
-
-    fn numbers_ref(&self) -> &[Cell<'a, Decimal<'a>>] {
-        &self.id_confidence
-    }
-
-    fn opt_ref(&self) -> &[Cell<'a, Text<'a>>] {
-        &self.opt
-    }
-
-    fn unknown_ref(&self) -> &[Raw<'a>] {
-        &self.unknown
-    }
-
-    fn extra_ref(&self) -> &[Raw<'a>] {
-        &self.extra
-    }
-}
+table_row!(SmeRow, SmeColumn, id_confidence, {
+    SmeId => sme_id: id(SmeId),
+    EvidenceInputId => evidence_input_id: typing::text,
+    DatabaseIdentifier => database_identifier: typing::text,
+    ChemicalFormula => chemical_formula: typing::text,
+    Smiles => smiles: typing::text,
+    Inchi => inchi: typing::text,
+    ChemicalName => chemical_name: typing::text,
+    Uri => uri: typing::text,
+    DerivatizedForm => derivatized_form: typing::param,
+    AdductIon => adduct_ion: typing::text,
+    ExpMassToCharge => exp_mass_to_charge: typing::decimal,
+    Charge => charge: typing::integer,
+    TheoreticalMassToCharge => theoretical_mass_to_charge: typing::decimal,
+    SpectraRef => spectra_ref: list(typing::spectra_ref),
+    IdentificationMethod => identification_method: typing::param,
+    MsLevel => ms_level: typing::param,
+    Rank => rank: typing::integer,
+});
 
 #[cfg(test)]
 mod tests {
