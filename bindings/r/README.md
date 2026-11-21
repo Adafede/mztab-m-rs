@@ -1,5 +1,8 @@
 # mztabm (R)
 
+**Status: prototype.** Installs from source and passes its tests on macOS
+(arm64); not on CRAN. See [STATUS.md](../../STATUS.md).
+
 Read, validate, convert and inspect [mzTab-M](https://github.com/HUPO-PSI/mzTab-M)
 metabolomics files, as TSV or JSON, from R. It is the Rust library
 [`mztab-m`](https://crates.io/crates/mztab-m), compiled through

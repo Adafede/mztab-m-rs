@@ -3,6 +3,10 @@
 Reader, writer and validator for [mzTab-M](https://github.com/HUPO-PSI/mzTab-M),
 the HUPO-PSI / MSI exchange format for mass-spectrometry metabolomics results.
 
+**Status: early development (0.1).** The API, finding codes and
+severities may change; the rules follow a draft of the specification. See
+[STATUS.md](https://github.com/Adafede/mztab-m-rs/blob/main/STATUS.md).
+
 - Implements mzTab-M **2.1.0-M**, a draft pinned to one commit of the
   specification. It also reads and validates **2.0.0-M**.
 - `#![no_std]` + `alloc`, **zero dependencies**, no `unsafe`. Builds and

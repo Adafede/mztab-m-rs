@@ -1,5 +1,9 @@
 # mztab-m (Python)
 
+**Status: prototype.** Builds from source and passes its tests on macOS
+(arm64); not on PyPI, and not yet built or tested on other platforms. See
+[STATUS.md](https://github.com/Adafede/mztab-m-rs/blob/main/STATUS.md).
+
 Read, validate, convert and inspect [mzTab-M](https://github.com/HUPO-PSI/mzTab-M)
 metabolomics files, as TSV or JSON, from Python. It is the Rust library
 [`mztab-m`](https://crates.io/crates/mztab-m), compiled: the same reader,

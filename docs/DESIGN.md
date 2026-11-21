@@ -154,8 +154,8 @@ Each milestone ended with all of these passing:
 - **WASM:** the core, `mztab-m-obo` and the demo build and pass their tests
   on `wasm32-unknown-unknown`.
 - **Oracle:** a workflow (`oracle.yml`) is set up to run jmzTab-m over the
-  corpus. It has never run, so no outputs are committed; until then the comparison test has
-  nothing to compare ([STATUS.md](../STATUS.md)).
+  corpus. It has never run, so no outputs are committed, and until then
+  the comparison test has nothing to compare ([STATUS.md](../STATUS.md)).
 
 ## What it costs
 

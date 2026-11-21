@@ -1,5 +1,9 @@
 # mztab-m-api
 
+**Internal.** This crate exists so the command and the bindings share one
+implementation. It is not meant to be used directly and has no stability
+promise.
+
 The operations the `mztab-m` command and the Python, R and browser bindings
 share, as plain functions over text: detect the format, read, validate up
 to a layer with severities and vocabularies, write canonically (optionally
