@@ -1,9 +1,11 @@
 # Status
 
-Last checked on 2026-11-21 against commit `4f31765` (the last code change;
-later commits on this branch touch docs and packaging only, and are listed in
-the git log). Everything marked *verified* was run on that date; the commands
-are in [Verified how](#verified-how).
+Last checked on 2026-11-21. `./mk ci-fast` (all gates and tests) passed in a
+fresh clone at `b06bd27`, which includes every code and manifest change on
+this branch so far; coverage and the Python and R tests were run at `4f31765`,
+just before the help-text and manifest changes. Everything described as
+verified was run on that date; the commands are in
+[Verified how](#verified-how).
 
 **In one line:** the Rust library and the `mztab-m` command work on every
 example file of the specification, with a large test suite, but nothing is
@@ -77,7 +79,7 @@ No issue tracker exists yet; these are the items to file once it does
 
 ## Tests, coverage and CI
 
-| What | Result (2026-11-21, `4f31765`) |
+| What | Result (2026-11-21) |
 |---|---|
 | Workspace tests (`./mk test-fast`) | 154 run, 154 passed, 0 skipped |
 | Line coverage (`./mk coverage`, cargo-llvm-cov) | 100% (7834 of 7834 lines) of the five workspace crates; bindings, benches and fuzz targets are not measured; branch coverage is not measured |
