@@ -498,14 +498,6 @@ struct Pending<'r, 'a> {
     rows: [usize; 3],
 }
 
-const fn table_index(section: Section) -> usize {
-    match section {
-        Section::Mtd | Section::Sml => 0,
-        Section::Smf => 1,
-        Section::Sme => 2,
-    }
-}
-
 impl<'r, 'a> Pending<'r, 'a> {
     fn new(mztab: &'r MzTab<'a>) -> Self {
         let entries = mztab.metadata.entries();
@@ -559,7 +551,7 @@ impl<'r, 'a> Pending<'r, 'a> {
                 if !self.has_table(*section) {
                     return None;
                 }
-                let seen = self.headers.get_mut(table_index(*section))?;
+                let seen = section.pick_mut(&mut self.headers);
                 if *seen {
                     return None;
                 }
@@ -567,11 +559,13 @@ impl<'r, 'a> Pending<'r, 'a> {
                 Some(Item::Header(*section))
             }
             LineContent::Row(section) => {
-                let n = *self.rows.get(table_index(*section))?;
-                if n >= self.row_count(*section) {
+                let rows = self.row_count(*section);
+                let written = section.pick_mut(&mut self.rows);
+                let n = *written;
+                if n >= rows {
                     return None;
                 }
-                *self.rows.get_mut(table_index(*section))? += 1;
+                *written += 1;
                 Some(Item::Row(*section, n))
             }
             LineContent::Extra(line) => Some(Item::Extra(line)),
@@ -697,13 +691,7 @@ impl<'r, 'a> Writer<'_, 'r, 'a> {
         section: Section,
     ) -> Result<(), WriteError> {
         let total = pending.row_count(section);
-        let [sml, smf, sme] = &mut pending.rows;
-        let written = match section {
-            Section::Mtd | Section::Sml => sml,
-            Section::Smf => smf,
-            Section::Sme => sme,
-        };
-        let first = core::mem::replace(written, total);
+        let first = core::mem::replace(section.pick_mut(&mut pending.rows), total);
         (first..total).try_for_each(|n| self.canonical(&Item::Row(section, n)))
     }
 }

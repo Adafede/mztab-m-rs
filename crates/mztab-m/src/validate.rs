@@ -206,25 +206,6 @@ struct Lines {
     first: Option<u32>,
 }
 
-const fn table(section: Section) -> usize {
-    match section {
-        Section::Mtd | Section::Sml => 0,
-        Section::Smf => 1,
-        Section::Sme => 2,
-    }
-}
-
-/// The entry of a per-table array for `section` (metadata shares the SML
-/// slot; no table site ever names it).
-const fn by_table<T>(items: &mut [T; 3], section: Section) -> &mut T {
-    let [sml, smf, sme] = items;
-    match section {
-        Section::Mtd | Section::Sml => sml,
-        Section::Smf => smf,
-        Section::Sme => sme,
-    }
-}
-
 /// The model-path name of a table (metadata shares `sml`; no table site
 /// ever names it).
 const fn table_name(section: Section) -> &'static str {
@@ -283,9 +264,9 @@ impl<'m, 'a> Report<'m, 'a> {
                         lines.first.get_or_insert(number);
                     }
                     LineContent::Header(s) => {
-                        by_table(&mut lines.headers, *s).get_or_insert(number);
+                        s.pick_mut(&mut lines.headers).get_or_insert(number);
                     }
-                    LineContent::Row(s) => by_table(&mut lines.rows, *s).push(number),
+                    LineContent::Row(s) => s.pick_mut(&mut lines.rows).push(number),
                     LineContent::Extra(_) => {}
                 }
             }
@@ -344,9 +325,13 @@ impl<'m, 'a> Report<'m, 'a> {
                 let line = lines.elements.get(&(name, n)).copied();
                 line.map(|n| (n, 2, Item::Key(MtdKey::Title)))
             }
-            Site::Header(s) => header(lines, s).map(|n| (n, 1, Item::Header(s))),
-            Site::Column(s, c) => header(lines, s).map(|n| (n, cell(c), Item::Header(s))),
-            Site::Cell(s, r, c) => row(lines, s, r).map(|n| (n, cell(c), Item::Row(s, r))),
+            Site::Header(s) => (*s.pick(&lines.headers)).map(|n| (n, 1, Item::Header(s))),
+            Site::Column(s, c) => (*s.pick(&lines.headers)).map(|n| (n, cell(c), Item::Header(s))),
+            Site::Cell(s, r, c) => s
+                .pick(&lines.rows)
+                .get(r)
+                .copied()
+                .map(|n| (n, cell(c), Item::Row(s, r))),
         };
         // An item added after reading has no source line: fall back to the
         // first metadata line, or the document.
@@ -368,18 +353,6 @@ enum Item {
 
 fn first(lines: Option<&Vec<u32>>) -> Option<u32> {
     lines.and_then(|l| l.first()).copied()
-}
-
-fn header(lines: &Lines, section: Section) -> Option<u32> {
-    lines.headers.get(table(section)).copied().flatten()
-}
-
-fn row(lines: &Lines, section: Section, index: usize) -> Option<u32> {
-    lines
-        .rows
-        .get(table(section))
-        .and_then(|rows| rows.get(index))
-        .copied()
 }
 
 /// The 1-based cell number of a 0-based column after the prefix.

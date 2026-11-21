@@ -406,6 +406,28 @@ impl Section {
             }
         })
     }
+
+    /// The entry of a per-table array for `self` (metadata shares the SML
+    /// slot; no table site ever names it).
+    pub(crate) const fn pick<T>(self, items: &[T; 3]) -> &T {
+        let [sml, smf, sme] = items;
+        match self {
+            Self::Mtd | Self::Sml => sml,
+            Self::Smf => smf,
+            Self::Sme => sme,
+        }
+    }
+
+    /// The mutable entry of a per-table array for `self` (metadata shares
+    /// the SML slot; no table site ever names it).
+    pub(crate) const fn pick_mut<T>(self, items: &mut [T; 3]) -> &mut T {
+        let [sml, smf, sme] = items;
+        match self {
+            Self::Mtd | Self::Sml => sml,
+            Self::Smf => smf,
+            Self::Sme => sme,
+        }
+    }
 }
 
 /// `SME_ID_REF_ambiguity_code`, required when an SMF row has several
