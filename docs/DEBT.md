@@ -33,3 +33,5 @@ exclusions (`.cargo/mutants.toml`) and no `refquiem: allow` markers.
 | `bindings/r/src/rust/src/lib.rs` (crate) | `clippy::needless_pass_by_value`, `clippy::used_underscore_binding` | `#[extendr]` passes R vectors by value and names bindings with underscores | Stays while extendr requires it |
 | `benches/benches/heap.rs` (crate) | `clippy::print_stdout` | the bench prints its report table | Bench output; stays |
 | `benches/benches/heap.rs` `row` | `clippy::cast_precision_loss` | a ratio for display | Stays |
+| `mk.local` `task_miri` | `miri` gate override (`mztab-m --lib` and `mztab-m-obo`) | Workspace forbids `unsafe_code`; `mztab-m-cli` spawns subprocesses unsupported by Miri and the 35 MB corpus / 2,000-case proptests exceed nightly time budgets under Miri | If Miri becomes fast enough for the corpus and proptests and `mztab-m-cli` is scoped via `MIRI_PACKAGES` |
+| `mk.local` `task_outdated` | `outdated` gate override (`--ignore criterion`) | `criterion` is pinned to `0.5` because `0.8` builds `alloca`'s C object, which fails to link with Xcode clang 21 (DECISIONS D-073) | When `criterion` drops `alloca` or Xcode clang links it |

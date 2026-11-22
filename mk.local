@@ -15,7 +15,11 @@ COVERAGE_FAIL_UNDER_LINES="100"
 # The standard wasm gate only runs `cargo check` on the whole workspace. This project's
 # contract is stronger: the core must build *and pass its tests* on wasm32-unknown-unknown,
 # with and without optional features. Crates with OS I/O (CLI) are not wasm targets.
-LOCAL_OVERRIDES=(wasm=wasm)
+# Nightly `miri` is scoped to `mztab-m --lib` and `mztab-m-obo` (the workspace forbids
+# `unsafe_code`, while `mztab-m-cli` spawns subprocesses unsupported by Miri and the
+# 35 MB corpus / 2,000-case proptests exceed nightly time budgets under Miri).
+# Nightly `outdated` ignores `criterion`, which is pinned to 0.5 per DECISIONS.md D-073.
+LOCAL_OVERRIDES=(wasm=wasm miri=miri outdated=outdated)
 # Must equal the wasm-bindgen version in Cargo.lock (task_wasm checks it).
 LOCAL_CARGO_TOOLS=(wasm-bindgen-cli@0.2.130:wasm-bindgen-test-runner mdbook@0.5.4 lychee@0.24.2)
 WASM_CRATES=(mztab-m mztab-m-obo mztab-m-api mztab-m-wasm)
@@ -148,4 +152,16 @@ task_vocab() {
     echo "$PSI_MS_SHA256  $obo" | shasum -a 256 -c - >/dev/null ||
         die "$obo does not match the pinned SHA-256"
     PSI_MS_OBO="$PWD/$obo" cargo test -p mztab-m-api --test vocabulary --locked -- --ignored
+}
+
+task_miri() {
+    cargo "+$RUST_NIGHTLY" miri --version >/dev/null 2>&1 || die "miri on $RUST_NIGHTLY is not installed; run ./mk setup nightly"
+    export MIRIFLAGS="${MIRIFLAGS:--Zmiri-disable-isolation -Zmiri-tree-borrows}"
+    cargo "+$RUST_NIGHTLY" miri test --all-features --locked -p mztab-m --lib
+    cargo "+$RUST_NIGHTLY" miri test --all-features --locked -p mztab-m-obo
+}
+
+task_outdated() {
+    need cargo-outdated
+    cargo outdated --workspace --root-deps-only --ignore criterion --exit-code 1
 }
