@@ -77,10 +77,11 @@ impl Spec {
     /// Lines into chunks of at least `size` bytes (the last may be shorter),
     /// as a file read in blocks would arrive.
     pub fn chunks(&self, size: usize) -> impl Iterator<Item = String> + '_ {
-        let mut lines = self.lines().peekable();
+        let mut lines = self.lines();
         core::iter::from_fn(move || {
-            lines.peek()?;
+            let first = lines.next()?;
             let mut chunk = String::with_capacity(size);
+            chunk.push_str(&first);
             while chunk.len() < size
                 && let Some(line) = lines.next()
             {
