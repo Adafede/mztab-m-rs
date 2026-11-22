@@ -26,9 +26,15 @@ read [docs/agents/sandbox.md](docs/agents/sandbox.md) before `./mk setup`.
 ```sh
 git submodule update --init      # if cloned without --recurse-submodules
 ./mk setup                       # pinned toolchain and tools (mk.versions)
-./mk check                       # fast: fmt, toml, typos, clippy
-./mk test-fast                   # all workspace tests (nextest)
-./mk ci-fast                     # pre-push gates, about 3–4 min; skips mutants-diff and the network audit
+./mk check [-p <crate>]          # fast: fmt, toml, typos, clippy (optionally scoped)
+./mk check-changed               # inner loop scoped to affected packages + dependents
+./mk test-fast [-p <crate>]      # all workspace tests (nextest, optionally scoped)
+./mk test-changed                # workspace tests scoped to affected packages
+./mk mutants-diff [--iterate]    # mutation testing on branch Rust diff
+./mk mutants-affected [base]     # mutation testing on affected packages + dependents
+./mk mutants-plan [--mode diff|affected|full] # JSON mutant/shard plan without mutating
+./mk ci-fast                     # pre-push gates, skips mutants-diff and the network audit
+./mk ci-core                     # blocking PR gates excluding mutants-diff
 ./mk ci                          # full PR gate, includes mutants on the diff, demo, fuzz/bench check
 ./mk bindings                    # build and test Python and R bindings (outside the workspace)
 ./mk findings                    # regenerate docs/findings.md from Code::ALL
