@@ -70,14 +70,17 @@ impl<'a> Parser<'a> {
         SyntaxError { at: self.at, what }
     }
 
+    const fn offset(&self, rest: &str) -> usize {
+        self.text.len() - rest.len()
+    }
+
     fn peek(&self) -> Option<u8> {
         self.text.as_bytes().get(self.at).copied()
     }
 
     fn space(&mut self) {
-        while matches!(self.peek(), Some(b' ' | b'\t' | b'\n' | b'\r')) {
-            self.at += 1;
-        }
+        let rest = self.text.get(self.at..).unwrap_or_default();
+        self.at = self.offset(rest.trim_start_matches([' ', '\t', '\n', '\r']));
     }
 
     fn eat(&mut self, byte: u8) -> bool {
@@ -172,86 +175,107 @@ impl<'a> Parser<'a> {
         self.at += 1;
         let start = self.at;
         let mut owned: Option<String> = None;
+        let mut chars = self.text.get(start..).unwrap_or_default().chars();
         loop {
-            let rest = self.text.get(self.at..).unwrap_or_default();
-            let Some(c) = rest.chars().next() else {
-                return Err(self.error("unterminated string"));
+            let at = self.offset(chars.as_str());
+            let Some(c) = chars.next() else {
+                return Err(SyntaxError {
+                    at,
+                    what: "unterminated string",
+                });
             };
             match c {
                 '"' => {
-                    let plain = self.text.get(start..self.at).unwrap_or_default();
-                    self.at += 1;
+                    let plain = self.text.get(start..at).unwrap_or_default();
+                    self.at = self.offset(chars.as_str());
                     return Ok(owned.map_or(Cow::Borrowed(plain), Cow::Owned));
                 }
                 '\\' => {
                     let buf = owned.get_or_insert_with(|| {
-                        String::from(self.text.get(start..self.at).unwrap_or_default())
+                        String::from(self.text.get(start..at).unwrap_or_default())
                     });
-                    self.at += 1;
-                    let escaped = self.escape()?;
+                    let escaped = self.escape(&mut chars)?;
                     buf.push(escaped);
                 }
-                c if u32::from(c) < 0x20 => return Err(self.error("control character in string")),
+                c if u32::from(c) < 0x20 => {
+                    return Err(SyntaxError {
+                        at,
+                        what: "control character in string",
+                    });
+                }
                 c => {
                     if let Some(buf) = &mut owned {
                         buf.push(c);
                     }
-                    self.at += c.len_utf8();
                 }
             }
         }
     }
 
     /// One escape, after its backslash.
-    fn escape(&mut self) -> Result<char, SyntaxError> {
-        let byte = self
-            .peek()
-            .ok_or_else(|| self.error("unterminated string"))?;
-        self.at += 1;
-        Ok(match byte {
-            b'"' => '"',
-            b'\\' => '\\',
-            b'/' => '/',
-            b'b' => '\u{8}',
-            b'f' => '\u{c}',
-            b'n' => '\n',
-            b'r' => '\r',
-            b't' => '\t',
-            b'u' => {
-                let high = self.hex4()?;
+    fn escape(&self, chars: &mut core::str::Chars<'a>) -> Result<char, SyntaxError> {
+        let at = self.offset(chars.as_str());
+        let Some(c) = chars.next() else {
+            return Err(SyntaxError {
+                at,
+                what: "unterminated string",
+            });
+        };
+        Ok(match c {
+            '"' => '"',
+            '\\' => '\\',
+            '/' => '/',
+            'b' => '\u{8}',
+            'f' => '\u{c}',
+            'n' => '\n',
+            'r' => '\r',
+            't' => '\t',
+            'u' => {
+                let high = self.hex4(chars)?;
                 if (0xD800..0xDC00).contains(&high) {
-                    let rest = self.text.get(self.at..).unwrap_or_default();
-                    if !rest.starts_with("\\u") {
-                        return Err(self.error("unpaired surrogate"));
-                    }
-                    self.at += 2;
-                    let low = self.hex4()?;
+                    let Some(rest) = chars.as_str().strip_prefix("\\u") else {
+                        return Err(SyntaxError {
+                            at: self.offset(chars.as_str()),
+                            what: "unpaired surrogate",
+                        });
+                    };
+                    *chars = rest.chars();
+                    let low = self.hex4(chars)?;
                     if !(0xDC00..0xE000).contains(&low) {
-                        return Err(self.error("unpaired surrogate"));
+                        return Err(SyntaxError {
+                            at: self.offset(chars.as_str()),
+                            what: "unpaired surrogate",
+                        });
                     }
                     let code = 0x1_0000 + ((high - 0xD800) << 10) + (low - 0xDC00);
                     // A valid pair is always a valid scalar value.
                     char::from_u32(code).unwrap_or(char::REPLACEMENT_CHARACTER)
                 } else {
-                    char::from_u32(high).ok_or_else(|| self.error("unpaired surrogate"))?
+                    char::from_u32(high).ok_or_else(|| SyntaxError {
+                        at: self.offset(chars.as_str()),
+                        what: "unpaired surrogate",
+                    })?
                 }
             }
             _ => {
                 return Err(SyntaxError {
-                    at: self.at - 1,
+                    at,
                     what: "invalid escape",
                 });
             }
         })
     }
 
-    fn hex4(&mut self) -> Result<u32, SyntaxError> {
-        let digits = self
-            .text
-            .get(self.at..self.at + 4)
+    fn hex4(&self, chars: &mut core::str::Chars<'a>) -> Result<u32, SyntaxError> {
+        let rest = chars.as_str();
+        let digits = rest
+            .get(..4)
             .filter(|d| d.bytes().all(|b| b.is_ascii_hexdigit()))
-            .ok_or_else(|| self.error("invalid `\\u` escape"))?;
-        self.at += 4;
+            .ok_or_else(|| SyntaxError {
+                at: self.offset(rest),
+                what: "invalid `\\u` escape",
+            })?;
+        *chars = rest.get(4..).unwrap_or_default().chars();
         Ok(digits
             .chars()
             .filter_map(|c| c.to_digit(16))
