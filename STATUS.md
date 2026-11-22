@@ -1,10 +1,12 @@
 # Status
 
-Last checked on 2026-11-21 on branch `main`. `./mk ci`, `./mk site`,
-`./mk coverage`, and `./mk bindings` all pass locally, and GitHub Actions
-(`CI Quality Gate`, `Bindings`, and `Docs and Demo Site`) pass on
-`ubuntu-latest`. Everything described as verified was run on that date; the
-commands are in [Verified how](#verified-how).
+Last checked on 2026-11-22 on branch `main`. `./mk ci`, `./mk ci-nightly-checks`
+(`coverage`, `powerset`, `miri`, `outdated`, `local:vocab`), and full-workspace
+mutation testing pass locally; `./mk site` and `./mk bindings` passed on
+2026-11-21, and GitHub Actions (`CI Quality Gate`, `Bindings`, and
+`Docs and Demo Site`) pass on `ubuntu-latest`. Everything described as verified
+was run on 2026-11-22 unless noted otherwise; the commands are in
+[Verified how](#verified-how).
 
 **In one line:** the Rust library and the `mztab-m` command work on every
 example file of the specification, with a large test suite and passing CI on
@@ -38,7 +40,7 @@ Nothing here is Stable yet.
 | Benchmarks (`benches/`) | Working | One run on one laptop, 2026-11-18; builds (`cargo bench --no-run`) and checks in `./mk ci` | Generator changed after the numbers were taken (noted in BENCHMARKS.md) | Re-run, more machines |
 | Fuzz targets (`fuzz/`) | unverified | `cargo check --manifest-path fuzz/Cargo.toml` passes in `./mk ci`; the JSON target found three bugs during development (D-071) | Fuzzing itself needs nightly Rust | Run in CI nightly |
 | Comparison with jmzTab-m (`tests/oracle.rs`) | Broken / Known issues | — | **No outputs yet**: there are no jmzTab-m outputs in `crates/mztab-m/tests/oracle/`; the comparison test is marked `#[ignore]` so it does not pass vacuously. The 18 rows in `expected-disagreements.tsv` are predictions | Run `.github/workflows/oracle.yml` (or jmzTab-m locally), commit the outputs, explain each disagreement |
-| GitHub Actions workflows | Working | Pinned by SHA; the `actions` gate (`zizmor`) passes; `ci.yml`, `bindings.yml`, and `pages.yml` pass on `ubuntu-latest` | `nightly.yml`, `oracle.yml`, and `release.yml` have not run on GitHub yet | Run `nightly.yml` and `oracle.yml` on GitHub |
+| GitHub Actions workflows | Working | Pinned by SHA; the `actions` gate (`zizmor`) passes; `ci.yml`, `bindings.yml`, and `pages.yml` pass on `ubuntu-latest` | `nightly.yml` failed on 2026-11-22 before the fixes here and awaits re-run; `oracle.yml` and `release.yml` have not run on GitHub yet | Re-run `nightly.yml` and run `oracle.yml` on GitHub |
 | Publishing to crates.io, PyPI, CRAN | Planned | `cargo publish --dry-run` passed at M9 (D-074), not re-run | — | Maintainer decision |
 
 ## What you can rely on today
@@ -69,23 +71,21 @@ Draft issues for these and other open gaps are in
 
 - The jmzTab-m comparison test has no committed outputs yet and is marked
   `#[ignore]` (above).
-- `mutants.out/` from 2026-11-18 (before M5) listed 21 missed mutants. Every
-  milestone was reported mutant-free on its own diff afterwards, but a full
-  mutation run has not been done since. Treat "no surviving mutants" as
-  unverified.
 
 ## Tests, coverage and CI
 
-| What | Result (2026-11-21) |
+| What | Result (2026-11-22) |
 |---|---|
 | Workspace tests (`./mk test`) | 154 unit/integration tests passed, 2 ignored (`oracle` and PSI-MS `vocabulary`), and 94 doc tests passed |
-| Line coverage (`./mk coverage`, cargo-llvm-cov) | 100% (7835 of 7835 lines) of the five workspace crates; bindings, benches and fuzz targets are not measured; branch coverage is not measured |
+| Line coverage (`./mk coverage`, cargo-llvm-cov) | 100% (7539 of 7539 lines) of the five workspace crates; bindings, benches and fuzz targets are not measured; branch coverage is not measured |
 | wasm32 tests (`./mk wasm`) | 129 tests pass across `mztab-m`, `mztab-m-obo`, `mztab-m-api`, `mztab-m-wasm` |
 | Full PR gate (`./mk ci`) | pass (lints, format, typos, licenses, audit, machete, MSRV, duplication, stale refs, wasm, demo, fuzz/bench check, mutants-diff) |
-| Docs site & link check (`./mk site`) | pass (findings freshness, mdBook, WASM demo, rustdoc `-D warnings`, `lychee --offline` 0 errors) |
-| Python / R package tests (`./mk bindings`) | pass locally on macOS arm64 and in CI on Linux `x86_64` (Python 7 tests + doctests; R 27 testthat checks) |
-| Full mutation run, miri, feature powerset, fuzzing | not run |
-| CI on GitHub | `CI Quality Gate`, `Bindings`, and `Docs and Demo Site` pass on `ubuntu-latest`; `Nightly`, `Oracle`, and `Release` not yet run |
+| Full mutation run (`./mk mutants`) | pass locally across all 1,726 workspace mutants (0 missed, 0 timeouts; run across slices locally due to host free-disk floor) |
+| Nightly checks (`./mk ci-nightly-checks`) | pass (`coverage` 100%, `powerset`, `miri` on `mztab-m --lib` and `mztab-m-obo`, `outdated` ignoring pinned `criterion` per D-073, PSI-MS `local:vocab`) |
+| Fuzzing (`cargo-fuzz`) | not run (compiles in `./mk ci`) |
+| Docs site & link check (`./mk site`) | pass (2026-11-21; findings freshness, mdBook, WASM demo, rustdoc `-D warnings`, `lychee --offline` 0 errors) |
+| Python / R package tests (`./mk bindings`) | pass (2026-11-21) locally on macOS arm64 and in CI on Linux `x86_64` (Python 7 tests + doctests; R 27 testthat checks) |
+| CI on GitHub | `CI Quality Gate`, `Bindings`, and `Docs and Demo Site` pass on `ubuntu-latest`; `Nightly` failed on 2026-11-22 before these fixes and awaits re-run; `Oracle` and `Release` not yet run |
 
 ## Platforms and toolchains tested
 
@@ -102,6 +102,9 @@ Windows has not been tested.
 
 ```sh
 ./mk ci
+./mk ci-nightly-checks
+MUTANTS_JOBS=2 ./mk mutants --file crates/mztab-m/src/validate/metadata.rs --file crates/mztab-m/src/validate/semantic.rs --file crates/mztab-m/src/validate/tables.rs
+MUTANTS_JOBS=2 ./mk mutants -p mztab-m-api -p mztab-m-bench -p mztab-m-cli -p mztab-m-obo -p mztab-m-wasm
 ./mk site
 ./mk coverage
 ./mk bindings
