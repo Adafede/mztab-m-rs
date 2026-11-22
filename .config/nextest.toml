@@ -12,3 +12,18 @@ junit.path = "ci-junit.xml"
 status-level = "fail"
 final-status-level = "fail"
 slow-timeout = { period = "60s" }
+
+# Used by cargo-mutants (.cargo/mutants.toml): run fast unit/integration tests
+# first and abort running tests immediately on the first failure so slow
+# proptest and 35 MB corpus tests only run if every fast test passes.
+[profile.mutants]
+retries = 0
+fail-fast = { max-fail = 1, terminate = "immediate" }
+
+[[profile.mutants.overrides]]
+filter = "package(mztab-m) & binary(properties)"
+priority = -50
+
+[[profile.mutants.overrides]]
+filter = "package(mztab-m) & (test(=corpus::corpus_round_trips_through_json_as_recorded) | test(=native::every_corpus_file_reads_as_recorded))"
+priority = -100

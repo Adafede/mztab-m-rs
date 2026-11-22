@@ -322,6 +322,13 @@ proptest! {
 
 #[cfg(feature = "json")]
 proptest! {
+    #![proptest_config(ProptestConfig {
+        // Bounded shrinking keeps a failure (under mutation testing, say)
+        // from running into the harness timeout.
+        max_shrink_time: 2_000,
+        ..ProptestConfig::default()
+    })]
+
     /// Any document JSON can carry reads back from JSON as from its
     /// canonical TSV (which, for instance, fills a short row with `null`).
     #[test]

@@ -2,4 +2,9 @@
 # Policy: zero missed mutants. Prefer a test that kills a mutant over an exclusion;
 # every `exclude_globs` / `exclude_re` entry needs a comment saying why no test can.
 test_tool = "nextest"
-timeout_multiplier = 1.5
+additional_cargo_test_args = ["--profile", "mutants"]
+timeout_multiplier = 2.5
+# Skip gitignored directories (e.g. target/) when copying the tree; untracked non-ignored files are still copied.
+gitignore = true
+# Cap rustc lints inside mutant builds so denied lints do not mask real mutants as Unviable.
+cap_lints = true
