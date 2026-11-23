@@ -2,6 +2,7 @@
 extend-exclude = [
   "*.svg",
   "Cargo.lock",
+  "uv.lock",
   "target/",
   # Upstream spec and reference implementation (pinned submodules), not ours to spell-check.
   "third_party/",

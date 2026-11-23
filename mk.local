@@ -114,16 +114,14 @@ task_bindings() {
         command -v python3 >/dev/null || die "python3 is required for Python bindings"
         local venv="$PWD/target/venv"
         local wheels="$PWD/target/wheels"
+        mkdir -p "$wheels"
         rm -f "$wheels"/*.whl
         python3 -m venv "$venv"
         "$venv/bin/pip" install --quiet 'maturin==1.16.0'
-        (cd bindings/python && "$venv/bin/maturin" build --release --out "$wheels")
+        VIRTUAL_ENV="$venv" "$venv/bin/maturin" build --release --out "$wheels"
         "$venv/bin/pip" install --quiet --force-reinstall "$wheels"/*.whl
-        (
-            cd bindings/python
-            "$venv/bin/python" -m unittest discover -s tests -v
-            "$venv/bin/python" -c "import doctest, mztab_m, sys; sys.exit(doctest.testmod(mztab_m).failed)"
-        )
+        "$venv/bin/python" -m unittest discover -s bindings/python/tests -v
+        "$venv/bin/python" -c "import doctest, mztab_m, sys; sys.exit(doctest.testmod(mztab_m).failed)"
     fi
     if [ "$target" = all ] || [ "$target" = r ]; then
         command -v R >/dev/null || die "R is required for R bindings"

@@ -31,7 +31,12 @@ mutants.out*/
 /crates/mztab-m-wasm/www/pkg/
 
 # Bindings: build output (cargo, R CMD INSTALL, maturin)
+/.venv/
 /bindings/python/target/
+/bindings/python/python/mztab_m/*.so
+/bindings/python/python/mztab_m/*.pyd
+__pycache__/
+*.pyc
 /bindings/r/src/rust/target/
 /bindings/r/src/*.o
 /bindings/r/src/*.so

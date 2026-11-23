@@ -1,0 +1,47 @@
+[project]
+name = "mztab-m"
+description = "Read, validate, convert and inspect mzTab-M metabolomics files (TSV and JSON)."
+readme = "bindings/python/README.md"
+requires-python = ">=3.9"
+license = "MIT OR Apache-2.0"
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Rust",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "Topic :: Scientific/Engineering :: Chemistry",
+]
+dynamic = ["version"]
+
+[project.urls]
+Repository = "https://github.com/Adafede/mztab-m-rs"
+
+[dependency-groups]
+dev = [
+  "maturin>=1.16,<2.0",
+]
+
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
+
+[tool.maturin]
+manifest-path = "bindings/python/Cargo.toml"
+module-name = "mztab_m._native"
+python-source = "bindings/python/python"
+
+[tool.uv]
+cache-keys = [
+  { file = "pyproject.toml" },
+  { file = "Cargo.toml" },
+  { file = "bindings/python/Cargo.toml" },
+  { file = "bindings/python/Cargo.lock" },
+  { file = "bindings/python/src/**/*.rs" },
+  { file = "bindings/python/python/**/*.py" },
+  { file = "bindings/python/python/**/*.pyi" },
+  { file = "crates/mztab-m/Cargo.toml" },
+  { file = "crates/mztab-m/src/**/*.rs" },
+  { file = "crates/mztab-m-api/Cargo.toml" },
+  { file = "crates/mztab-m-api/src/**/*.rs" },
+  { file = "crates/mztab-m-obo/Cargo.toml" },
+  { file = "crates/mztab-m-obo/src/**/*.rs" },
+]
