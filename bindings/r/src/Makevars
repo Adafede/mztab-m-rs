@@ -1,17 +1,44 @@
-TARGET_DIR = ./rust/target
+ifeq ($(CARGO_TARGET_DIR),)
+  TARGET_DIR = ./rust/target
+else
+  TARGET_DIR = $(CARGO_TARGET_DIR)
+endif
 LIBDIR = $(TARGET_DIR)/release
 STATLIB = $(LIBDIR)/libmztabm.a
-PKG_LIBS = -L$(LIBDIR) -lmztabm
+
+ifeq ($(shell uname -s),Darwin)
+  SYS_LIBS = -framework CoreFoundation -liconv
+else
+  SYS_LIBS = -lpthread -ldl -lm
+endif
+
+PKG_LIBS = -L$(LIBDIR) -lmztabm $(SYS_LIBS)
+
+.PHONY: all C_clean clean FORCE
 
 all: C_clean
 
 $(SHLIB): $(STATLIB)
 
-$(STATLIB):
-	cargo build --lib --release --manifest-path=./rust/Cargo.toml --target-dir $(TARGET_DIR)
+# Strip R's Makeconf compiler/LTO env vars so Cargo uses its native toolchain.
+$(STATLIB): FORCE
+	set -eu; \
+	if [ -f ../../../Cargo.toml ] && [ -f ../../../crates/mztab-m/Cargo.toml ]; then \
+		:; \
+	elif [ -f ./rust/crates/mztab-m/Cargo.toml ]; then \
+		sed 's|\.\./\.\./\.\./\.\./crates/|crates/|g' ./rust/Cargo.toml > ./rust/Cargo.toml.tmp && \
+		mv ./rust/Cargo.toml.tmp ./rust/Cargo.toml; \
+	else \
+		printf '%s\n' "error: missing core mztab-m crates; install via devtools::install() / pkgbuild::build(), or run Rscript bootstrap.R in bindings/r/ before R CMD build." >&2; \
+		exit 1; \
+	fi; \
+	env -u CC -u CFLAGS -u CXX -u CXXFLAGS -u CPPFLAGS -u LDFLAGS -u AR -u RANLIB \
+		cargo build --lib --release --manifest-path=./rust/Cargo.toml --target-dir "$(TARGET_DIR)"
+
+FORCE:
 
 C_clean:
 	rm -Rf $(SHLIB) $(OBJECTS)
 
 clean:
-	rm -Rf $(SHLIB) $(STATLIB) $(OBJECTS) rust/target
+	rm -Rf $(SHLIB) $(OBJECTS) rust/target

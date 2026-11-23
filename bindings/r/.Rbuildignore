@@ -1,0 +1,9 @@
+^bootstrap\.R$
+^src/rust/target$
+^src/rust/target/
+^src/.*\.o$
+^src/.*\.so$
+^src/.*\.dll$
+^.*\.Rproj$
+^\.Rproj\.user$
+^\.DS_Store$

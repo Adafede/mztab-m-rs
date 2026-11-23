@@ -38,6 +38,7 @@ mutants.out*/
 __pycache__/
 *.pyc
 /bindings/r/src/rust/target/
+/bindings/r/src/rust/crates/
 /bindings/r/src/*.o
 /bindings/r/src/*.so
 /bindings/r/src/*.dll
