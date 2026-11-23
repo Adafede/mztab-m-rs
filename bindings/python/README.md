@@ -32,6 +32,18 @@ print(mztab_m.inspect(text)["sml_rows"])
   unless `format="tsv"` or `"json"` is given. Bad arguments raise
   `ValueError`.
 
-Build from source with [maturin](https://www.maturin.rs): `maturin build
---release` in `bindings/python`. One `abi3` wheel per platform serves
-Python 3.9 and later.
+Install directly from the repository root with `uv` or `pip` (uses
+[maturin](https://www.maturin.rs) via `pyproject.toml`), or sync the project
+environment for development:
+
+```sh
+uv pip install .
+# or:
+pip install .
+# or for local development:
+uv sync
+```
+
+Or build a wheel from the repository root with `maturin build --release`. One
+`abi3` wheel per platform serves Python 3.9 and later, with PEP 484 type stubs
+(`py.typed`) bundled in the package.

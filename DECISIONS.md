@@ -917,15 +917,24 @@ place in `validate/` to change if you decide otherwise.
   - flat finding `Record`s;
   - `inspect` facts.
   The CLI and the WASM demo now use it, as do the bindings.
-- **Python (`bindings/python`, package `mztab-m`, module `mztab_m`):**
+- **Python (`bindings/python`, root `pyproject.toml` + `uv.lock`, package `mztab-m`, module `mztab_m`):**
   - PyO3 0.30 with the stable ABI from Python 3.9, so one wheel per
     platform covers every Python version;
-  - built by maturin;
+  - built by maturin from the repository root (`manifest-path =
+    "bindings/python/Cargo.toml"`, `uv pip install .`, `pip install .`,
+    `uv sync`);
   - `validate`, `convert`, `canonical`, `inspect` and `codes`, returning
     dicts and strings and raising `ValueError`;
-  - type stubs (`_native.pyi`, `py.typed`).
+  - hybrid package (`__init__.py`, type stubs `_native.pyi`, `py.typed`)
+    plus doctests.
 - **R (`bindings/r`, package `mztabm`):**
-  - extendr 0.9, built by `R CMD INSTALL` from `src/rust`;
+  - extendr 0.9, built by `R CMD INSTALL` or `devtools::install("bindings/r")`
+    from `src/rust`;
+  - `bootstrap.R` + `.Rbuildignore` + `Config/build/bootstrap: TRUE` +
+    `Config/build/copy-method: link` and hardened `Makevars` stage the
+    workspace crates (`mztab-m`, `mztab-m-obo`, `mztab-m-api`) for
+    self-contained source tarballs (`./mk bindings r`), while direct
+    checkouts build against `../../../../crates/`;
   - the same functions, with `validate` and `codes` returning data frames;
   - errors come back as `list(value, error)` and are raised by R, because
     an extendr `Err` would first print a Rust panic message.
@@ -933,11 +942,12 @@ place in `validate/` to change if you decide otherwise.
   Python interpreter or R headers, which the workspace gates do not have.
   `.github/workflows/bindings.yml` builds and tests them: unittest and
   doctests for Python, testthat for R. Locally, Python is tested by
-  building with cargo and importing the library as `_native.abi3.so`, and R
-  by `R CMD INSTALL` into a scratch library.
+  building with maturin from the repository root, and R by building a
+  staged source tarball and installing it into a scratch library.
 - **Not done:**
-  - **CRAN:** a CRAN tarball would need the Rust sources vendored; the
-    package installs from the repository.
+  - **CRAN:** workspace crates now stage into self-contained R source
+    tarballs, though CRAN would still need external `crates.io`
+    dependencies (`extendr-api`, etc.) vendored offline.
   - **PyPI:** wheels are not uploaded. Publishing either needs approval.
 
 ### D-077: The corpus against the real PSI-MS — PROPOSED

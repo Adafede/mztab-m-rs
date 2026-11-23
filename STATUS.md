@@ -1,11 +1,11 @@
 # Status
 
-Last checked on 2026-11-22 on branch `main`. `./mk ci`, `./mk ci-nightly-checks`
-(`coverage`, `powerset`, `miri`, `outdated`, `local:vocab`), and full-workspace
-mutation testing pass locally; `./mk site` and `./mk bindings` passed on
-2026-11-21, and GitHub Actions (`CI Quality Gate`, `Bindings`, and
+Last checked on 2026-11-23 on branch `main`. `./mk ci`, `./mk site`, and `./mk bindings`
+pass locally on 2026-11-23; `./mk ci-nightly-checks` (`coverage`, `powerset`,
+`miri`, `outdated`, `local:vocab`) and full-workspace mutation testing passed
+locally on 2026-11-22, and GitHub Actions (`CI Quality Gate`, `Bindings`, and
 `Docs and Demo Site`) pass on `ubuntu-latest`. Everything described as verified
-was run on 2026-11-22 unless noted otherwise; the commands are in
+was run on 2026-11-22 or 2026-11-23 unless noted otherwise; the commands are in
 [Verified how](#verified-how).
 
 **In one line:** the Rust library and the `mztab-m` command work on every
@@ -33,8 +33,8 @@ Nothing here is Stable yet.
 | `mztab-m-obo` (OBO term lookup) | Working | Own tests; used for the PSI-MS run | Reads what lookups need, not the whole OBO 1.4 format | — |
 | `mztab-m-api` | Working (internal) | Tests; used by the command and both bindings | An internal layer, not a public API | — |
 | `mztab-m` command | Working | Binary tests; installed with `cargo install --path` from a fresh clone; `validate`, `validate --cv`, `convert --to json`, `inspect`, `fmt --check` run by hand on a spec example | Only installable from source | Publish |
-| Python package (`mztab_m`) | Prototype | Wheel built with maturin 1.16.0 on macOS arm64 (Python 3.15, abi3-py3.9) and Linux `x86_64` in GitHub Actions (`Bindings`); 7 tests and doctests pass | Not on PyPI; no wheel built for Windows | CI matrix on macOS/Windows; publish |
-| R package (`mztabm`) | Prototype | `R CMD INSTALL` on R 4.6.2 (macOS arm64) and Linux `x86_64` in GitHub Actions (`Bindings`); 27 testthat checks pass | Not on CRAN; CRAN needs the Rust sources vendored (D-076); Windows untested | Vendoring; `R CMD check` |
+| Python package (`mztab_m`) | Prototype | Wheel built with maturin 1.16.0 on macOS arm64 (Python 3.15, `abi3-py3.9`) via root `pyproject.toml` + `uv.lock` (`uv pip install .`, `uv sync --frozen`, `./mk bindings python`) and Linux `x86_64` in GitHub Actions (`Bindings`); 7 unittest tests and doctests pass | Not on PyPI; no wheel built for Windows | CI matrix on macOS/Windows; publish |
+| R package (`mztabm`) | Prototype | Installed and tested on R 4.6.2 (macOS arm64) via both self-contained source tarballs (`devtools::install()`, `./mk bindings r` with `bootstrap.R`) and direct checkout `R CMD INSTALL`, with 27 testthat checks passing and zero Cargo warnings; Linux `x86_64` in GitHub Actions (`Bindings`) | Not on CRAN; external `crates.io` dependencies still need offline vendoring for CRAN (D-076); Windows untested | Vendor `crates.io` dependencies; `R CMD check` |
 | Browser demo (`crates/mztab-m-wasm`) | Prototype | The wasm module builds (`./mk local:demo`), its 3 tests pass natively and on wasm32, and the accessible page includes a bundled example, multi-OBO support, and a client-side privacy note; live at [adafede.github.io/mztab-m-rs/demo/](https://adafede.github.io/mztab-m-rs/demo/) | Not yet tested across multiple browsers on the live URL | Cross-browser testing on the live URL |
 | Docs site & findings reference (`docs/site/`, `docs/findings.md`) | Working | `./mk site` builds mdBook + WASM demo + rustdoc with `-D warnings`, verifies `docs/findings.md` matches `Code::ALL`, and passes `lychee --offline` with 0 errors; deployed via GitHub Pages at [adafede.github.io/mztab-m-rs/](https://adafede.github.io/mztab-m-rs/) | — | — |
 | Benchmarks (`benches/`) | Working | One run on one laptop, 2026-11-18; builds (`cargo bench --no-run`) and checks in `./mk ci` | Generator changed after the numbers were taken (noted in BENCHMARKS.md) | Re-run, more machines |
@@ -79,12 +79,12 @@ Draft issues for these and other open gaps are in
 | Workspace tests (`./mk test`) | 154 unit/integration tests passed, 2 ignored (`oracle` and PSI-MS `vocabulary`), and 94 doc tests passed |
 | Line coverage (`./mk coverage`, cargo-llvm-cov) | 100% (7539 of 7539 lines) of the five workspace crates; bindings, benches and fuzz targets are not measured; branch coverage is not measured |
 | wasm32 tests (`./mk wasm`) | 129 tests pass across `mztab-m`, `mztab-m-obo`, `mztab-m-api`, `mztab-m-wasm` |
-| Full PR gate (`./mk ci`) | pass (lints, format, typos, licenses, audit, machete, MSRV, duplication, stale refs, wasm, demo, fuzz/bench check, mutants-diff) |
-| Full mutation run (`./mk mutants`) | pass locally across all 1,726 workspace mutants (0 missed, 0 timeouts; run across slices locally due to host free-disk floor) |
-| Nightly checks (`./mk ci-nightly-checks`) | pass (`coverage` 100%, `powerset`, `miri` on `mztab-m --lib` and `mztab-m-obo`, `outdated` ignoring pinned `criterion` per D-073, PSI-MS `local:vocab`) |
+| Full PR gate (`./mk ci`) | pass (2026-11-23: lints, format, typos, licenses, audit, machete, MSRV, duplication, stale refs, wasm, demo, fuzz/bench check, mutants-diff) |
+| Full mutation run (`./mk mutants`) | pass locally on 2026-11-22 across all 1,726 workspace mutants (0 missed, 0 timeouts; run across slices locally due to host free-disk floor) |
+| Nightly checks (`./mk ci-nightly-checks`) | pass on 2026-11-22 (`coverage` 100%, `powerset`, `miri` on `mztab-m --lib` and `mztab-m-obo`, `outdated` ignoring pinned `criterion` per D-073, PSI-MS `local:vocab`) |
 | Fuzzing (`cargo-fuzz`) | not run (compiles in `./mk ci`) |
-| Docs site & link check (`./mk site`) | pass (2026-11-21; findings freshness, mdBook, WASM demo, rustdoc `-D warnings`, `lychee --offline` 0 errors) |
-| Python / R package tests (`./mk bindings`) | pass (2026-11-21) locally on macOS arm64 and in CI on Linux `x86_64` (Python 7 tests + doctests; R 27 testthat checks) |
+| Docs site & link check (`./mk site`) | pass (2026-11-23; findings freshness, mdBook, WASM demo, rustdoc `-D warnings`, `lychee --offline` 0 errors) |
+| Python / R package tests (`./mk bindings`) | pass (2026-11-23) locally on macOS arm64 (`uv pip install .`, `uv sync --frozen`, `./mk bindings python` 7 tests + doctests; `devtools::install()`, direct `R CMD INSTALL`, `./mk bindings r` 27 testthat checks) and on Linux `x86_64` in CI |
 | CI on GitHub | `CI Quality Gate`, `Bindings`, and `Docs and Demo Site` pass on `ubuntu-latest`; `Nightly` failed on 2026-11-22 before these fixes and awaits re-run; `Oracle` and `Release` not yet run |
 
 ## Platforms and toolchains tested
@@ -108,6 +108,11 @@ MUTANTS_JOBS=2 ./mk mutants -p mztab-m-api -p mztab-m-bench -p mztab-m-cli -p mz
 ./mk site
 ./mk coverage
 ./mk bindings
+uv lock --check
+uv pip install .
+uv sync --frozen
+R CMD INSTALL --no-docs --library=target/rlib bindings/r
+cargo clippy --manifest-path bindings/r/src/rust/Cargo.toml --all-targets -- -D warnings
 cargo bench -p mztab-m-bench --bench throughput --no-run --locked
 RUSTDOCFLAGS="--cfg docsrs -D warnings" cargo +nightly-2026-11-03 doc -p mztab-m --all-features --no-deps --locked
 cargo build -p mztab-m-cli --release

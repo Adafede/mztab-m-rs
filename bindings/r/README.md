@@ -23,5 +23,7 @@ inspect(text)$sml_rows
 `column`, `cell`, `location`, `summary`, `detail`, `spec`); `convert()`,
 `canonical()`, `inspect()`, `codes()` and `spec_commit()` complete it.
 
-Install from the repository with `R CMD INSTALL bindings/r` (needs a Rust
-toolchain, 1.100 or later).
+Install from the repository with `R CMD INSTALL bindings/r` or from R with
+`devtools::install("bindings/r")` (needs a Rust toolchain, 1.100 or later;
+`bootstrap.R` automatically stages the workspace crates when building a
+self-contained source tarball).

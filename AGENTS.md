@@ -45,11 +45,12 @@ git submodule update --init      # if cloned without --recurse-submodules
 `./mk bindings` (or `./mk bindings python` / `./mk bindings r`) runs the Python and R builds and tests; to run them manually:
 
 ```sh
-# Python (needs maturin 1.16 in a venv)
-cd bindings/python && maturin build --release --out ../../target/wheels
-pip install ../../target/wheels/*.whl && python -m unittest discover -s tests
+# Python (from repo root; needs maturin 1.16 in a venv, or use uv sync)
+uv pip install .   # or: uv sync
+maturin build --release --out target/wheels
+pip install target/wheels/*.whl && python -m unittest discover -s bindings/python/tests -v
 
-# R (needs testthat)
+# R (direct checkout or self-contained tarball via bootstrap.R / devtools)
 R CMD INSTALL --no-docs --library=target/rlib bindings/r
 R_LIBS=target/rlib Rscript -e 'library(testthat); library(mztabm); test_dir("bindings/r/tests/testthat", stop_on_failure = TRUE)'
 ```
