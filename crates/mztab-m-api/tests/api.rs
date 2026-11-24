@@ -230,3 +230,33 @@ fn reader_errors_count_errors_only() {
     assert_eq!(get("reader_findings"), Some(Fact::Count(3)), "all three");
     assert_eq!(get("reader_errors"), Some(Fact::Count(1)), "the error");
 }
+
+#[test]
+fn write_preserves_comments_for_tsv_and_handles_lossy() {
+    let commented = format!("COM\theader note\r\n{BASE}");
+    let parsed = read(commented.as_bytes(), Format::Tsv);
+    let res = mztab_m_api::write(&parsed.mztab, Format::Tsv, false);
+    assert!(
+        res.as_ref().is_ok_and(|(tsv_out, stripped)| {
+            *stripped == mztab_m::Stripped::default()
+                && tsv_out.contains("COM\theader note\n")
+                && !tsv_out.contains("\r\n")
+        }),
+        "comments preserved and line endings normalized: {res:?}"
+    );
+
+    let with_unknown = format!("MTD\textra_key\tval\n{BASE}");
+    let parsed_unknown = read(with_unknown.as_bytes(), Format::Tsv);
+    let lossy = mztab_m_api::write(&parsed_unknown.mztab, Format::Tsv, true);
+    assert_eq!(
+        lossy,
+        Ok((
+            BASE.to_owned(),
+            mztab_m::Stripped {
+                metadata: 1,
+                columns: 0,
+                cells: 0,
+            }
+        ))
+    );
+}

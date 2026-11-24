@@ -401,3 +401,30 @@ fn comments_only_layout() {
         "canonical, comments after the metadata"
     );
 }
+
+#[test]
+fn unwritable_errors_report_exact_line_numbers() {
+    let mut m = without_layout(parse("MTD\tmzTab-version\t2.1.0-M\nMTD\ttitle\tok\n").mztab);
+    m.metadata.description = Some(Cell::Invalid(Raw::new("bad\ttab")));
+    assert_eq!(
+        to_string(&m),
+        Err(WriteError::Unwritable {
+            line: 3,
+            reason: "raw text with a tab or line break"
+        }),
+        "third metadata line"
+    );
+
+    let mut table_doc = without_layout(parse("MTD\tmzTab-ID\tx\n\nSMH\tSML_ID\nSML\t1\n").mztab);
+    if let Some(row) = table_doc.sml.as_mut().and_then(|t| t.rows.first_mut()) {
+        row.sml_id = Cell::Invalid(Raw::new("null"));
+    }
+    assert_eq!(
+        to_string(&table_doc),
+        Err(WriteError::Unwritable {
+            line: 4,
+            reason: "invalid text `null`, which reads back as null"
+        }),
+        "first data row after MTD, blank, SMH"
+    );
+}

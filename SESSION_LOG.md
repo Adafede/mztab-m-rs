@@ -17,3 +17,12 @@
     - `json_write`: `5.31` / `5.79` / `21.69` MiB/s (`1.135 ms` / `192.3 ms` / `596.7 ms`)
     - `json_parse`: `6.53` / `2.89` / `14.21` MiB/s (`921.8 µs` / `384.7 ms` / `910.8 ms`)
 - **Decisions:** Preserved `mztab-m`'s zero-dependency `#![no_std]` rule and JSON-through-TSV conformance semantics (`DECISIONS.md` D-071) while targeting elimination of full-model clones, per-row DOM/map allocations, and quadratic scans.
+
+## Step 2 — Pin Characterization Tests
+
+- **Files touched:** `crates/mztab-m/tests/writer.rs`, `crates/mztab-m-api/tests/api.rs`, `crates/mztab-m-cli/tests/run.rs`
+- **Tests added:**
+  - `unwritable_errors_report_exact_line_numbers` (`writer.rs`)
+  - `write_preserves_comments_for_tsv_and_handles_lossy` (`api.rs`)
+  - `flag_combinations_and_missing_values` (`run.rs`)
+- **Verification:** `./mk ci-fast` passed all gates except `fmt` (fixed with `cargo fmt` and re-verified `fmt` + targeted tests).
