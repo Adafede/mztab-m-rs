@@ -91,7 +91,7 @@ impl<'d, 't> Metadata<'d, 't> {
             // Only first occurrence, and only valid metadata keys.
             if let Some((name, index, rest)) = split_key(key)
                 && name == prefix
-                && MtdKey::parse(key).is_some()
+                && key.parse::<MtdKey>().is_ok()
                 && seen.insert(*key)
             {
                 out.push(Taken {

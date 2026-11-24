@@ -172,19 +172,13 @@ pub(super) fn integer<'a, T: FromStr>(cx: &mut Cx<'_>, raw: RawCell<'a>) -> Cell
 }
 
 pub(super) fn ambiguity<'a>(cx: &mut Cx<'_>, raw: RawCell<'a>) -> Cell<'a, AmbiguityCode> {
-    typed(
-        cx,
-        raw,
-        Spaces::Trim,
-        |s| AmbiguityCode::parse(s).ok_or(()),
-        |()| {
-            (
-                Code::ValueSyntax,
-                0,
-                Detail::Expected("an ambiguity code `1`, `2` or `3`"),
-            )
-        },
-    )
+    typed(cx, raw, Spaces::Trim, str::parse, |_| {
+        (
+            Code::ValueSyntax,
+            0,
+            Detail::Expected("an ambiguity code `1`, `2` or `3`"),
+        )
+    })
 }
 
 pub(super) fn spectra_ref<'a>(cx: &mut Cx<'_>, raw: RawCell<'a>) -> Cell<'a, SpectraRef<'a>> {

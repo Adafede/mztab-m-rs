@@ -6,11 +6,11 @@
 //! ```
 //! use mztab_m::{AssayKey, MtdKey};
 //!
-//! let key = MtdKey::parse("assay[2]-ms_run_ref").ok_or("unknown key")?;
+//! let key: MtdKey = "assay[2]-ms_run_ref".parse()?;
 //! assert!(matches!(key, MtdKey::Assay(id, AssayKey::MsRunRef) if id.get() == 2));
 //! assert_eq!(key.to_string(), "assay[2]-ms_run_ref");
-//! assert_eq!(MtdKey::parse("assay[0]"), None);
-//! # Ok::<(), &str>(())
+//! assert!("assay[0]".parse::<MtdKey>().is_err());
+//! # Ok::<(), mztab_m::VocabError>(())
 //! ```
 
 pub(crate) mod key;

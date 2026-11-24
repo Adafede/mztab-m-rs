@@ -117,23 +117,6 @@ pub enum MtdKey {
 }
 
 impl MtdKey {
-    /// Parses a metadata key, or returns `None` if it is not one this crate
-    /// knows.
-    #[must_use]
-    pub fn parse(text: &str) -> Option<Self> {
-        let mut parts = text.split('-');
-        let first = segment(parts.next()?)?;
-        let second = parts.next().map(segment);
-        if parts.next().is_some() {
-            return None;
-        }
-        let second = match second {
-            None => None,
-            Some(s) => Some(s?),
-        };
-        Self::from_segments(first, second)
-    }
-
     fn from_segments(first: Segment<'_>, rest: Option<Segment<'_>>) -> Option<Self> {
         if let Some(simple) = Self::simple_key(first, rest) {
             return Some(simple);
@@ -221,10 +204,10 @@ impl MtdKey {
     /// ```
     /// use mztab_m::MtdKey;
     ///
-    /// let key = MtdKey::parse("assay[2]-ms_run_ref").ok_or("unknown")?;
+    /// let key: MtdKey = "assay[2]-ms_run_ref".parse()?;
     /// assert_eq!(key.element(), Some(("assay", 2)));
     /// assert_eq!(MtdKey::Title.element(), None);
-    /// # Ok::<(), &str>(())
+    /// # Ok::<(), mztab_m::VocabError>(())
     /// ```
     #[must_use]
     pub const fn element(self) -> Option<(&'static str, u32)> {
@@ -376,7 +359,18 @@ impl FromStr for MtdKey {
     type Err = VocabError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::parse(s).ok_or_else(|| VocabError::new("a metadata key"))
+        let err = || VocabError::new("a metadata key");
+        let mut parts = s.split('-');
+        let first = segment(parts.next().ok_or_else(err)?).ok_or_else(err)?;
+        let second = parts.next().map(segment);
+        if parts.next().is_some() {
+            return Err(err());
+        }
+        let second = match second {
+            None => None,
+            Some(seg) => Some(seg.ok_or_else(err)?),
+        };
+        Self::from_segments(first, second).ok_or_else(err)
     }
 }
 

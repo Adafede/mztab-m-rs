@@ -14,8 +14,8 @@ use crate::value::text::{Text, TextError};
 /// ```
 /// use mztab_m::AmbiguityCode;
 ///
-/// assert_eq!(AmbiguityCode::parse("3"), Some(AmbiguityCode::Both));
-/// assert_eq!(AmbiguityCode::parse("4"), None);
+/// assert_eq!("3".parse(), Ok(AmbiguityCode::Both));
+/// assert!("4".parse::<AmbiguityCode>().is_err());
 /// assert_eq!(AmbiguityCode::Both.code(), 3);
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -30,17 +30,6 @@ pub enum AmbiguityCode {
 }
 
 impl AmbiguityCode {
-    /// Parses `1`, `2` or `3`.
-    #[must_use]
-    pub fn parse(text: &str) -> Option<Self> {
-        match text {
-            "1" => Some(Self::AmbiguousIdentification),
-            "2" => Some(Self::MultipleEvidenceStreams),
-            "3" => Some(Self::Both),
-            _ => None,
-        }
-    }
-
     /// The numeric code.
     #[must_use]
     pub const fn code(self) -> u8 {
@@ -56,7 +45,12 @@ impl FromStr for AmbiguityCode {
     type Err = VocabError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::parse(s).ok_or_else(|| VocabError::new("`1`, `2` or `3`"))
+        match s {
+            "1" => Ok(Self::AmbiguousIdentification),
+            "2" => Ok(Self::MultipleEvidenceStreams),
+            "3" => Ok(Self::Both),
+            _ => Err(VocabError::new("`1`, `2` or `3`")),
+        }
     }
 }
 
@@ -78,9 +72,9 @@ impl fmt::Display for AmbiguityCode {
 /// ```
 /// use mztab_m::Datatype;
 ///
-/// assert_eq!(Datatype::parse("xsd:dateTime"), Some(Datatype::DateTime));
+/// assert_eq!("xsd:dateTime".parse(), Ok(Datatype::DateTime));
 /// assert_eq!(Datatype::Parameter.as_str(), "Parameter");
-/// assert_eq!(Datatype::parse("xsd:float"), None);
+/// assert!("xsd:float".parse::<Datatype>().is_err());
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Datatype {
@@ -118,12 +112,6 @@ impl Datatype {
         Self::Parameter,
     ];
 
-    /// Parses the datatype name. Case-sensitive.
-    #[must_use]
-    pub fn parse(text: &str) -> Option<Self> {
-        Self::ALL.into_iter().find(|d| d.as_str() == text)
-    }
-
     /// The name as written.
     #[must_use]
     pub const fn as_str(self) -> &'static str {
@@ -145,7 +133,10 @@ impl FromStr for Datatype {
     type Err = VocabError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::parse(s).ok_or_else(|| VocabError::new("an `xsd:` datatype or `Parameter`"))
+        Self::ALL
+            .into_iter()
+            .find(|d| d.as_str() == s)
+            .ok_or_else(|| VocabError::new("an `xsd:` datatype or `Parameter`"))
     }
 }
 
@@ -265,18 +256,15 @@ mod tests {
             ("2", AmbiguityCode::MultipleEvidenceStreams),
             ("3", AmbiguityCode::Both),
         ] {
-            assert_eq!(AmbiguityCode::parse(text), Some(code), "{text}");
             assert_eq!(text.parse::<AmbiguityCode>(), Ok(code), "from_str {text}");
             assert_eq!(code.to_string(), text, "{text}");
         }
-        assert_eq!(AmbiguityCode::parse("0"), None, "0");
         assert!("0".parse::<AmbiguityCode>().is_err());
     }
 
     #[test]
     fn datatypes() {
         for d in Datatype::ALL {
-            assert_eq!(Datatype::parse(d.as_str()), Some(d), "{d}");
             assert_eq!(d.as_str().parse::<Datatype>(), Ok(d), "from_str {d}");
             assert_eq!(d.to_string(), d.as_str(), "{d}");
         }

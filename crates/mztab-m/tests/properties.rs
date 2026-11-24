@@ -175,7 +175,12 @@ const KEYS: &[&str] = &[
 fn every_key_form_is_distinct() {
     let keys: alloc::collections::BTreeSet<_> = KEYS
         .iter()
-        .map(|k| MtdKey::parse(&k.replace("#N", "1").replace("#M", "2")))
+        .map(|k| {
+            k.replace("#N", "1")
+                .replace("#M", "2")
+                .parse::<MtdKey>()
+                .ok()
+        })
         .collect();
     assert_eq!(keys.len(), KEYS.len(), "each form parses to its own key");
     assert!(!keys.contains(&None), "every form parses");
@@ -260,7 +265,7 @@ proptest! {
     #[test]
     fn version_round_trips(major in any::<u16>(), minor in any::<u16>(), patch in any::<u16>()) {
         let version = Version { major, minor, patch };
-        prop_assert_eq!(Version::parse(&version.to_string()), Ok(version));
+        prop_assert_eq!(version.to_string().parse::<Version>(), Ok(version));
     }
 
     /// Every key form, with any indices, parses and writes back unchanged;
@@ -268,14 +273,14 @@ proptest! {
     #[test]
     fn metadata_keys_round_trip(form in proptest::sample::select(KEYS), n in 1_u32.., m in 1_u32..) {
         let key = form.replace("#N", &n.to_string()).replace("#M", &m.to_string());
-        prop_assert_eq!(MtdKey::parse(&key).map(|k| k.to_string()), Some(key.clone()));
+        prop_assert_eq!(key.parse::<MtdKey>().map(|k| k.to_string()), Ok(key.clone()));
         if form.contains("#N") {
             let zero = form.replace("#N", "0").replace("#M", "1");
-            prop_assert_eq!(MtdKey::parse(&zero), None);
+            prop_assert!(zero.parse::<MtdKey>().is_err());
             let padded = form.replace("#N", &format!("0{n}")).replace("#M", "1");
-            prop_assert_eq!(MtdKey::parse(&padded), None);
+            prop_assert!(padded.parse::<MtdKey>().is_err());
         }
-        prop_assert_eq!(MtdKey::parse(&key.to_uppercase()), None);
+        prop_assert!(key.to_uppercase().parse::<MtdKey>().is_err());
     }
 
     /// `stream_vs_whole`: any document, cut anywhere, streams to the same

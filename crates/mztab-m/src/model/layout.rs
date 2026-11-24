@@ -91,32 +91,3 @@ pub struct SourceLayout<'a> {
     /// Every source line, in order.
     pub lines: Vec<SourceLine<'a>>,
 }
-
-impl SourceLayout<'_> {
-    /// Only the `COM` lines, in order, without line endings or a byte order
-    /// mark. Writing a model with this layout gives its canonical form with
-    /// its comments after the metadata, which is what a JSON-read model
-    /// has (D-075).
-    ///
-    /// ```
-    /// let mut model = mztab_m::parse("COM\tnote\r\nMTD\tmzTab-ID\tx\r\n").mztab;
-    /// model.layout = model.layout.comments_only();
-    /// assert_eq!(mztab_m::to_string(&model)?, "MTD\tmzTab-ID\tx\nCOM\tnote\n");
-    /// # Ok::<(), mztab_m::WriteError>(())
-    /// ```
-    #[must_use]
-    pub fn comments_only(self) -> Self {
-        let lines = self
-            .lines
-            .into_iter()
-            .filter(|l| matches!(l.content, LineContent::Extra(ExtraLine::Comment(_))))
-            // Comment lines keep their text in the line itself, never as
-            // verbatim source text, so only the ending changes.
-            .map(|l| SourceLine {
-                ending: LineEnding::Lf,
-                ..l
-            })
-            .collect();
-        Self { bom: false, lines }
-    }
-}

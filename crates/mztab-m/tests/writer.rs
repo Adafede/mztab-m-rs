@@ -378,30 +378,6 @@ fn output_errors_are_reported() {
     );
 }
 
-/// `comments_only` keeps the `COM` lines alone, as `\n` lines without
-/// source text or byte order mark.
-#[test]
-fn comments_only_layout() {
-    let source = "\u{feff}COM\tfirst\r\nMTD\tmzTab-version\t2.1.0-M\r\nCOM\t second \r\n";
-    let mut model = parse(source).mztab;
-    let layout = model.layout.clone().comments_only();
-    assert!(!layout.bom, "no byte order mark");
-    assert_eq!(layout.lines.len(), 2, "two comments");
-    assert!(
-        layout
-            .lines
-            .iter()
-            .all(|l| l.ending == mztab_m::LineEnding::Lf && l.verbatim.is_none()),
-        "plain lines"
-    );
-    model.layout = layout;
-    assert_eq!(
-        to_string(&model).as_deref(),
-        Ok("MTD\tmzTab-version\t2.1.0-M\nCOM\tfirst\nCOM\t second \n"),
-        "canonical, comments after the metadata"
-    );
-}
-
 #[test]
 fn unwritable_errors_report_exact_line_numbers() {
     let mut m = without_layout(parse("MTD\tmzTab-version\t2.1.0-M\nMTD\ttitle\tok\n").mztab);

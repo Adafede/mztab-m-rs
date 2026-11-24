@@ -48,7 +48,7 @@ pub(super) fn metadata<'a>(
     };
     let value = parts.next();
     let trailing = check_trailing_cells(cx, text, value, parts);
-    let parsed = MtdKey::parse(key.text);
+    let parsed = key.text.parse::<MtdKey>().ok();
     let placed = check_key_uniqueness(cx, seen, key, parsed);
     let typed = parsed.map(|k| (k, type_mtd_value(cx, text, k, value)));
     let entry = MtdEntry {

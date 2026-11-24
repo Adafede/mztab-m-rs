@@ -4,12 +4,12 @@
 //! ```
 //! use mztab_m::{Profile, RuleSet, Version};
 //!
-//! let version = Version::parse("2.1.0-M")?;
+//! let version: Version = "2.1.0-M".parse()?;
 //! assert_eq!(version.rule_set(), RuleSet::V2_1);
 //!
-//! assert_eq!(Profile::parse("M+F+E"), Some(Profile::MFE));
+//! assert_eq!("M+F+E".parse(), Ok(Profile::MFE));
 //! assert_eq!(Profile::from_tables(true, true, true), Ok(Profile::MSFE));
-//! # Ok::<(), mztab_m::VersionError>(())
+//! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
 pub(crate) mod field;

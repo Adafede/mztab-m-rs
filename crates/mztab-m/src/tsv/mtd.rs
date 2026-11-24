@@ -14,36 +14,28 @@ use crate::vocab::version::Version;
 pub(crate) fn mtd_value<'a>(cx: &mut Cx<'_>, kind: ValueKind, raw: RawCell<'a>) -> MtdValue<'a> {
     match kind {
         ValueKind::Version => {
-            MtdValue::Version(typed(cx, raw, Spaces::Trim, Version::parse, |e| {
+            MtdValue::Version(typed(cx, raw, Spaces::Trim, str::parse::<Version>, |e| {
                 (Code::VersionSyntax, e.offset, Detail::Version(e))
             }))
         }
-        ValueKind::Profile => MtdValue::Profile(typed(
-            cx,
-            raw,
-            Spaces::Trim,
-            |s| Profile::parse(s).ok_or(()),
-            |()| {
+        ValueKind::Profile => {
+            MtdValue::Profile(typed(cx, raw, Spaces::Trim, str::parse::<Profile>, |_| {
                 (
                     Code::ProfileValue,
                     0,
                     Detail::Expected("`M`, `M+S`, `M+F`, `M+F+E` or `M+S+F+E`"),
                 )
-            },
-        )),
-        ValueKind::Datatype => MtdValue::Datatype(typed(
-            cx,
-            raw,
-            Spaces::Trim,
-            |s| Datatype::parse(s).ok_or(()),
-            |()| {
+            }))
+        }
+        ValueKind::Datatype => {
+            MtdValue::Datatype(typed(cx, raw, Spaces::Trim, str::parse::<Datatype>, |_| {
                 (
                     Code::ValueSyntax,
                     0,
                     Detail::Expected("an `xsd:` datatype or `Parameter`"),
                 )
-            },
-        )),
+            }))
+        }
         ValueKind::Text => MtdValue::Text(text(cx, raw)),
         ValueKind::Param => MtdValue::Param(param(cx, raw)),
         ValueKind::ParamList => MtdValue::ParamList(list(cx, raw, true, param)),

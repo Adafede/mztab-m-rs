@@ -10,7 +10,7 @@ use core::str::FromStr;
 /// ```
 /// use mztab_m::{Version, VersionError};
 ///
-/// assert_eq!(Version::parse("2.1-M"), Err(VersionError { offset: 3 }));
+/// assert_eq!("2.1-M".parse::<Version>(), Err(VersionError { offset: 3 }));
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct VersionError {
@@ -42,10 +42,10 @@ impl core::error::Error for VersionError {}
 /// ```
 /// use mztab_m::Version;
 ///
-/// let v = Version::parse("2.0.0-M")?;
+/// let v: Version = "2.0.0-M".parse()?;
 /// assert_eq!((v.major, v.minor, v.patch), (2, 0, 0));
 /// assert_eq!(v.to_string(), "2.0.0-M");
-/// assert!(Version::parse("2.0.0-P").is_err());
+/// assert!("2.0.0-P".parse::<Version>().is_err());
 /// # Ok::<(), mztab_m::VersionError>(())
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -73,31 +73,6 @@ impl Version {
         patch: 0,
     };
 
-    /// Parses `major.minor.patch-M`.
-    ///
-    /// # Errors
-    ///
-    /// Returns a [`VersionError`] with the offset of the first bad byte.
-    pub fn parse(text: &str) -> Result<Self, VersionError> {
-        let bytes = text.as_bytes();
-        let (major, at) = number(bytes, 0)?;
-        let at = expect(bytes, at, b'.')?;
-        let (minor, at) = number(bytes, at)?;
-        let at = expect(bytes, at, b'.')?;
-        let (patch, at) = number(bytes, at)?;
-        let at = expect(bytes, at, b'-')?;
-        let at = expect(bytes, at, b'M')?;
-        if at == bytes.len() {
-            Ok(Self {
-                major,
-                minor,
-                patch,
-            })
-        } else {
-            Err(VersionError { offset: at })
-        }
-    }
-
     /// The rule set used to validate a file of this version.
     ///
     /// `2.0.x` uses the 2.0 rules. Everything else, including versions this
@@ -109,8 +84,8 @@ impl Version {
     /// ```
     /// use mztab_m::{RuleSet, Version};
     ///
-    /// assert_eq!(Version::parse("2.0.1-M")?.rule_set(), RuleSet::V2_0);
-    /// assert_eq!(Version::parse("2.2.0-M")?.rule_set(), RuleSet::V2_1);
+    /// assert_eq!("2.0.1-M".parse::<Version>()?.rule_set(), RuleSet::V2_0);
+    /// assert_eq!("2.2.0-M".parse::<Version>()?.rule_set(), RuleSet::V2_1);
     /// # Ok::<(), mztab_m::VersionError>(())
     /// ```
     #[must_use]
@@ -130,7 +105,7 @@ impl Version {
     /// use mztab_m::Version;
     ///
     /// assert!(Version::V2_1_0.is_known());
-    /// assert!(!Version::parse("2.2.0-M")?.is_known());
+    /// assert!(!"2.2.0-M".parse::<Version>()?.is_known());
     /// # Ok::<(), mztab_m::VersionError>(())
     /// ```
     #[must_use]
@@ -143,7 +118,23 @@ impl FromStr for Version {
     type Err = VersionError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::parse(s)
+        let bytes = s.as_bytes();
+        let (major, at) = number(bytes, 0)?;
+        let at = expect(bytes, at, b'.')?;
+        let (minor, at) = number(bytes, at)?;
+        let at = expect(bytes, at, b'.')?;
+        let (patch, at) = number(bytes, at)?;
+        let at = expect(bytes, at, b'-')?;
+        let at = expect(bytes, at, b'M')?;
+        if at == bytes.len() {
+            Ok(Self {
+                major,
+                minor,
+                patch,
+            })
+        } else {
+            Err(VersionError { offset: at })
+        }
     }
 }
 
@@ -208,7 +199,6 @@ mod tests {
                 minor,
                 patch,
             };
-            assert_eq!(Version::parse(text), Ok(expected), "{text}");
             assert_eq!(text.parse::<Version>(), Ok(expected), "from_str {text}");
         }
         let bad = [
@@ -227,13 +217,13 @@ mod tests {
         ];
         for (text, offset) in bad {
             assert_eq!(
-                Version::parse(text),
+                text.parse::<Version>(),
                 Err(VersionError { offset }),
                 "{text:?}"
             );
         }
         assert_eq!(
-            Version::parse("65535.0.0-M").map(|v| v.major),
+            "65535.0.0-M".parse::<Version>().map(|v| v.major),
             Ok(65535),
             "max"
         );

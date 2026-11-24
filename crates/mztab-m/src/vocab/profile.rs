@@ -30,7 +30,7 @@ pub enum Profile {
     MF,
     /// `M+F+E`: metadata, features and evidence.
     MFE,
-    /// `M+S+F`: tolerated for backwards compatibility, NOT RECOMMENDED.
+    /// `M+S+F`: tolerated by mzTab-M 2.1 for 2.0 files, NOT RECOMMENDED.
     MSF,
     /// `M+S+F+E`: all four sections.
     MSFE,
@@ -73,22 +73,6 @@ impl Profile {
         Self::MSF,
         Self::MSFE,
     ];
-
-    /// Parses the `mzTab-profile` value. Case-sensitive (SPEC §6).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use mztab_m::Profile;
-    ///
-    /// assert_eq!(Profile::parse("M+S"), Some(Profile::MS));
-    /// assert_eq!(Profile::parse("m+s"), None);
-    /// assert_eq!(Profile::parse("M+E"), None);
-    /// ```
-    #[must_use]
-    pub fn parse(text: &str) -> Option<Self> {
-        Self::ALL.into_iter().find(|p| p.as_str() == text)
-    }
 
     /// The profile of a file with the given tables present.
     ///
@@ -155,7 +139,10 @@ impl FromStr for Profile {
     type Err = VocabError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::parse(s).ok_or_else(|| VocabError::new("an mzTab-M profile"))
+        Self::ALL
+            .into_iter()
+            .find(|p| p.as_str() == s)
+            .ok_or_else(|| VocabError::new("an mzTab-M profile"))
     }
 }
 
@@ -176,12 +163,13 @@ mod tests {
     #[test]
     fn profiles() {
         for p in Profile::ALL {
-            assert_eq!(Profile::parse(p.as_str()), Some(p), "{p}");
             assert_eq!(p.as_str().parse::<Profile>(), Ok(p), "from_str {p}");
             assert_eq!(p.to_string(), p.as_str(), "{p}");
             let (s, f, e) = p.tables();
             assert_eq!(Profile::from_tables(s, f, e), Ok(p), "{p}");
         }
+        assert!("m+s".parse::<Profile>().is_err(), "case-sensitive");
+        assert!("M+E".parse::<Profile>().is_err(), "prohibited");
         assert!(
             "bogus"
                 .parse::<Profile>()
