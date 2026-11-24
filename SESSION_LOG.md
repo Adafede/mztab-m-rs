@@ -57,3 +57,13 @@
   - `crates/mztab-m/src/read.rs` -> split into `read.rs`, `read/{event,metadata,typer,builder,stream}.rs`.
   - Updated `crates/mztab-m/src/lib.rs`, `crates/mztab-m/src/json/write.rs`, and `crates/mztab-m/tests/writer.rs` (`canonical_string_matches_layout_variants` + BOM coverage).
 - **Verification:** `check`, `doc`, `test-fast`, `echoes` (0 duplicated, 0 approximate, 0 reuse), `refquiem`, `wasm`, `mutants-diff` (`MK_BASE=HEAD`: 337 tested — 223 caught, 114 unviable, 0 missed, 0 timeouts).
+
+## Step 6 — Decompose & Optimize `validate/`
+
+- **Files touched / created:**
+  - `crates/mztab-m/src/validate.rs` -> split into `validate.rs`, `validate/{report,patterns}.rs`; tightened `Site::{Header,Column,Cell}` to carry `TableSection`; eliminated `Vec<&str>` allocation in `native_id_ok`.
+  - `crates/mztab-m/src/validate/metadata.rs` -> split into `validate/metadata.rs`, `validate/metadata/{mandatory,refs,values}.rs`; decomposed `mandatory` into 3 focused helpers, removing `#[expect(clippy::too_many_lines)]` and reducing cognitive complexity from 35/25 to <= 25.
+  - `crates/mztab-m/src/validate/tables.rs` -> split into `validate/tables.rs`, `validate/tables/{shape,row,sml,smf,sme,colunit}.rs`; bundled `ShapeCtx`, precomputed stable column `usize` offsets once per table via `.rev()` single scan, converted `refs()` to an iterator, skipped `colunit` header formatting when `units.is_empty()`, and removed `#[expect(clippy::too_many_lines)]` from `sml_rows`.
+  - `crates/mztab-m/src/validate/semantic.rs` -> split into `validate/semantic.rs`, `validate/semantic/{uses,terms,rules}.rs`; replaced O(31 × |uses|) full-table scanning and per-use `Vec` allocations with single-pass `Target`-indexed `by_target` buckets and scalar counters (`hits`, `any_unknown`, `repeatable`).
+  - Updated `docs/DEBT.md`, `crates/mztab-m/tests/validate.rs`, `crates/mztab-m/tests/rules.rs` (added repeatable CV term test case), and `crates/mztab-m/tests/writer.rs`.
+- **Verification:** `check`, `clippy -W clippy::cognitive_complexity -D warnings` (0 warnings), `doc`, `test-fast`, `echoes`, `refquiem`, `wasm`, midpoint `./mk coverage` (**100.00% lines** across workspace), and targeted mutation tests (`validate/patterns.rs` + `validate/semantic/rules.rs`: 0 missed).

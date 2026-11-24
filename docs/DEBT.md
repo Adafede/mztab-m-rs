@@ -13,9 +13,7 @@ exclusions (`.cargo/mutants.toml`) and no `refquiem: allow` markers.
 | Location | Lint | Reason | Removal condition |
 |---|---|---|---|
 | `crates/mztab-m/src/id.rs` `IndexMap::get_or_insert_default` | `clippy::indexing_slicing` | `at` was just found or just inserted, so it is in bounds | A non-indexing way to return the slot without a second lookup |
-| `crates/mztab-m/src/read.rs` `Event` | `clippy::large_enum_variant` | Events are consumed one at a time; boxing rows would cost an allocation per row | If a benchmark shows boxing is free |
-| `crates/mztab-m/src/validate/metadata.rs` `mandatory` | `clippy::too_many_lines` | One block per element: the mandatory set reads best as one list | If the mandatory set becomes a data table |
-| `crates/mztab-m/src/validate/tables.rs` `sml_rows` | `clippy::too_many_lines` | One check per SML column, in column order | Same, for SML columns |
+| `crates/mztab-m/src/read/event.rs` `Event` | `clippy::large_enum_variant` | Events are consumed one at a time; boxing rows would cost an allocation per row | If a benchmark shows boxing is free |
 | `crates/mztab-m/tests/cv_rules.rs` (crate) | `clippy::expect_used` | test helpers | Test code; stays |
 | `crates/mztab-m/tests/json.rs` (crate) | `clippy::expect_used` | test helpers | Test code; stays |
 | `crates/mztab-m/tests/oracle.rs` (crate) | `clippy::expect_used` | test setup: unreadable oracle files are a broken checkout | Test code; stays |

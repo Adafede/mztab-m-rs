@@ -153,16 +153,12 @@ fn append_unplaced_tables<'r, 'a>(
     pending: &mut Pending<'r, 'a>,
 ) -> Result<(), WriteError> {
     // Non-empty `layout.lines` already wrote at least one section or line.
-    let mut anything = true;
     for section in TableSection::ALL {
         let t = section.index();
         if has_table(w.mztab, section) && pending.headers.get(t) == Some(&false) {
-            if anything {
-                w.blank()?;
-            }
+            w.blank()?;
             w.canonical(&Item::Header(section))?;
             w.rest_of_rows(pending, section)?;
-            anything = true;
         }
     }
     Ok(())

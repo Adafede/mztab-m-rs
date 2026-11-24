@@ -408,3 +408,24 @@ fn semantic_on_models_built_in_code() {
         );
     }
 }
+
+#[test]
+fn synthetic_mtd_table_lines_are_ignored_in_location_index() {
+    use mztab_m::{LineContent, LineEnding, Location, Section, SourceLine};
+    let mut mztab = MzTab::default();
+    mztab.layout.lines.push(SourceLine {
+        content: LineContent::Header(Section::Mtd),
+        ending: LineEnding::Lf,
+        verbatim: None,
+    });
+    mztab.layout.lines.push(SourceLine {
+        content: LineContent::Row(Section::Mtd),
+        ending: LineEnding::Lf,
+        verbatim: None,
+    });
+    let findings = validate::structure(&mztab, &Config::default());
+    assert!(
+        findings.iter().all(|f| f.location == Location::Document),
+        "non-table layout sections do not map to table lines"
+    );
+}

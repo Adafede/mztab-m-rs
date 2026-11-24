@@ -473,4 +473,15 @@ fn canonical_string_matches_layout_variants() {
         Err(WriteError::Fmt),
         "bom output error"
     );
+
+    let mut with_unknown = parse("MTD\tmzTab-ID\tx\n").mztab;
+    with_unknown
+        .metadata
+        .unknown
+        .push((Raw::new("custom_tail"), Raw::new("v")));
+    assert_eq!(
+        to_string(&with_unknown).as_deref(),
+        Ok("MTD\tmzTab-ID\tx\nMTD\tcustom_tail\tv\n"),
+        "appended unknown metadata is written after layout metadata"
+    );
 }

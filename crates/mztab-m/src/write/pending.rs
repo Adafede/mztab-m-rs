@@ -195,13 +195,12 @@ fn table_row<'a, R: RenderRow<'a>>(
 where
     R::Column: Copy,
 {
-    let Some((t, row)) = table.and_then(|t| t.rows.get(n).map(|row| (t, row))) else {
-        return Ok(());
-    };
-    match precomputed {
-        Some(s) => row_line(out, section, s, row),
-        None => row_line(out, section, &slots(&t.header), row),
-    }
+    table
+        .and_then(|t| t.rows.get(n).map(|row| (t, row)))
+        .map_or(Ok(()), |(t, row)| match precomputed {
+            Some(s) => row_line(out, section, s, row),
+            None => row_line(out, section, &slots(&t.header), row),
+        })
 }
 
 /// The canonical text of a table's header line.
