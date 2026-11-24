@@ -67,3 +67,14 @@
   - `crates/mztab-m/src/validate/semantic.rs` -> split into `validate/semantic.rs`, `validate/semantic/{uses,terms,rules}.rs`; replaced O(31 × |uses|) full-table scanning and per-use `Vec` allocations with single-pass `Target`-indexed `by_target` buckets and scalar counters (`hits`, `any_unknown`, `repeatable`).
   - Updated `docs/DEBT.md`, `crates/mztab-m/tests/validate.rs`, `crates/mztab-m/tests/rules.rs` (added repeatable CV term test case), and `crates/mztab-m/tests/writer.rs`.
 - **Verification:** `check`, `clippy -W clippy::cognitive_complexity -D warnings` (0 warnings), `doc`, `test-fast`, `echoes`, `refquiem`, `wasm`, midpoint `./mk coverage` (**100.00% lines** across workspace), and targeted mutation tests (`validate/patterns.rs` + `validate/semantic/rules.rs`: 0 missed).
+
+## Step 7 — Stream `json/` Writer Without Cloning & Split JSON Codec Modules
+
+- **Files touched / created:**
+  - `crates/mztab-m/src/write.rs` -> added `#[cfg(feature = "json")] pub(crate) fn write_canonical` (streams canonical TSV directly without cloning `MzTab`).
+  - `crates/mztab-m/src/json.rs` + `json/schema.rs` + `json/schema_tables.rs` -> stored `(tsv_name, json_key, Col)` pairs statically, eliminating runtime lowercase `String` key allocations per cell.
+  - `crates/mztab-m/src/json/value.rs` + `json/lexer.rs` -> separated AST types and `write_string` from JSON tokenizing/scanning.
+  - `crates/mztab-m/src/json/read.rs` -> split into `json/read.rs`, `json/read/{emit,meta,table}.rs`; replaced `O(K^2)` linear member scans per row with a single-pass `BTreeMap<&str, &Node<'_>>` lookup map per row while preserving exact duplicate/unknown key diagnostics.
+  - `crates/mztab-m/src/json/write.rs` -> split into `json/write.rs`, `json/write/{emit,meta,table}.rs`; eliminated `MzTab::clone()` and intermediate DOM (`Arr`/`Obj`) allocations via `JsonWriter<'_>` direct streaming, pre-flight metadata buffer + `TablePlan` validation before writing to `out`, and precomputed `RowMember` plans per table.
+  - Updated `docs/audit/AUDIT.md` and `docs/REFACTOR_PLAN.md` (Step 7 `[x]`).
+- **Verification:** `check`, `doc`, `test-fast`, `echoes` (0 duplicated, 0 approximate, 0 reuse), `refquiem` (0 stale mentions), `typos`, `wasm`, and targeted `cargo mutants` on `json/write/emit.rs`, `json/write.rs`, `json/write/table.rs` (83 tested — 71 caught, 12 unviable, 0 missed).

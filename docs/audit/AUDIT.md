@@ -68,8 +68,8 @@ Baseline measurements and structural smell catalogue recorded on branch `refacto
 
 ### Rank 1 (High Impact, Medium Effort) — Hot-Path Allocations & Quadratic Scans in JSON, Validation, and Writer
 - `crates/mztab-m/src/json/write.rs:80` and `crates/mztab-m-api/src/lib.rs:234`: Both `json::write` and `mztab_m_api::write` unconditionally clone the entire `MzTab` document (`mztab.clone()`) solely to clear `layout` before calling canonical TSV writing.
-- `crates/mztab-m/src/json/write.rs:26-69, 566-618`: `json::write` parses canonical TSV back into a full in-memory DOM (`enum J`), allocates a `BTreeMap<Cow<'static, str>, J>` and `Vec<Cow<'static, str>>` per row, and allocates lowercase `String` keys via `schema::key(name)` (`crates/mztab-m/src/json/schema.rs:379`) on every cell.
-- `crates/mztab-m/src/json/read.rs:639-644`: `row_cell` allocates `schema::key(name)` (`String`) and executes `row.get(&key)` (linear scan over `Value::Object` members) on every single cell of every row (`O(K^2)` per row).
+- `crates/mztab-m/src/json/write.rs:26-69, 566-618`: `json::write` parses canonical TSV back into a full in-memory DOM (enum J), allocates a `BTreeMap` and `Vec` per row, and allocates lowercase `String` keys on every cell.
+- `crates/mztab-m/src/json/read.rs:639-644`: `row_cell` allocates `String` keys per cell via lowercase conversion and executes `row.get(&key)` (linear scan over `Value::Object` members) on every single cell of every row (`O(K^2)` per row).
 - `crates/mztab-m/src/write.rs:615`: `table_row` calls `slots(&t.header)`, allocating a fresh `Vec<Slot<R::Column>>` on every row written.
 - `crates/mztab-m/src/validate/tables.rs:236-265, 375`: `Rows` runs a linear scan `position(header, column)` (~20 times per row) instead of precomputing column indices once per table; `refs()` allocates a `Vec` per row; `native_id_ok` (`crates/mztab-m/src/validate/tables.rs:779`) allocates `Vec<&str>` per check.
 - `crates/mztab-m/src/validate/semantic.rs:70-72, 410-454`: Iterates all 31 rules over all uses (`O(rules * uses)`) and allocates two temporary `Vec`s (`judged`, `hits`) on every CV parameter use.

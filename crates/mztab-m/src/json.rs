@@ -21,8 +21,10 @@
 //! ```
 
 mod findings;
+mod lexer;
 mod read;
 mod schema;
+mod schema_tables;
 mod value;
 mod write;
 

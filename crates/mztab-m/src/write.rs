@@ -51,6 +51,16 @@ pub fn write(mztab: &MzTab<'_>, out: &mut dyn fmt::Write) -> Result<(), WriteErr
     layout::write_layout(mztab, out)
 }
 
+/// Writes `mztab` in canonical TSV form without cloning the model or its
+/// [`SourceLayout`](crate::SourceLayout).
+#[cfg(feature = "json")]
+pub(crate) fn write_canonical(
+    mztab: &MzTab<'_>,
+    out: &mut dyn fmt::Write,
+) -> Result<(), WriteError> {
+    layout::write_canonical_opts(mztab, out, false)
+}
+
 /// Writes `mztab` to a new string. See [`write()`].
 ///
 /// # Errors
