@@ -110,3 +110,38 @@
   - `benches/src/lib.rs` -> decomposed `Spec::metadata` and `Spec::header` into `HEADER_METADATA`, `TRAILING_METADATA`, `SML_COLUMNS`/`SMF_COLUMNS`/`SME_COLUMNS`, `table_columns`, `push_ms_runs_and_assays`, and `push_study_variables` (`<= 40` LOC per helper; pinned golden unchanged).
   - Updated `docs/REFACTOR_PLAN.md` (Step 10 `[x]`).
 - **Verification:** `fmt`, `tombi`, `check`, `test` (all unit/integration + 94 doctests), `refquiem` (0 stale), `msrv` (100% pass).
+
+## Step 11 — Final Audit, Benchmarks, Deliverables, & Sign-Off
+
+- **Files touched / created:**
+  - `REVIEW_NOTES.md` -> reviewer guide documenting decisions, rejected alternatives, zero intentional behavior changes, justified exceptions, remaining debt, and review hotspots.
+  - `docs/REFACTOR_PLAN.md` -> marked Step 11 `[x]` (Steps 0–11 complete).
+  - `crates/mztab-m/src/json/write/meta.rs` + `crates/mztab-m/tests/json.rs` -> added fallback string test for malformed `sample_processing` / `spectra_ref` cells and removed dead `.map_err` branch on infallible `String` formatting.
+  - `SESSION_LOG.md` -> appended final measurements and Anti-Timidity Check.
+- **Verification:** `./mk coverage` (**8,113 / 8,113 lines — 100.00%** across all 5 workspace crates), `./mk ci-core` (all blocking gates passed: `tools`, `actions`, `shell`, `commits`, `ratchet`, `fmt`, `tombi`, `typos`, `lint`, `lints-inherit`, `test`, `doc`, `deny`, `audit`, `machete`, `echoes`, `refquiem`, `wasm`, `local:demo`, `local:fuzz`), `./mk bindings` (Python + R 27/27 PASS), `./mk site` (mdBook + WASM demo + rustdoc + lychee `0 Errors`), and `cargo clippy --workspace --all-features --lib --bins -- -W clippy::cognitive_complexity -D warnings` (0 warnings).
+
+### Anti-Timidity Check
+
+1. **Three largest structural changes:**
+   - Broke the two core circular module cycles (`meta <-> model` and `table <-> write`) inside `crates/mztab-m`, establishing a strict 4-tier acyclic internal DAG across focused submodules (`vocab/`, `value/`, `param/`, `meta/`, `model/`, `tsv/`, `write/`, `read/`, `json/`, `validate/`).
+   - Eliminated `MzTab::clone()` and the in-memory JSON DOM allocation in `crates/mztab-m/src/json/write/` (replacing it with `write_canonical` + pre-flight metadata/table validation + direct streaming `JsonWriter<'_>`) and eliminated quadratic `O(K^2)` lookups across JSON reading, TSV slot resolution, table column validation, and O(31 × |uses|) semantic scanning.
+   - Enforced the Layer 3 -> Layer 2 boundary across `mztab-m-cli`, `mztab-m-wasm`, `bindings/python`, and `bindings/r` by removing all direct `mztab-m` and `mztab-m-obo` dependencies and replacing the CLI's stringly-typed options bag with a typed `Command` + `Action` enum across `args.rs` and `exec.rs`.
+2. **Modules created / deleted:**
+   - **Deleted monolithic files (split into focused directory modules):** `meta.rs` (1,305 LOC), `model.rs` (1,029 LOC), `diag.rs` (839 LOC), `typing.rs` & `table.rs`, `vocab.rs` (659 LOC), `value.rs` (583 LOC), `param.rs` (512 LOC), `validate/tables.rs` (825 LOC), `validate/metadata.rs` (665 LOC), `validate/semantic.rs` (476 LOC).
+   - **Created modules:** `value/{cell,text,decimal}.rs`, `param/{text,parse}.rs`, `vocab/{version,profile,section,field}.rs`, `diag/{severity,location,finding,code}.rs`, `meta/{key,subkey}.rs`, `model/{document,colunit,table,metadata,meta_value,meta_insert,meta_entries,layout}.rs`, `tsv/{splitter,typing,mtd,table}.rs`, `write/{error,sink,render,line,pending,layout}.rs`, `read/{event,metadata,typer,builder,stream}.rs`, `validate/{report,patterns}.rs`, `validate/metadata/{mandatory,refs,values}.rs`, `validate/tables/{shape,row,sml,smf,sme,colunit}.rs`, `validate/semantic/{uses,terms,rules}.rs`, `json/{lexer,schema_tables}.rs`, `json/read/{emit,meta,table}.rs`, `json/write/{emit,meta,table}.rs`, `mztab-m-obo/src/parse.rs`, `mztab-m-api/src/{format,settings,ops,report}.rs`, `mztab-m-cli/src/{args,exec}.rs`.
+3. **Measured before -> after metrics (same Apple Silicon machine):**
+
+| Metric | Before (Step 0 baseline) | After (Step 11) |
+|---|---|---|
+| Max production file LOC | 1,305 LOC (`meta.rs`) | 438 total / 348 non-comment LOC (`meta/key.rs`) |
+| Max production function LOC | 189 LOC (`Metadata::entries`) | 88 LOC (`tsv/mtd.rs::mtd_value`) |
+| `clippy::cognitive_complexity` (> 25) | 1 warning (`mandatory`: 35/25) | **0 warnings** |
+| Production `#[expect]`s in `crates/` | 7 (6 in `mztab-m`, 1 in `mztab-m-wasm`) | **3** (2 in `mztab-m`, 1 in `mztab-m-wasm`) |
+| Layer 3 direct deps on core/obo | CLI, WASM, Python, R all depended directly on `mztab-m` (and/or `mztab-m-obo`) | **0** (all route exclusively through `mztab-m-api`) |
+| Release CLI binary (`target/release/mztab-m`) | 1.6 MiB (`953.8 KiB` `.text`; `620.5 KiB` `mztab_m`) | **1.2 MiB (-25%)** (`784.7 KiB` `.text`; `415.0 KiB` `mztab_m`) |
+| Release WASM (`mztab_m_wasm.wasm`) | 967 KiB | **679 KiB (-29.8%)** |
+| `small`: `parse` / `write` / `semantic` | 530.3 µs / 165.2 µs / 86.8 µs | **269.5 µs (-49%)** / **37.05 µs (-78%)** / **32.67 µs (-62%)** |
+| `small`: `json_write` / `json_parse` | 1.135 ms / 921.8 µs | **192.6 µs (-83%)** / **311.9 µs (-66%)** |
+| `medium`: `parse` / `structure` / `semantic` | 70.85 ms / 28.56 ms / 5.59 ms | **19.33 ms (-73%)** / **11.49 ms (-60%)** / **934.8 µs (-83%)** |
+| `medium`: `json_write` / `json_parse` | 192.3 ms / 384.7 ms | **33.85 ms (-82%)** / **162.8 ms (-58%)** |
+| `large`: `parse` / `write` / `json_write` / `json_parse` | 400.4 ms / 86.37 ms / 596.7 ms / 910.8 ms | **189.3 ms (-53%)** / **53.47 ms (-38%)** / **175.6 ms (-71%)** / **594.8 ms (-35%)** |

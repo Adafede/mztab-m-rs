@@ -32,8 +32,9 @@ pub(super) fn encode_metadata<'t>(
 ) -> Result<(String, BTreeMap<&'static str, Vec<u32>>), WriteError> {
     let mut meta = Metadata::new(lines);
     let mut out = String::new();
+    // Writing into a `String` cannot fail.
     meta.write_object(&mut JsonWriter::new(&mut out))
-        .map_err(|_| WriteError::Fmt)?;
+        .unwrap_or_default();
     if let Some(line) = meta.unused() {
         return Err(unwritable(line, "metadata key has no JSON form"));
     }

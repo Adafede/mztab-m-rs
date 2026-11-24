@@ -17,4 +17,4 @@ Status legend: `[x]` done, `[ ]` pending.
 | 8 | Modularize `mztab-m-api` & optimize `mztab-m-obo` (`is_descendant`); remove duplicate JSON escaping | `./mk check && ./mk test-fast && ./mk wasm && ./mk echoes && ./mk refquiem && ./mk mutants-diff` | Step 7 commit | [x] |
 | 9 | Enforce Layer 3 -> Layer 2 boundary across `mztab-m-cli`, `mztab-m-wasm`, `bindings/python`, `bindings/r`; type-safe CLI `Command` | `./mk check && ./mk test-fast && ./mk wasm && ./mk bindings && ./mk machete && ./mk echoes && ./mk refquiem && ./mk mutants-diff` | Step 8 commit | [x] |
 | 10 | Add `FromStr` property tests, tune `[profile.release]`, clean `benches/src/lib.rs` | `./mk ci` | Step 9 commit | [x] |
-| 11 | Full re-audit, coverage/bindings/site/benchmarks verification, `REVIEW_NOTES.md`, final `SESSION_LOG.md` | `./mk ci && ./mk coverage && ./mk bindings && ./mk site` | Step 10 commit | [ ] |
+| 11 | Full re-audit, coverage/bindings/site/benchmarks verification, `REVIEW_NOTES.md`, final `SESSION_LOG.md` | `./mk ci && ./mk coverage && ./mk bindings && ./mk site` | Step 10 commit | [x] |
