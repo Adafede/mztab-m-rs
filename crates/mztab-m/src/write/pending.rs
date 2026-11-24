@@ -9,13 +9,14 @@ use super::error::WriteError;
 use super::line::{extra_line, header_line, metadata_line, row_line, unknown_line};
 use super::render::RenderRow;
 use super::sink::Out;
-use crate::meta::MtdKey;
-use crate::model::{
-    ExtraLine, LineContent, MzTab, SmeColumn, SmfColumn, SmlColumn, Table, ValueRef,
-};
-use crate::tsv::{Slot, slots};
-use crate::value::Raw;
-use crate::vocab::{Section, TableSection};
+use crate::meta::key::MtdKey;
+use crate::model::document::MzTab;
+use crate::model::layout::{ExtraLine, LineContent};
+use crate::model::meta_value::ValueRef;
+use crate::model::table::{SmeColumn, SmfColumn, SmlColumn, Table};
+use crate::tsv::table::{Slot, slots};
+use crate::value::text::Raw;
+use crate::vocab::section::{Section, TableSection};
 
 /// Header slots computed once per table rather than once per row.
 pub(super) struct TableSlots {

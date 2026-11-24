@@ -4,8 +4,6 @@ use alloc::borrow::Cow;
 use alloc::vec::Vec;
 use core::fmt;
 
-pub(crate) use super::lexer::{is_number, parse};
-
 /// A parsed JSON value. Strings borrow the input unless they had escapes;
 /// numbers keep their lexeme.
 #[derive(Clone, Debug, PartialEq, Eq)]

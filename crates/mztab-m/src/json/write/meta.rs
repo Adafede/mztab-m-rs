@@ -9,9 +9,9 @@ use core::fmt;
 use super::emit::JsonWriter;
 use super::{split_key, unwritable};
 use crate::json::schema::{Element, Item, METADATA, Shape};
-use crate::meta::MtdKey;
+use crate::meta::key::MtdKey;
 use crate::param::Param;
-use crate::write::WriteError;
+use crate::write::error::WriteError;
 
 /// Padding beyond this many `null`s makes a model unwritable.
 const MAX_PADDING: u32 = 1024;

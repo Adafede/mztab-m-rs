@@ -8,7 +8,9 @@ use alloc::vec::Vec;
 
 use super::emit::cell_text;
 use super::{Tsv, items};
-use crate::diag::{Code, Detail, Path};
+use crate::diag::code::Code;
+use crate::diag::finding::Detail;
+use crate::diag::location::Path;
 use crate::json::schema::{Col, Table, standard_header};
 use crate::json::value::{Node, Value};
 

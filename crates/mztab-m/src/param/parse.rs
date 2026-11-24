@@ -3,7 +3,7 @@
 use core::fmt;
 
 use super::{Accession, Param, ParamText};
-use crate::value::find_control;
+use crate::value::text::find_control;
 
 /// What is wrong with a parameter.
 ///

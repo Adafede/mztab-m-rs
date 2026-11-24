@@ -12,18 +12,12 @@
 //! # Ok::<(), mztab_m::VersionError>(())
 //! ```
 
-mod field;
-mod profile;
-mod section;
-mod version;
+pub(crate) mod field;
+pub(crate) mod profile;
+pub(crate) mod section;
+pub(crate) mod version;
 
 use core::fmt;
-
-pub use field::{AmbiguityCode, Datatype, PublicationItem, PublicationItemError, PublicationKind};
-pub use profile::{Profile, ProhibitedProfile};
-pub use section::Section;
-pub(crate) use section::TableSection;
-pub use version::{RuleSet, Version, VersionError};
 
 /// Why a string could not be parsed as a closed vocabulary value.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

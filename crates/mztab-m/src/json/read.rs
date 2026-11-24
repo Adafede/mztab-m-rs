@@ -16,17 +16,20 @@ use alloc::format;
 use alloc::string::{String, ToString as _};
 use alloc::vec::Vec;
 
+use super::lexer;
 use super::schema::{SNAKE_DIALECT, TABLES};
-use super::value::{self, Node, Value};
-use crate::diag::{Code, Detail, Finding, Findings, Location, Path};
+use super::value::{Node, Value};
+use crate::diag::code::Code;
+use crate::diag::finding::{Detail, Finding, Findings};
+use crate::diag::location::{Location, Path};
 use crate::owned::IntoOwned as _;
-use crate::read::Parsed;
+use crate::read::event::Parsed;
 
 /// Reads JSCH JSON. See the [module documentation](super).
 pub(super) fn parse(input: &str) -> Parsed<'static> {
     let mut findings = Vec::new();
     let text = input.strip_prefix('\u{feff}').unwrap_or(input);
-    let root = match value::parse(text) {
+    let root = match lexer::parse(text) {
         Ok(root) => root,
         Err(e) => {
             let (line, column) = line_column(text, e.at);
@@ -36,7 +39,7 @@ pub(super) fn parse(input: &str) -> Parsed<'static> {
                 Detail::Expected(e.what),
             ));
             return Parsed {
-                mztab: crate::model::MzTab::default(),
+                mztab: crate::model::document::MzTab::default(),
                 findings: collect(findings),
             };
         }
@@ -44,7 +47,7 @@ pub(super) fn parse(input: &str) -> Parsed<'static> {
     let mut tsv = Tsv::default();
     transcode(&root, &mut tsv);
     let layout = comments(&root, &mut tsv);
-    let parsed = crate::read::parse(&tsv.text);
+    let parsed = crate::read::builder::parse(&tsv.text);
     let mut mztab = parsed.mztab.into_owned();
     mztab.layout = layout;
     findings.append(&mut tsv.findings);
@@ -60,9 +63,9 @@ pub(super) fn parse(input: &str) -> Parsed<'static> {
 
 /// The document's `comment` items as a layout of `COM` lines only: written
 /// as TSV they follow the metadata (D-075).
-fn comments(root: &Node<'_>, tsv: &mut Tsv) -> crate::model::SourceLayout<'static> {
-    use crate::model::{ExtraLine, LineContent, LineEnding, SourceLine};
-    let mut layout = crate::model::SourceLayout::default();
+fn comments(root: &Node<'_>, tsv: &mut Tsv) -> crate::model::layout::SourceLayout<'static> {
+    use crate::model::layout::{ExtraLine, LineContent, LineEnding, SourceLayout, SourceLine};
+    let mut layout = SourceLayout::default();
     let Some(node) = root.get("comment").filter(|n| !n.is_null()) else {
         return layout;
     };
@@ -81,9 +84,9 @@ fn comments(root: &Node<'_>, tsv: &mut Tsv) -> crate::model::SourceLayout<'stati
             continue;
         }
         layout.lines.push(SourceLine {
-            content: LineContent::Extra(ExtraLine::Comment(crate::value::Raw::owned(format!(
-                "COM\t{msg}"
-            )))),
+            content: LineContent::Extra(ExtraLine::Comment(crate::value::text::Raw::owned(
+                format!("COM\t{msg}"),
+            ))),
             ending: LineEnding::Lf,
             verbatim: None,
         });
@@ -262,7 +265,7 @@ pub(super) fn shape_error<T>(tsv: &mut Tsv, at: &Path, expected: &'static str) -
 #[cfg(test)]
 mod tests {
     use super::Tsv;
-    use crate::diag::{Location, Path};
+    use crate::diag::location::{Location, Path};
 
     #[test]
     fn relocation_keeps_what_is_not_a_text_location() {

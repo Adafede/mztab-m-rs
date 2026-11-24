@@ -14,8 +14,9 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use super::schema::TABLES;
-use crate::model::MzTab;
-use crate::write::WriteError;
+use crate::model::document::MzTab;
+use crate::model::layout::{ExtraLine, LineContent};
+use crate::write::error::WriteError;
 use emit::JsonWriter;
 
 /// Writes `mztab` as JSCH JSON (compact, members in schema order).
@@ -62,8 +63,7 @@ fn stream_root(
 fn write_comments(mztab: &MzTab<'_>, w: &mut JsonWriter<'_>) -> fmt::Result {
     let mut any = false;
     for (n, line) in mztab.layout.lines.iter().enumerate() {
-        let crate::model::LineContent::Extra(crate::model::ExtraLine::Comment(raw)) = &line.content
-        else {
+        let LineContent::Extra(ExtraLine::Comment(raw)) = &line.content else {
             continue;
         };
         let msg = raw.as_str().split_once('\t').map_or("", |(_, msg)| msg);

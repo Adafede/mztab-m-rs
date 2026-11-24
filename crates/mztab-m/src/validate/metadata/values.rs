@@ -4,12 +4,18 @@
 use alloc::collections::BTreeMap;
 
 use super::present;
-use crate::diag::{Code, Detail};
-use crate::meta::{AssayKey, ContactKey, CvKey, MsRunKey, MtdKey, StudyVariableKey};
-use crate::model::{List, MzTab, ValueRef};
+use crate::diag::code::Code;
+use crate::diag::finding::Detail;
+use crate::meta::key::MtdKey;
+use crate::meta::subkey::{AssayKey, ContactKey, CvKey, MsRunKey, StudyVariableKey};
+use crate::model::List;
+use crate::model::document::MzTab;
+use crate::model::meta_value::ValueRef;
+use crate::validate::label;
 use crate::validate::patterns::{is_email, is_orcid, is_uri, matches_datatype};
-use crate::validate::{Report, Site, label};
-use crate::value::{Cell, Text};
+use crate::validate::report::{Report, Site};
+use crate::value::cell::Cell;
+use crate::value::text::Text;
 
 /// Whether a value failed to type anywhere (the cell or a list item).
 fn has_invalid(value: ValueRef<'_, '_>) -> bool {

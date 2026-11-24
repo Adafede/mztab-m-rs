@@ -4,7 +4,7 @@ use alloc::vec::Vec;
 
 use super::event::Event;
 use super::typer::{Typer, strip_ending};
-use crate::model::LineEnding;
+use crate::model::layout::LineEnding;
 
 /// A push-based reader: feed it chunks of bytes, get events for every
 /// complete line.

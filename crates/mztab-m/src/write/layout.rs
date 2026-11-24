@@ -5,8 +5,9 @@ use core::fmt;
 use super::error::WriteError;
 use super::pending::{Item, Pending, TableSlots, has_table, item_line, row_count};
 use super::sink::{Fingerprint, Out};
-use crate::model::{ExtraLine, LineContent, LineEnding, MzTab, SourceLine};
-use crate::vocab::TableSection;
+use crate::model::document::MzTab;
+use crate::model::layout::{ExtraLine, LineContent, LineEnding, SourceLine};
+use crate::vocab::section::TableSection;
 
 /// The writer: the output plus whether the last line is still open (the
 /// source's last line had no line break and more lines follow).

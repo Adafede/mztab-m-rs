@@ -2,7 +2,7 @@
 
 use core::fmt;
 
-use crate::diag::Requirement;
+use crate::diag::severity::Requirement;
 
 /// How a rule combines its terms for one value.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

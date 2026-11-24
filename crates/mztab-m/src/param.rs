@@ -16,13 +16,13 @@
 //! # Ok::<(), mztab_m::ParamError>(())
 //! ```
 
-mod parse;
-mod text;
+pub(crate) mod parse;
+pub(crate) mod text;
 
 use core::fmt;
 
-pub use parse::{ParamError, ParamErrorKind};
-pub use text::{Accession, ParamText, ParamTextError};
+use parse::ParamError;
+use text::{Accession, ParamText};
 
 /// A parameter: either a CV term or a user-defined name/value pair.
 ///

@@ -3,14 +3,17 @@
 use core::num::NonZeroU32;
 
 use super::{missing, present};
-use crate::diag::{Code, Detail};
-use crate::meta::{
-    AssayKey, CvKey, DatabaseKey, MsRunKey, MtdKey, ProtocolKey, SoftwareKey,
-    StudyVariableGroupKey, StudyVariableKey,
+use crate::diag::code::Code;
+use crate::diag::finding::Detail;
+use crate::meta::key::MtdKey;
+use crate::meta::subkey::{
+    AssayKey, CvKey, DatabaseKey, MsRunKey, ProtocolKey, SoftwareKey, StudyVariableGroupKey,
+    StudyVariableKey,
 };
-use crate::model::{Metadata, MzTab};
-use crate::validate::{Report, Site};
-use crate::vocab::RuleSet;
+use crate::model::document::MzTab;
+use crate::model::metadata::Metadata;
+use crate::validate::report::{Report, Site};
+use crate::vocab::version::RuleSet;
 
 const ONE: NonZeroU32 = NonZeroU32::MIN;
 

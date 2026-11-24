@@ -1,9 +1,10 @@
 //! Document root [`MzTab`] and [`Stripped`] counts.
 
-use super::{
-    Column, Metadata, SmeColumn, SmeRow, SmfColumn, SmfRow, SmlColumn, SmlRow, SourceLayout, Table,
-};
-use crate::vocab::{Profile, ProhibitedProfile};
+use super::layout::SourceLayout;
+use super::metadata::Metadata;
+use super::rows::{SmeRow, SmfRow, SmlRow};
+use super::table::{Column, SmeColumn, SmfColumn, SmlColumn, Table};
+use crate::vocab::profile::{Profile, ProhibitedProfile};
 
 /// What [`MzTab::strip_unknown`] dropped.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -99,8 +100,8 @@ mod tests {
     use wasm_bindgen_test::wasm_bindgen_test as test;
 
     use super::MzTab;
-    use crate::model::{Header, Table};
-    use crate::vocab::{Profile, ProhibitedProfile};
+    use crate::model::table::{Header, Table};
+    use crate::vocab::profile::{Profile, ProhibitedProfile};
     use alloc::vec::Vec;
 
     #[test]

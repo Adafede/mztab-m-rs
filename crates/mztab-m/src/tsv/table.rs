@@ -4,14 +4,18 @@ use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
 use super::typing::{self, Cx, RawCell};
-use crate::diag::{Code, Detail};
+use crate::diag::code::Code;
+use crate::diag::finding::Detail;
 use crate::id::{AssayId, ElementId, IdConfidenceMeasureId, MsRunId, StudyVariableId, parse_index};
-use crate::model::{
-    AbundanceColumn, Column, Header, OptColumn, OptTarget, SmeColumn, SmeId, SmeRow, SmfColumn,
-    SmfId, SmfRow, SmlColumn, SmlId, SmlRow,
+use crate::model::rows::{SmeRow, SmfRow, SmlRow};
+use crate::model::table::{
+    AbundanceColumn, Column, Header, OptColumn, OptTarget, SmeColumn, SmeId, SmfColumn, SmfId,
+    SmlColumn, SmlId,
 };
-use crate::value::{Cell, Decimal, Raw, Text};
-use crate::vocab::Section;
+use crate::value::cell::Cell;
+use crate::value::decimal::Decimal;
+use crate::value::text::{Raw, Text};
+use crate::vocab::section::Section;
 
 /// What a header column holds, without borrowing the header text. The
 /// reader keeps one per column to type rows, including across stream chunks.
@@ -325,8 +329,8 @@ mod tests {
 
     use super::Special;
     use crate::id::{AssayId, IdConfidenceMeasureId};
-    use crate::model::{AbundanceColumn, Column, OptColumn, OptTarget, SmlColumn};
-    use crate::value::Text;
+    use crate::model::table::{AbundanceColumn, Column, OptColumn, OptTarget, SmlColumn};
+    use crate::value::text::Text;
 
     /// The reader only builds the combinations a table allows; any table type
     /// can hold every kind of special column.

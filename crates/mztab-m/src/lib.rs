@@ -11,55 +11,76 @@ macro_rules! spec_commit {
         "e66c19e1d5c2e61cd721cb3bd6134389184cf778"
     };
 }
+// Macro export requires `use` to expose `spec_commit!` to child modules.
 pub(crate) use spec_commit;
 
 pub mod cv;
-mod diag;
-mod id;
+pub(crate) mod diag;
+pub(crate) mod id;
 #[cfg(feature = "json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 pub mod json;
-mod meta;
-mod model;
-mod owned;
-mod param;
-mod read;
-mod tsv;
+pub(crate) mod meta;
+pub(crate) mod model;
+pub(crate) mod owned;
+pub(crate) mod param;
+pub(crate) mod read;
+pub(crate) mod tsv;
 pub mod validate;
-mod value;
-mod vocab;
-mod write;
+pub(crate) mod value;
+pub(crate) mod vocab;
+pub(crate) mod write;
 
-pub use diag::{
-    Code, Detail, Finding, Findings, Layer, Location, Path, Requirement, Segment, Severity,
-    SpecDoc, SpecRef,
-};
+pub use diag::code::Code;
+pub use diag::finding::{Detail, Finding, Findings};
+pub use diag::location::{Location, Path, Segment};
+pub use diag::severity::{Layer, Requirement, Severity, SpecDoc, SpecRef};
 pub use id::{
     AssayId, ContactId, CvId, DatabaseId, IdConfidenceMeasureId, IndexMap, InstrumentId, Ix,
     MsRunId, ProtocolId, PublicationId, SampleId, SoftwareId, StudyVariableGroupId,
     StudyVariableId,
 };
-pub use meta::{
-    AssayKey, ContactKey, CvKey, DatabaseKey, InstrumentKey, MsRunKey, MtdKey, ProtocolKey,
-    SampleKey, SoftwareKey, StudyVariableGroupKey, StudyVariableKey, ValueKind,
+pub use meta::key::{MtdKey, ValueKind};
+pub use meta::subkey::{
+    AssayKey, ContactKey, CvKey, DatabaseKey, InstrumentKey, MsRunKey, ProtocolKey, SampleKey,
+    SoftwareKey, StudyVariableGroupKey, StudyVariableKey,
 };
-pub use model::{
-    AbundanceColumn, Assay, ColUnit, ColUnitError, Column, Contact, Cv, Database, ExtraLine, Field,
-    Header, InsertError, Instrument, LineContent, LineEnding, LineInfo, List, Metadata, MsRun,
-    MtdEntry, MtdValue, MzTab, OptColumn, OptTarget, Protocol, Sample, SmeColumn, SmeId, SmeRow,
-    SmfColumn, SmfId, SmfRow, SmlColumn, SmlId, SmlRow, Software, SourceLayout, SourceLine,
-    SpectraRef, SpectraRefError, Stripped, StudyVariable, StudyVariableGroup, Table, ValueRef,
-    Verbatim,
+pub use model::colunit::{ColUnit, ColUnitError, SpectraRef, SpectraRefError};
+pub use model::document::{MzTab, Stripped};
+pub use model::layout::{
+    ExtraLine, LineContent, LineEnding, LineInfo, SourceLayout, SourceLine, Verbatim,
 };
+pub use model::meta_value::{InsertError, MtdEntry, MtdValue, ValueRef};
+pub use model::metadata::{
+    Assay, Contact, Cv, Database, Instrument, Metadata, MsRun, Protocol, Sample, Software,
+    StudyVariable, StudyVariableGroup,
+};
+pub use model::rows::{SmeRow, SmfRow, SmlRow};
+pub use model::table::{
+    AbundanceColumn, Column, Header, OptColumn, OptTarget, SmeColumn, SmeId, SmfColumn, SmfId,
+    SmlColumn, SmlId, Table,
+};
+pub use model::{Field, List};
 pub use owned::IntoOwned;
-pub use param::{Accession, Param, ParamError, ParamErrorKind, ParamText, ParamTextError};
-pub use read::{Event, Parsed, StreamReader, parse, parse_bytes};
-pub use value::{Cell, Decimal, DecimalKind, NULL, NumberError, Raw, Text, TextError};
-pub use vocab::{
-    AmbiguityCode, Datatype, Profile, ProhibitedProfile, PublicationItem, PublicationItemError,
-    PublicationKind, RuleSet, Section, Version, VersionError, VocabError,
+pub use param::Param;
+pub use param::parse::{ParamError, ParamErrorKind};
+pub use param::text::{Accession, ParamText, ParamTextError};
+pub use read::builder::{parse, parse_bytes};
+pub use read::event::{Event, Parsed};
+pub use read::stream::StreamReader;
+pub use value::NULL;
+pub use value::cell::Cell;
+pub use value::decimal::{Decimal, DecimalKind, NumberError};
+pub use value::text::{Raw, Text, TextError};
+pub use vocab::VocabError;
+pub use vocab::field::{
+    AmbiguityCode, Datatype, PublicationItem, PublicationItemError, PublicationKind,
 };
-pub use write::{WriteError, to_canonical_string, to_string, write};
+pub use vocab::profile::{Profile, ProhibitedProfile};
+pub use vocab::section::Section;
+pub use vocab::version::{RuleSet, Version, VersionError};
+pub use write::error::WriteError;
+pub use write::{to_canonical_string, to_string, write};
 
 /// The mzTab-M specification commit this crate implements.
 ///

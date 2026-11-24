@@ -3,11 +3,13 @@
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-use crate::diag::{Code, Detail};
-use crate::meta::MtdKey;
-use crate::model::MtdEntry;
-use crate::tsv::{Cx, RawCell, mtd_value};
-use crate::value::Raw;
+use crate::diag::code::Code;
+use crate::diag::finding::Detail;
+use crate::meta::key::MtdKey;
+use crate::model::meta_value::{MtdEntry, MtdValue};
+use crate::tsv::mtd::mtd_value;
+use crate::tsv::typing::{Cx, RawCell};
+use crate::value::text::Raw;
 
 /// The cells of `text` after the first (the prefix), numbered from 2.
 pub(super) fn cells(text: &str) -> impl Iterator<Item = RawCell<'_>> {
@@ -106,7 +108,7 @@ fn type_mtd_value<'a>(
     text: &'a str,
     key: MtdKey,
     value: Option<RawCell<'a>>,
-) -> crate::model::MtdValue<'a> {
+) -> MtdValue<'a> {
     if let Some(raw) = value {
         return mtd_value(cx, key.kind(), raw);
     }

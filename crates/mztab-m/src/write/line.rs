@@ -5,11 +5,14 @@ use core::fmt;
 use super::error::WriteError;
 use super::render::{Render, RenderRow, render_value};
 use super::sink::Out;
-use crate::meta::MtdKey;
-use crate::model::{Column, ExtraLine, Header, ValueRef};
-use crate::tsv::Slot;
-use crate::value::{NULL, Raw};
-use crate::vocab::{Section, TableSection};
+use crate::meta::key::MtdKey;
+use crate::model::layout::ExtraLine;
+use crate::model::meta_value::ValueRef;
+use crate::model::table::{Column, Header};
+use crate::tsv::table::Slot;
+use crate::value::NULL;
+use crate::value::text::Raw;
+use crate::vocab::section::{Section, TableSection};
 
 /// Writes `MTD\tkey\tvalue` (no line ending).
 pub(crate) fn metadata_line(

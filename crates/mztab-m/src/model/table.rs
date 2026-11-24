@@ -4,7 +4,7 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use crate::id::{AssayId, IdConfidenceMeasureId, MsRunId, StudyVariableId};
-use crate::value::{Raw, Text};
+use crate::value::text::{Raw, Text};
 
 /// A table: its header and its rows.
 ///
@@ -272,7 +272,7 @@ mod tests {
 
     use super::{AbundanceColumn, OptColumn, OptTarget, SmeColumn, SmfColumn, SmlColumn, SmlId};
     use crate::id::{AssayId, MsRunId, StudyVariableId};
-    use crate::value::Text;
+    use crate::value::text::Text;
     use alloc::string::ToString as _;
 
     #[test]

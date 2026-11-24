@@ -1,13 +1,17 @@
 //! Typed metadata value variants, borrowed views, and [`InsertError`].
 
-use super::{ColUnit, List};
+use super::List;
+use super::colunit::ColUnit;
 use crate::id::{AssayId, InstrumentId, MsRunId, ProtocolId, SampleId, StudyVariableId};
-use crate::meta::MtdKey;
+use crate::meta::key::MtdKey;
 use crate::param::Param;
-use crate::value::{Cell, Raw, Text};
-use crate::vocab::{Datatype, Profile, PublicationItem, Version};
+use crate::value::cell::Cell;
+use crate::value::text::{Raw, Text};
+use crate::vocab::field::{Datatype, PublicationItem};
+use crate::vocab::profile::Profile;
+use crate::vocab::version::Version;
 
-/// A typed metadata value. Each variant matches one [`ValueKind`](crate::meta::ValueKind).
+/// A typed metadata value. Each variant matches one [`ValueKind`](crate::meta::key::ValueKind).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum MtdValue<'a> {
     /// `ValueKind::Version`.
@@ -45,7 +49,7 @@ pub enum MtdValue<'a> {
 pub enum InsertError {
     /// The key already has a value. Only `colunit-*` keys repeat.
     Occupied,
-    /// The value is not of the key's [`ValueKind`](crate::meta::ValueKind).
+    /// The value is not of the key's [`ValueKind`](crate::meta::key::ValueKind).
     WrongKind,
 }
 

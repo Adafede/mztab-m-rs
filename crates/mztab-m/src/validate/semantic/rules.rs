@@ -6,9 +6,9 @@ use alloc::vec::Vec;
 use super::terms::term;
 use super::uses::Use;
 use crate::cv::{self, Logic, Rule, RuleTerm, Target, TermLookup};
-use crate::diag::Code;
+use crate::diag::code::Code;
 use crate::param::Param;
-use crate::validate::{Report, Site};
+use crate::validate::report::{Report, Site};
 
 /// How one rule term judges an accession.
 #[derive(Clone, Copy, PartialEq, Eq)]

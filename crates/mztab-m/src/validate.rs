@@ -34,9 +34,11 @@ use alloc::collections::BTreeMap;
 use alloc::string::ToString as _;
 
 use crate::cv::TermLookup;
-use crate::diag::{Code, Detail, Finding, Findings, Severity};
-use crate::model::MzTab;
-pub(crate) use report::{Report, Site};
+use crate::diag::code::Code;
+use crate::diag::finding::{Detail, Finding, Findings};
+use crate::diag::severity::Severity;
+use crate::model::document::MzTab;
+use report::Report;
 
 /// Validation settings: per-code severity overrides and disabled codes.
 ///
@@ -102,7 +104,7 @@ impl Config {
 /// metadata keys, headers and section order.
 #[must_use]
 pub fn syntax(input: &str, config: &Config) -> Findings {
-    config.apply(crate::read::parse(input).findings.into_vec())
+    config.apply(crate::read::builder::parse(input).findings.into_vec())
 }
 
 /// Checks a typed model. See the [module documentation](self).
@@ -150,7 +152,7 @@ pub fn semantic(mztab: &MzTab<'_>, config: &Config, terms: &dyn TermLookup) -> F
 /// ```
 #[must_use]
 pub fn all(input: &str, config: &Config, terms: &dyn TermLookup) -> Findings {
-    let parsed = crate::read::parse(input);
+    let parsed = crate::read::builder::parse(input);
     let mut findings = parsed.findings.into_vec();
     let mut report = Report::new(&parsed.mztab);
     let rules = report.rule_set;

@@ -4,16 +4,19 @@ use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
 use crate::cv::Target;
-use crate::meta::{
-    DatabaseKey, InstrumentKey, MsRunKey, MtdKey, SampleKey, SoftwareKey, StudyVariableGroupKey,
+use crate::meta::key::MtdKey;
+use crate::meta::subkey::{
+    DatabaseKey, InstrumentKey, MsRunKey, SampleKey, SoftwareKey, StudyVariableGroupKey,
     StudyVariableKey,
 };
-use crate::model::{Column, Header, MzTab, SmeColumn, SmfColumn, SmlColumn, ValueRef};
+use crate::model::document::MzTab;
+use crate::model::meta_value::ValueRef;
+use crate::model::table::{Column, Header, SmeColumn, SmfColumn, SmlColumn};
 use crate::param::Param;
-use crate::validate::Site;
+use crate::validate::report::Site;
 use crate::validate::tables::position;
-use crate::value::Cell;
-use crate::vocab::TableSection;
+use crate::value::cell::Cell;
+use crate::vocab::section::TableSection;
 
 /// One CV parameter in the model, where it is, and the rule field it
 /// fills (with its scope: an element or row).

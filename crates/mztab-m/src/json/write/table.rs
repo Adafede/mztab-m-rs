@@ -7,7 +7,7 @@ use core::fmt;
 use super::emit::JsonWriter;
 use super::{Section, split_key, unwritable};
 use crate::json::schema::{Col, TABLES, Table, standard_header};
-use crate::write::WriteError;
+use crate::write::error::WriteError;
 
 enum Kind<'t> {
     Stable(&'static str, Col),

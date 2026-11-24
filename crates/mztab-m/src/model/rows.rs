@@ -2,10 +2,14 @@
 
 use alloc::vec::Vec;
 
-use super::{List, SmeId, SmfId, SmlId, SpectraRef};
+use super::List;
+use super::colunit::SpectraRef;
+use super::table::{SmeId, SmfId, SmlId};
 use crate::param::Param;
-use crate::value::{Cell, Decimal, Raw, Text};
-use crate::vocab::AmbiguityCode;
+use crate::value::cell::Cell;
+use crate::value::decimal::Decimal;
+use crate::value::text::{Raw, Text};
+use crate::vocab::field::AmbiguityCode;
 
 /// One SML row.
 ///

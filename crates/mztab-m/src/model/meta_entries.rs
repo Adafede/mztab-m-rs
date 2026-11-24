@@ -6,11 +6,12 @@ use super::Field;
 use super::meta_value::ValueRef;
 use super::metadata::Metadata;
 use crate::id::{IndexMap, Ix};
-use crate::meta::{
-    AssayKey, ContactKey, CvKey, DatabaseKey, InstrumentKey, MsRunKey, MtdKey, ProtocolKey,
-    SampleKey, SoftwareKey, StudyVariableGroupKey, StudyVariableKey,
+use crate::meta::key::MtdKey;
+use crate::meta::subkey::{
+    AssayKey, ContactKey, CvKey, DatabaseKey, InstrumentKey, MsRunKey, ProtocolKey, SampleKey,
+    SoftwareKey, StudyVariableGroupKey, StudyVariableKey,
 };
-use crate::value::Cell;
+use crate::value::cell::Cell;
 
 pub(super) fn collect_entries<'r, 'a>(meta: &'r Metadata<'a>) -> Vec<(MtdKey, ValueRef<'r, 'a>)> {
     let mut e = Entries(Vec::new());

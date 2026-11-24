@@ -3,11 +3,14 @@
 use alloc::string::ToString as _;
 use alloc::vec::Vec;
 
-use crate::diag::Code;
-use crate::meta::MtdKey;
-use crate::model::{ColUnit, Column, MzTab, Table};
-use crate::validate::{Report, Site, label};
-use crate::value::Cell;
+use crate::diag::code::Code;
+use crate::meta::key::MtdKey;
+use crate::model::colunit::ColUnit;
+use crate::model::document::MzTab;
+use crate::model::table::{Column, Table};
+use crate::validate::label;
+use crate::validate::report::{Report, Site};
+use crate::value::cell::Cell;
 
 /// `colunit-*` entries name columns of their table.
 pub(super) fn check(mztab: &MzTab<'_>, report: &mut Report<'_, '_>) {

@@ -13,11 +13,5 @@
 //! # Ok::<(), &str>(())
 //! ```
 
-mod key;
-mod subkey;
-
-pub use key::{MtdKey, ValueKind};
-pub use subkey::{
-    AssayKey, ContactKey, CvKey, DatabaseKey, InstrumentKey, MsRunKey, ProtocolKey, SampleKey,
-    SoftwareKey, StudyVariableGroupKey, StudyVariableKey,
-};
+pub(crate) mod key;
+pub(crate) mod subkey;

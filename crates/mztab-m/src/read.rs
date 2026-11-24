@@ -16,24 +16,22 @@
 //! assert_eq!(parsed.mztab.metadata.id.and_then(|c| c.value().map(|t| t.to_string())), Some("EX-1".into()));
 //! ```
 
-mod builder;
-mod event;
+pub(crate) mod builder;
+pub(crate) mod event;
 mod metadata;
-mod stream;
+pub(crate) mod stream;
 mod typer;
-
-pub use builder::{parse, parse_bytes};
-pub use event::{Event, Parsed};
-pub use stream::StreamReader;
 
 #[cfg(test)]
 mod tests {
     #[cfg(target_arch = "wasm32")]
     use wasm_bindgen_test::wasm_bindgen_test as test;
 
-    use super::{Event, Parsed, parse, parse_bytes};
-    use crate::model::{LineEnding, LineInfo, SmeRow, SmfRow, SmlRow};
-    use crate::tsv::TableRow as _;
+    use super::builder::{parse, parse_bytes};
+    use super::event::{Event, Parsed};
+    use crate::model::layout::{LineEnding, LineInfo};
+    use crate::model::rows::{SmeRow, SmfRow, SmlRow};
+    use crate::tsv::table::TableRow as _;
     use alloc::vec;
 
     #[test]
@@ -61,10 +59,10 @@ mod tests {
         let lines: vec::Vec<_> = parse(text)
             .findings
             .iter()
-            .filter(|f| f.code == crate::diag::Code::SectionOrder)
+            .filter(|f| f.code == crate::diag::code::Code::SectionOrder)
             .map(|f| f.location.clone())
             .collect();
-        let at = |line| crate::diag::Location::text(line, 1).with_cell(1);
+        let at = |line| crate::diag::location::Location::text(line, 1).with_cell(1);
         assert_eq!(
             lines,
             [at(2), at(4)],
@@ -74,8 +72,8 @@ mod tests {
 
     #[test]
     fn verbatim_before_any_line_is_ignored() {
-        use crate::model::Verbatim;
-        use crate::value::Raw;
+        use crate::model::layout::Verbatim;
+        use crate::value::text::Raw;
         let parsed: Parsed<'_> = vec![Event::Verbatim(Verbatim {
             text: Raw::new("x"),
             fingerprint: 0,

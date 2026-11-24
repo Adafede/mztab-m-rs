@@ -32,35 +32,19 @@
 //! indices; `spectra_ref` matches the run's `id_format`; and no cell is
 //! [`Cell::Invalid`].
 
-mod colunit;
-mod document;
-mod layout;
+pub(crate) mod colunit;
+pub(crate) mod document;
+pub(crate) mod layout;
 mod meta_entries;
 mod meta_insert;
-mod meta_value;
-mod metadata;
-mod rows;
-mod table;
+pub(crate) mod meta_value;
+pub(crate) mod metadata;
+pub(crate) mod rows;
+pub(crate) mod table;
 
 use alloc::vec::Vec;
 
-use crate::value::Cell;
-
-pub use colunit::{ColUnit, ColUnitError, SpectraRef, SpectraRefError};
-pub use document::{MzTab, Stripped};
-pub use layout::{
-    ExtraLine, LineContent, LineEnding, LineInfo, SourceLayout, SourceLine, Verbatim,
-};
-pub use meta_value::{InsertError, MtdEntry, MtdValue, ValueRef};
-pub use metadata::{
-    Assay, Contact, Cv, Database, Instrument, Metadata, MsRun, Protocol, Sample, Software,
-    StudyVariable, StudyVariableGroup,
-};
-pub use rows::{SmeRow, SmfRow, SmlRow};
-pub use table::{
-    AbundanceColumn, Column, Header, OptColumn, OptTarget, SmeColumn, SmeId, SmfColumn, SmfId,
-    SmlColumn, SmlId, Table,
-};
+use crate::value::cell::Cell;
 
 /// A metadata field: absent (`None`) or present as a [`Cell`].
 pub type Field<'a, T> = Option<Cell<'a, T>>;

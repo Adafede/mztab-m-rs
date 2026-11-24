@@ -3,8 +3,8 @@
 use core::fmt;
 
 use super::error::WriteError;
-use crate::model::LineEnding;
-use crate::tsv::Splitter;
+use crate::model::layout::LineEnding;
+use crate::tsv::splitter::Splitter;
 
 /// FNV-1a over everything written: the fingerprint of a line's canonical
 /// form, recorded by the reader and checked by the writer.

@@ -3,8 +3,9 @@
 use core::fmt;
 
 use crate::id::{MsRunId, parse_index};
-use crate::param::{Param, ParamError};
-use crate::value::{Text, TextError};
+use crate::param::Param;
+use crate::param::parse::ParamError;
+use crate::value::text::{Text, TextError};
 
 /// Why a string is not a `column=[param]` unit mapping.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -147,8 +148,8 @@ mod tests {
     use wasm_bindgen_test::wasm_bindgen_test as test;
 
     use super::{ColUnit, ColUnitError, SpectraRef, SpectraRefError};
-    use crate::param::{ParamError, ParamErrorKind};
-    use crate::value::TextError;
+    use crate::param::parse::{ParamError, ParamErrorKind};
+    use crate::value::text::TextError;
     use alloc::string::ToString as _;
 
     #[test]

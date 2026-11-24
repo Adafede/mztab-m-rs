@@ -5,15 +5,19 @@ mod mandatory;
 mod refs;
 mod values;
 
-use super::{Report, Site, label};
-use crate::diag::{Code, Detail};
+use super::label;
+use super::report::{Report, Site};
+use crate::diag::code::Code;
+use crate::diag::finding::Detail;
 use crate::id::{
     AssayId, ContactId, CvId, DatabaseId, IdConfidenceMeasureId, InstrumentId, Ix, MsRunId,
     ProtocolId, PublicationId, SampleId, SoftwareId, StudyVariableGroupId, StudyVariableId,
 };
-use crate::meta::MtdKey;
-use crate::model::{Field, MzTab};
-use crate::vocab::{Profile, RuleSet};
+use crate::meta::key::MtdKey;
+use crate::model::Field;
+use crate::model::document::MzTab;
+use crate::vocab::profile::Profile;
+use crate::vocab::version::RuleSet;
 
 pub(super) fn check(mztab: &MzTab<'_>, rules: RuleSet, report: &mut Report<'_, '_>) {
     version(mztab, report);
@@ -77,7 +81,7 @@ fn profile(mztab: &MzTab<'_>, rules: RuleSet, report: &mut Report<'_, '_>) {
         (_, Err(tables)) => {
             report.add(
                 Code::ProhibitedProfile,
-                Site::Header(crate::vocab::TableSection::Sme),
+                Site::Header(crate::vocab::section::TableSection::Sme),
                 Detail::Prohibited(tables),
             );
         }

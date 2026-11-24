@@ -6,7 +6,9 @@ use alloc::vec::Vec;
 
 use super::emit::{colunit_text, text};
 use super::{Tsv, items, mtd, shape_error, unknown_keys};
-use crate::diag::{Code, Detail, Path};
+use crate::diag::code::Code;
+use crate::diag::finding::Detail;
+use crate::diag::location::Path;
 use crate::json::schema::{Element, Item, METADATA, Shape};
 use crate::json::value::{Node, Value};
 

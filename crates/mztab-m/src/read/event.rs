@@ -1,11 +1,12 @@
 //! Events and whole-document result produced by the TSV reader.
 
-use crate::diag::Findings;
-use crate::model::{
-    Header, LineInfo, MtdEntry, MzTab, SmeColumn, SmeRow, SmfColumn, SmfRow, SmlColumn, SmlRow,
-    Verbatim,
-};
-use crate::value::Raw;
+use crate::diag::finding::{Finding, Findings};
+use crate::model::document::MzTab;
+use crate::model::layout::{LineInfo, Verbatim};
+use crate::model::meta_value::MtdEntry;
+use crate::model::rows::{SmeRow, SmfRow, SmlRow};
+use crate::model::table::{Header, SmeColumn, SmfColumn, SmlColumn};
+use crate::value::text::Raw;
 
 /// One step of reading: a typed line, a layout fact, or a finding.
 ///
@@ -44,7 +45,7 @@ pub enum Event<'a> {
     /// form; the writer reproduces it.
     Verbatim(Verbatim<'a>),
     /// A finding about the preceding line.
-    Finding(crate::diag::Finding),
+    Finding(Finding),
 }
 
 /// The result of reading a whole document.

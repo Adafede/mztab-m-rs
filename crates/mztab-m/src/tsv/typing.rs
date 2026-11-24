@@ -5,12 +5,19 @@ use alloc::vec::Vec;
 use core::str::FromStr;
 
 use super::splitter::split_list;
-use crate::diag::{Code, Detail, Finding, Location};
+use crate::diag::code::Code;
+use crate::diag::finding::{Detail, Finding};
+use crate::diag::location::Location;
 use crate::id::{ElementId, parse_index};
-use crate::model::{List, SpectraRef, SpectraRefError};
-use crate::param::{Param, ParamError};
-use crate::value::{Cell, Decimal, NULL, Raw, Text, TextError};
-use crate::vocab::AmbiguityCode;
+use crate::model::List;
+use crate::model::colunit::{SpectraRef, SpectraRefError};
+use crate::param::Param;
+use crate::param::parse::ParamError;
+use crate::value::NULL;
+use crate::value::cell::Cell;
+use crate::value::decimal::Decimal;
+use crate::value::text::{Raw, Text, TextError};
+use crate::vocab::field::AmbiguityCode;
 
 /// A cell of a line: its text, its 1-based number, and its byte offset in
 /// the line.

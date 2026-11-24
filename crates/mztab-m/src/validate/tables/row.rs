@@ -3,12 +3,18 @@
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-use crate::diag::{Code, Detail, Severity};
-use crate::model::{Column, Header, List};
+use crate::diag::code::Code;
+use crate::diag::finding::Detail;
+use crate::diag::severity::Severity;
+use crate::model::List;
+use crate::model::table::{Column, Header};
+use crate::validate::label;
 use crate::validate::patterns::is_adduct;
-use crate::validate::{Report, Site, label};
-use crate::value::{Cell, Decimal, Text};
-use crate::vocab::TableSection;
+use crate::validate::report::{Report, Site};
+use crate::value::cell::Cell;
+use crate::value::decimal::Decimal;
+use crate::value::text::Text;
+use crate::vocab::section::TableSection;
 
 /// The header position of each non-stable column kind, to locate row cells.
 pub(super) struct Positions {

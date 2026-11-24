@@ -3,11 +3,17 @@
 
 use alloc::vec::Vec;
 
-use crate::diag::{Code, Detail, Severity};
+use crate::diag::code::Code;
+use crate::diag::finding::Detail;
+use crate::diag::severity::Severity;
 use crate::id::IdConfidenceMeasureId;
-use crate::model::{AbundanceColumn, Column, Header, MzTab, OptTarget, Table};
-use crate::validate::{Report, Site, label};
-use crate::vocab::{Profile, RuleSet, TableSection};
+use crate::model::document::MzTab;
+use crate::model::table::{AbundanceColumn, Column, Header, OptTarget, Table};
+use crate::validate::label;
+use crate::validate::report::{Report, Site};
+use crate::vocab::profile::Profile;
+use crate::vocab::section::TableSection;
+use crate::vocab::version::RuleSet;
 
 /// A header column without its table's stable-column type.
 #[derive(Clone, Copy, Debug)]

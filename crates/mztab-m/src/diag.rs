@@ -30,12 +30,7 @@ macro_rules! spec_path {
     };
 }
 
-mod code;
-mod finding;
-mod location;
-mod severity;
-
-pub use code::Code;
-pub use finding::{Detail, Finding, Findings};
-pub use location::{Location, Path, Segment};
-pub use severity::{Layer, Requirement, Severity, SpecDoc, SpecRef};
+pub(crate) mod code;
+pub(crate) mod finding;
+pub(crate) mod location;
+pub(crate) mod severity;

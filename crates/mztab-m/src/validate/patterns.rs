@@ -1,8 +1,8 @@
 //! Format predicates shared across structural and semantic validators.
 
 use crate::param::Param;
-use crate::value::Decimal;
-use crate::vocab::Datatype;
+use crate::value::decimal::Decimal;
+use crate::vocab::field::Datatype;
 
 /// Whether `text` matches `^[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{3}[0-9X]$`.
 pub(super) fn is_orcid(text: &str) -> bool {
@@ -233,7 +233,7 @@ mod tests {
     use super::{
         is_adduct, is_date, is_orcid, is_time, matches_datatype, native_id_ok, xsd_matches,
     };
-    use crate::vocab::Datatype;
+    use crate::vocab::field::Datatype;
 
     #[test]
     fn patterns() {

@@ -1,6 +1,7 @@
 //! [`Cell`]: typed values, `null` literals, or raw unparsable text.
 
-use super::{NULL, Raw};
+use super::NULL;
+use super::text::Raw;
 
 /// A typed cell: a value, the `null` literal, or text that failed to type.
 ///
@@ -129,7 +130,7 @@ mod tests {
     use wasm_bindgen_test::wasm_bindgen_test as test;
 
     use super::Cell;
-    use crate::value::{Raw, Text};
+    use crate::value::text::{Raw, Text};
 
     #[test]
     fn cell_parse_dispatches() {

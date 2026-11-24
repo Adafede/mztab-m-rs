@@ -5,10 +5,11 @@ use alloc::string::{String, ToString as _};
 use alloc::vec::Vec;
 
 use super::{Tsv, items, shape_error};
-use crate::diag::Path;
+use crate::diag::location::Path;
 use crate::json::schema::{Col, Shape};
 use crate::json::value::{Node, Value};
-use crate::param::{Accession, Param, ParamText};
+use crate::param::Param;
+use crate::param::text::{Accession, ParamText};
 
 /// The TSV text of a metadata value.
 pub(super) fn text(node: &Node<'_>, shape: Shape, at: &Path, tsv: &mut Tsv) -> Option<String> {

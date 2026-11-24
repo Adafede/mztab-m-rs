@@ -3,11 +3,19 @@
 use alloc::collections::BTreeSet;
 
 use super::row::{Positions, Rows, duplicates, refs};
-use crate::diag::{Code, Detail, Severity};
-use crate::model::{Column, Header, MzTab, SmfId, SmlColumn, SmlRow};
-use crate::validate::{Report, label};
-use crate::value::{Cell, Text};
-use crate::vocab::{Profile, RuleSet, TableSection};
+use crate::diag::code::Code;
+use crate::diag::finding::Detail;
+use crate::diag::severity::Severity;
+use crate::model::document::MzTab;
+use crate::model::rows::SmlRow;
+use crate::model::table::{Column, Header, SmfId, SmlColumn};
+use crate::validate::label;
+use crate::validate::report::Report;
+use crate::value::cell::Cell;
+use crate::value::text::Text;
+use crate::vocab::profile::Profile;
+use crate::vocab::section::TableSection;
+use crate::vocab::version::RuleSet;
 
 struct SmlCols {
     sml_id: usize,

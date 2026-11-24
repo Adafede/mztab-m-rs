@@ -3,14 +3,20 @@
 use alloc::collections::BTreeSet;
 
 use super::row::{Positions, Rows, duplicates, refs};
-use crate::diag::{Code, Detail, Severity};
+use crate::diag::code::Code;
+use crate::diag::finding::Detail;
+use crate::diag::severity::Severity;
 use crate::id::MsRunId;
-use crate::model::{Column, Header, MzTab, SmeColumn, SmeId, SmeRow};
+use crate::model::document::MzTab;
+use crate::model::rows::SmeRow;
+use crate::model::table::{Column, Header, SmeColumn, SmeId};
 use crate::param::Param;
+use crate::validate::label;
 use crate::validate::patterns::{is_uri, native_id_ok};
-use crate::validate::{Report, label};
-use crate::value::Cell;
-use crate::vocab::{RuleSet, TableSection};
+use crate::validate::report::Report;
+use crate::value::cell::Cell;
+use crate::vocab::section::TableSection;
+use crate::vocab::version::RuleSet;
 
 struct SmeCols {
     sme_id: usize,
@@ -143,7 +149,7 @@ fn check_row(row: &SmeRow<'_>, ctx: &SmeCtx<'_, '_>, r: &mut Rows<'_, '_, '_>) {
             r.report.add_at(
                 Code::NullValue,
                 error,
-                crate::validate::Site::Cell(r.section, r.row, col),
+                crate::validate::report::Site::Cell(r.section, r.row, col),
                 Detail::None,
             );
         }

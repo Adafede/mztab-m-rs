@@ -5,13 +5,18 @@ use alloc::vec::Vec;
 use super::error::WriteError;
 use super::sink::Out;
 use crate::id::{AssayId, InstrumentId, MsRunId, ProtocolId, SampleId, StudyVariableId};
-use crate::model::{
-    ColUnit, SmeColumn, SmeId, SmeRow, SmfColumn, SmfId, SmfRow, SmlColumn, SmlId, SmlRow,
-    SpectraRef, ValueRef,
-};
+use crate::model::colunit::{ColUnit, SpectraRef};
+use crate::model::meta_value::ValueRef;
+use crate::model::rows::{SmeRow, SmfRow, SmlRow};
+use crate::model::table::{SmeColumn, SmeId, SmfColumn, SmfId, SmlColumn, SmlId};
 use crate::param::Param;
-use crate::value::{Cell, Decimal, NULL, Raw, Text};
-use crate::vocab::{AmbiguityCode, Datatype, Profile, PublicationItem, Version};
+use crate::value::NULL;
+use crate::value::cell::Cell;
+use crate::value::decimal::Decimal;
+use crate::value::text::{Raw, Text};
+use crate::vocab::field::{AmbiguityCode, Datatype, PublicationItem};
+use crate::vocab::profile::Profile;
+use crate::vocab::version::Version;
 
 /// A value that can be written as (part of) a cell.
 pub(super) trait Render {

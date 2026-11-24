@@ -2,11 +2,14 @@
 
 use alloc::collections::BTreeMap;
 
-use crate::diag::Code;
+use crate::diag::code::Code;
 use crate::id::StudyVariableId;
-use crate::meta::{AssayKey, MsRunKey, MtdKey, StudyVariableGroupKey, StudyVariableKey};
-use crate::model::{Field, List, MzTab};
-use crate::validate::{Report, Site, label};
+use crate::meta::key::MtdKey;
+use crate::meta::subkey::{AssayKey, MsRunKey, StudyVariableGroupKey, StudyVariableKey};
+use crate::model::document::MzTab;
+use crate::model::{Field, List};
+use crate::validate::label;
+use crate::validate::report::{Report, Site};
 
 /// Reports each item of `list` that `defined` does not contain.
 fn check_refs<I: Copy + core::fmt::Display>(

@@ -1,10 +1,14 @@
 //! Typing metadata cell values according to their key's [`ValueKind`].
 
 use super::typing::{Cx, RawCell, Spaces, list, param, reference, text, typed};
-use crate::diag::{Code, Detail};
-use crate::meta::ValueKind;
-use crate::model::{ColUnit, ColUnitError, MtdValue};
-use crate::vocab::{Datatype, Profile, PublicationItem, PublicationItemError, Version};
+use crate::diag::code::Code;
+use crate::diag::finding::Detail;
+use crate::meta::key::ValueKind;
+use crate::model::colunit::{ColUnit, ColUnitError};
+use crate::model::meta_value::MtdValue;
+use crate::vocab::field::{Datatype, PublicationItem, PublicationItemError};
+use crate::vocab::profile::Profile;
+use crate::vocab::version::Version;
 
 /// Types a metadata value according to its key's [`ValueKind`].
 pub(crate) fn mtd_value<'a>(cx: &mut Cx<'_>, kind: ValueKind, raw: RawCell<'a>) -> MtdValue<'a> {

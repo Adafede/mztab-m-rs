@@ -3,9 +3,11 @@
 
 use super::event::{Event, Parsed};
 use super::typer::{Typer, strip_ending};
-use crate::diag::Findings;
-use crate::model::{ExtraLine, LineContent, MzTab, SourceLine, Table};
-use crate::vocab::Section;
+use crate::diag::finding::Findings;
+use crate::model::document::MzTab;
+use crate::model::layout::{ExtraLine, LineContent, SourceLine};
+use crate::model::table::Table;
+use crate::vocab::section::Section;
 
 /// Collects events into a document.
 #[derive(Debug, Default)]

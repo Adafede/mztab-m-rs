@@ -4,7 +4,7 @@ use core::fmt;
 use core::str::FromStr;
 
 use super::VocabError;
-use crate::value::{Text, TextError};
+use crate::value::text::{Text, TextError};
 
 /// `SME_ID_REF_ambiguity_code`, required when an SMF row has several
 /// `SME_ID_REFS`.
@@ -255,7 +255,7 @@ mod tests {
     use wasm_bindgen_test::wasm_bindgen_test as test;
 
     use super::{AmbiguityCode, Datatype, PublicationItem, PublicationItemError, PublicationKind};
-    use crate::value::TextError;
+    use crate::value::text::TextError;
     use alloc::string::ToString as _;
 
     #[test]

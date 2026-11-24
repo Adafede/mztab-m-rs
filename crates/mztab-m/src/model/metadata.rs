@@ -2,17 +2,21 @@
 
 use alloc::vec::Vec;
 
+use super::colunit::ColUnit;
 use super::meta_value::{InsertError, MtdValue, ValueRef};
-use super::{ColUnit, Field, List};
+use super::{Field, List};
 use crate::id::{
     AssayId, ContactId, CvId, DatabaseId, IdConfidenceMeasureId, IndexMap, InstrumentId, Ix,
     MsRunId, ProtocolId, PublicationId, SampleId, SoftwareId, StudyVariableGroupId,
     StudyVariableId,
 };
-use crate::meta::MtdKey;
+use crate::meta::key::MtdKey;
 use crate::param::Param;
-use crate::value::{Cell, Raw, Text};
-use crate::vocab::{Datatype, Profile, PublicationItem, Version};
+use crate::value::cell::Cell;
+use crate::value::text::{Raw, Text};
+use crate::vocab::field::{Datatype, PublicationItem};
+use crate::vocab::profile::Profile;
+use crate::vocab::version::Version;
 
 /// The metadata section. Field names follow the metadata keys.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

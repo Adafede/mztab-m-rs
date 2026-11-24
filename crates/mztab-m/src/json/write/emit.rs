@@ -4,10 +4,11 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use super::split_key;
+use crate::json::lexer::is_number;
 use crate::json::schema::{Col, Shape};
-use crate::json::value::{is_number, write_string};
+use crate::json::value::write_string;
 use crate::param::Param;
-use crate::tsv::split_list;
+use crate::tsv::splitter::split_list;
 
 /// Writes JSON directly to `out` without allocating an intermediate DOM.
 pub(super) struct JsonWriter<'a> {

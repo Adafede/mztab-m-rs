@@ -8,9 +8,11 @@ mod sme;
 mod smf;
 mod sml;
 
-use super::Report;
-use crate::model::{MzTab, SmeColumn, SmfColumn, SmlColumn};
-use crate::vocab::{RuleSet, TableSection};
+use super::report::Report;
+use crate::model::document::MzTab;
+use crate::model::table::{SmeColumn, SmfColumn, SmlColumn};
+use crate::vocab::section::TableSection;
+use crate::vocab::version::RuleSet;
 
 pub(super) use row::position;
 

@@ -31,10 +31,10 @@ mod write;
 use alloc::string::String;
 use core::fmt;
 
-use crate::diag::Findings;
-use crate::model::MzTab;
-use crate::read::Parsed;
-use crate::write::WriteError;
+use crate::diag::finding::Findings;
+use crate::model::document::MzTab;
+use crate::read::event::Parsed;
+use crate::write::error::WriteError;
 pub use value::write_string;
 
 /// Reads JSCH JSON. Never fails: a document that is not JSON gives an

@@ -5,10 +5,10 @@ mod rules;
 mod terms;
 mod uses;
 
-use super::Report;
+use super::report::Report;
 use crate::cv::TermLookup;
-use crate::diag::Code;
-use crate::model::MzTab;
+use crate::diag::code::Code;
+use crate::model::document::MzTab;
 use crate::param::Param;
 
 pub(super) fn check(mztab: &MzTab<'_>, term_lookup: &dyn TermLookup, report: &mut Report<'_, '_>) {
@@ -34,7 +34,7 @@ pub(super) fn check(mztab: &MzTab<'_>, term_lookup: &dyn TermLookup, report: &mu
                 accession.as_str(),
                 (
                     Some(name.as_str()),
-                    value.as_ref().map(crate::param::ParamText::as_str),
+                    value.as_ref().map(crate::param::text::ParamText::as_str),
                 ),
                 u.site,
                 term_lookup,

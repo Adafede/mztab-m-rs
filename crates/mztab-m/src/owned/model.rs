@@ -1,13 +1,18 @@
 //! [`IntoOwned`] implementations for model and metadata structs.
 
 use super::IntoOwned;
-use crate::model::{
-    Assay, ColUnit, Contact, Cv, Database, Instrument, Metadata, MsRun, MtdEntry, MzTab, OptColumn,
-    Protocol, Sample, SmeRow, SmfRow, SmlRow, Software, SourceLayout, SourceLine, SpectraRef,
-    StudyVariable, StudyVariableGroup, Verbatim,
+use crate::model::colunit::{ColUnit, SpectraRef};
+use crate::model::document::MzTab;
+use crate::model::layout::{SourceLayout, SourceLine, Verbatim};
+use crate::model::meta_value::MtdEntry;
+use crate::model::metadata::{
+    Assay, Contact, Cv, Database, Instrument, Metadata, MsRun, Protocol, Sample, Software,
+    StudyVariable, StudyVariableGroup,
 };
-use crate::read::Parsed;
-use crate::vocab::PublicationItem;
+use crate::model::rows::{SmeRow, SmfRow, SmlRow};
+use crate::model::table::OptColumn;
+use crate::read::event::Parsed;
+use crate::vocab::field::PublicationItem;
 
 /// Implements [`IntoOwned`] for a struct by converting every field. A field
 /// missing from the list is a compile error, so the impls stay complete.

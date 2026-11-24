@@ -7,10 +7,12 @@ use core::fmt;
 use super::code::Code;
 use super::location::Location;
 use super::severity::Severity;
-use crate::meta::MtdKey;
-use crate::param::ParamError;
-use crate::value::{NumberError, TextError};
-use crate::vocab::{Profile, ProhibitedProfile, VersionError};
+use crate::meta::key::MtdKey;
+use crate::param::parse::ParamError;
+use crate::value::decimal::NumberError;
+use crate::value::text::TextError;
+use crate::vocab::profile::{Profile, ProhibitedProfile};
+use crate::vocab::version::VersionError;
 
 /// Structured detail for a finding. Rendered only on demand.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -227,9 +229,10 @@ mod tests {
     use crate::diag::code::Code;
     use crate::diag::location::Location;
     use crate::diag::severity::Severity;
-    use crate::param::{ParamError, ParamErrorKind};
-    use crate::value::{NumberError, TextError};
-    use crate::vocab::VersionError;
+    use crate::param::parse::{ParamError, ParamErrorKind};
+    use crate::value::decimal::NumberError;
+    use crate::value::text::TextError;
+    use crate::vocab::version::VersionError;
     use alloc::string::ToString as _;
 
     #[test]

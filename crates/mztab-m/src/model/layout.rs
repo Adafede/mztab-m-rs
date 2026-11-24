@@ -2,9 +2,9 @@
 
 use alloc::vec::Vec;
 
-use crate::meta::MtdKey;
-use crate::value::Raw;
-use crate::vocab::Section;
+use crate::meta::key::MtdKey;
+use crate::value::text::Raw;
+use crate::vocab::section::Section;
 
 /// How a line ended.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]

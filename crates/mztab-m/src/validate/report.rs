@@ -5,10 +5,15 @@ use alloc::collections::BTreeMap;
 use alloc::string::ToString as _;
 use alloc::vec::Vec;
 
-use crate::diag::{Code, Detail, Finding, Location, Path, Severity};
-use crate::meta::MtdKey;
-use crate::model::{LineContent, MzTab};
-use crate::vocab::{RuleSet, TableSection};
+use crate::diag::code::Code;
+use crate::diag::finding::{Detail, Finding};
+use crate::diag::location::{Location, Path};
+use crate::diag::severity::Severity;
+use crate::meta::key::MtdKey;
+use crate::model::document::MzTab;
+use crate::model::layout::LineContent;
+use crate::vocab::section::TableSection;
+use crate::vocab::version::RuleSet;
 
 /// Where in a model a finding applies.
 #[derive(Clone, Copy, Debug)]
@@ -127,8 +132,8 @@ impl<'m, 'a> Report<'m, 'a> {
         }
         match item {
             Item::Key(key) => Some(Cow::Owned(alloc::format!("MTD\t{key}\t"))),
-            Item::Header(s) => crate::write::header_text(self.mztab, s).map(Cow::Owned),
-            Item::Row(s, r) => crate::write::row_text(self.mztab, s, r).map(Cow::Owned),
+            Item::Header(s) => crate::write::pending::header_text(self.mztab, s).map(Cow::Owned),
+            Item::Row(s, r) => crate::write::pending::row_text(self.mztab, s, r).map(Cow::Owned),
         }
     }
 

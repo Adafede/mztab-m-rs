@@ -4,7 +4,7 @@ use alloc::borrow::Cow;
 use alloc::string::String;
 use core::fmt;
 
-use crate::value::find_control;
+use crate::value::text::find_control;
 
 /// Why a string cannot be a [`ParamText`].
 ///

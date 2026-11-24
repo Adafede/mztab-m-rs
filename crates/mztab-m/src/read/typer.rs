@@ -7,15 +7,19 @@ use alloc::vec::Vec;
 
 use super::event::Event;
 use super::metadata::{cells, metadata};
-use crate::diag::{Code, Detail, Finding, Location};
-use crate::meta::MtdKey;
-use crate::model::{
-    Header, LineEnding, LineInfo, SmeColumn, SmeRow, SmfColumn, SmfRow, SmlColumn, SmlRow, Verbatim,
-};
-use crate::tsv::{self, Cx, Slot, TableRow};
-use crate::value::Raw;
-use crate::vocab::Section;
-use crate::write::{self, Compare, Out};
+use crate::diag::code::Code;
+use crate::diag::finding::{Detail, Finding};
+use crate::diag::location::Location;
+use crate::meta::key::MtdKey;
+use crate::model::layout::{LineEnding, LineInfo, Verbatim};
+use crate::model::rows::{SmeRow, SmfRow, SmlRow};
+use crate::model::table::{Header, SmeColumn, SmfColumn, SmlColumn};
+use crate::tsv::table::{self, Slot, TableRow};
+use crate::tsv::typing::Cx;
+use crate::value::text::Raw;
+use crate::vocab::section::Section;
+use crate::write::line::{metadata_line, row_line, unknown_line};
+use crate::write::sink::{Compare, Out};
 
 const BOM: &[u8] = b"\xEF\xBB\xBF";
 
@@ -100,18 +104,12 @@ impl Typer {
         let mut out = Out::new(&mut compare);
         let rendered = match event {
             Event::Metadata(_, entry) => match (&entry.typed, self.placed) {
-                (Some((key, value)), true) => write::metadata_line(&mut out, *key, value.as_ref()),
-                _ => write::unknown_line(&mut out, &entry.key, &entry.value),
+                (Some((key, value)), true) => metadata_line(&mut out, *key, value.as_ref()),
+                _ => unknown_line(&mut out, &entry.key, &entry.value),
             },
-            Event::Sml(_, row) => {
-                write::row_line(&mut out, Section::Sml, self.sml.as_deref()?, row)
-            }
-            Event::Smf(_, row) => {
-                write::row_line(&mut out, Section::Smf, self.smf.as_deref()?, row)
-            }
-            Event::Sme(_, row) => {
-                write::row_line(&mut out, Section::Sme, self.sme.as_deref()?, row)
-            }
+            Event::Sml(_, row) => row_line(&mut out, Section::Sml, self.sml.as_deref()?, row),
+            Event::Smf(_, row) => row_line(&mut out, Section::Smf, self.smf.as_deref()?, row),
+            Event::Sme(_, row) => row_line(&mut out, Section::Sme, self.sme.as_deref()?, row),
             // Header lines always render as written; blank, comment and
             // unrecognised lines are stored as written.
             _ => return None,
@@ -240,7 +238,7 @@ fn header_slot<'a, S: Copy + Ord>(
         cx.report(Code::DuplicateHeader, 0, 1, Detail::None);
         return None;
     }
-    let (header, typed) = tsv::header(cx, section, cells(text), stable);
+    let (header, typed) = table::header(cx, section, cells(text), stable);
     *slots = Some(typed);
     Some(header)
 }
@@ -255,7 +253,7 @@ fn row<'a, R: TableRow<'a>>(
         cx.report(Code::RowBeforeHeader, 0, 1, Detail::None);
         return None;
     };
-    Some(tsv::row(cx, slots, cells(text)))
+    Some(table::row(cx, slots, cells(text)))
 }
 
 /// Splits `line` (which includes its `\n`, or is the unterminated last line)

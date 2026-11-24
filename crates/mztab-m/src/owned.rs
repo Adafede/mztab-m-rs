@@ -6,10 +6,15 @@ use alloc::borrow::Cow;
 use alloc::vec::Vec;
 
 use crate::id::IndexMap;
-use crate::model::{Column, ExtraLine, Header, LineContent, MtdValue, Table};
-use crate::param::{Accession, Param, ParamText};
-use crate::read::Event;
-use crate::value::{Cell, Decimal, Raw, Text};
+use crate::model::layout::{ExtraLine, LineContent};
+use crate::model::meta_value::MtdValue;
+use crate::model::table::{Column, Header, Table};
+use crate::param::Param;
+use crate::param::text::{Accession, ParamText};
+use crate::read::event::Event;
+use crate::value::cell::Cell;
+use crate::value::decimal::Decimal;
+use crate::value::text::{Raw, Text};
 
 /// Converts a value that borrows its input into one that owns its data.
 ///
@@ -54,11 +59,12 @@ owned_copy! {
     u32, i32, bool,
     crate::id::AssayId, crate::id::InstrumentId, crate::id::MsRunId, crate::id::ProtocolId,
     crate::id::SampleId, crate::id::StudyVariableId,
-    crate::model::SmlId, crate::model::SmfId, crate::model::SmeId,
-    crate::model::OptTarget, crate::model::LineInfo,
-    crate::vocab::Version, crate::vocab::Profile, crate::vocab::AmbiguityCode,
-    crate::vocab::PublicationKind, crate::vocab::Datatype,
-    crate::meta::MtdKey, crate::diag::Findings, crate::model::LineEnding, u64,
+    crate::model::table::SmlId, crate::model::table::SmfId, crate::model::table::SmeId,
+    crate::model::table::OptTarget, crate::model::layout::LineInfo,
+    crate::vocab::version::Version, crate::vocab::profile::Profile,
+    crate::vocab::field::AmbiguityCode, crate::vocab::field::PublicationKind,
+    crate::vocab::field::Datatype, crate::meta::key::MtdKey, crate::diag::finding::Findings,
+    crate::model::layout::LineEnding, u64,
 }
 
 fn cow(text: Cow<'_, str>) -> Cow<'static, str> {
@@ -286,8 +292,8 @@ mod tests {
 
     use super::IntoOwned as _;
     use crate::id::{AssayId, IdConfidenceMeasureId};
-    use crate::model::{AbundanceColumn, Column, Header, OptColumn, OptTarget, SmlColumn};
-    use crate::value::{Raw, Text};
+    use crate::model::table::{AbundanceColumn, Column, Header, OptColumn, OptTarget, SmlColumn};
+    use crate::value::text::{Raw, Text};
     use alloc::string::String;
     use alloc::vec;
 
@@ -296,7 +302,7 @@ mod tests {
     /// it).
     #[test]
     fn leaf_texts_keep_their_text() {
-        use crate::param::{Accession, ParamText};
+        use crate::param::text::{Accession, ParamText};
         let text = ParamText::new("MS:1").expect("valid parameter text");
         assert_eq!(text.clone().into_owned(), text, "parameter text");
         let accession = Accession::new(text);

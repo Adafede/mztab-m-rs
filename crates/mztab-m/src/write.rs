@@ -24,22 +24,18 @@
 //! # Ok::<(), mztab_m::WriteError>(())
 //! ```
 
-mod error;
+pub(crate) mod error;
 mod layout;
-mod line;
-mod pending;
+pub(crate) mod line;
+pub(crate) mod pending;
 mod render;
-mod sink;
+pub(crate) mod sink;
 
 use alloc::string::String;
 use core::fmt;
 
-use crate::model::MzTab;
-
-pub use error::WriteError;
-pub(crate) use line::{metadata_line, row_line, unknown_line};
-pub(crate) use pending::{header_text, row_text};
-pub(crate) use sink::{Compare, Out};
+use crate::model::document::MzTab;
+use error::WriteError;
 
 /// Writes `mztab` as mzTab-M TSV, preserving its [`SourceLayout`](crate::SourceLayout).
 ///

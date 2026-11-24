@@ -7,14 +7,17 @@ use alloc::vec::Vec;
 
 use super::uses::{ColumnTerm, Use};
 use crate::cv::{self, TermLookup};
-use crate::diag::{Code, Detail};
+use crate::diag::code::Code;
+use crate::diag::finding::Detail;
 use crate::id::CvId;
-use crate::meta::{CvKey, MtdKey};
-use crate::model::MzTab;
+use crate::meta::key::MtdKey;
+use crate::meta::subkey::CvKey;
+use crate::model::document::MzTab;
 use crate::param::Param;
+use crate::validate::label;
 use crate::validate::patterns::xsd_matches;
-use crate::validate::{Report, Site, label};
-use crate::value::Cell;
+use crate::validate::report::{Report, Site};
+use crate::value::cell::Cell;
 
 pub(super) fn term(accession: &str, name: Option<&str>, rule: Option<&'static str>) -> Detail {
     Detail::Term {

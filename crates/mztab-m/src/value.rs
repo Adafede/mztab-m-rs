@@ -18,14 +18,9 @@
 //! assert_eq!(broken.invalid().map(|raw| raw.as_str()), Some("1,5"));
 //! ```
 
-mod cell;
-mod decimal;
-mod text;
-
-pub use cell::Cell;
-pub use decimal::{Decimal, DecimalKind, NumberError};
-pub(crate) use text::find_control;
-pub use text::{Raw, Text, TextError};
+pub(crate) mod cell;
+pub(crate) mod decimal;
+pub(crate) mod text;
 
 /// The literal that encodes a missing value in a table cell (SPEC §5.7).
 pub const NULL: &str = "null";

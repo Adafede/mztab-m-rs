@@ -1,18 +1,20 @@
 //! Placing typed [`MtdValue`]s into [`Metadata`].
 
+use super::Field;
+use super::colunit::ColUnit;
 use super::meta_value::{InsertError, MtdValue};
 use super::metadata::Metadata;
-use super::{ColUnit, Field};
 use crate::id::{
     AssayId, ContactId, CvId, DatabaseId, IndexMap, InstrumentId, MsRunId, ProtocolId, SampleId,
     SoftwareId, StudyVariableGroupId, StudyVariableId,
 };
-use crate::meta::{
-    AssayKey, ContactKey, CvKey, DatabaseKey, InstrumentKey, MsRunKey, MtdKey, ProtocolKey,
-    SampleKey, SoftwareKey, StudyVariableGroupKey, StudyVariableKey,
+use crate::meta::key::MtdKey;
+use crate::meta::subkey::{
+    AssayKey, ContactKey, CvKey, DatabaseKey, InstrumentKey, MsRunKey, ProtocolKey, SampleKey,
+    SoftwareKey, StudyVariableGroupKey, StudyVariableKey,
 };
 use crate::param::Param;
-use crate::value::Cell;
+use crate::value::cell::Cell;
 
 /// Places `cell` in an empty field.
 fn put<'a, T>(slot: &mut Field<'a, T>, cell: Cell<'a, T>) -> Result<(), InsertError> {
