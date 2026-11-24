@@ -53,7 +53,7 @@ fn run_validate(
         texts.push(String::from_utf8_lossy(&bytes).into_owned());
     }
     let obo: Vec<&str> = texts.iter().map(String::as_str).collect();
-    let findings = mztab_m_api::validate_obo(parsed, &opts.settings, &obo);
+    let findings = mztab_m_api::validate(parsed, &opts.settings, &obo);
     let mut out = String::new();
     if opts.output_json {
         out = mztab_m_api::findings_json(&findings);

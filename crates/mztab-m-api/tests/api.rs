@@ -4,7 +4,7 @@
 use wasm_bindgen_test::wasm_bindgen_test as test;
 
 use mztab_m::{Code, Severity};
-use mztab_m_api::{Error, Fact, Format, Layer, Settings, check, convert, facts, read, severity};
+use mztab_m_api::{Error, Fact, Format, Layer, Settings, check, convert, facts, facts_json, read};
 
 const BASE: &str = include_str!("../../mztab-m/tests/golden/full.canonical.mztab");
 const BASE_JSON: &str = include_str!("../../mztab-m/tests/golden/full.json");
@@ -16,9 +16,6 @@ fn names_parse() {
     assert_eq!(Layer::parse("syntax"), Ok(Layer::Syntax), "syntax");
     assert_eq!(Layer::parse("structure"), Ok(Layer::Structure), "structure");
     assert_eq!(Layer::parse("semantic"), Ok(Layer::Semantic), "semantic");
-    assert_eq!(severity("info"), Ok(Severity::Info), "info");
-    assert_eq!(severity("warning"), Ok(Severity::Warning), "warning");
-    assert_eq!(severity("error"), Ok(Severity::Error), "error");
     let errors = [
         (
             Format::parse("xml").map(|_| ()),
@@ -27,10 +24,6 @@ fn names_parse() {
         (
             Layer::parse("all").map(|_| ()),
             "unknown layer `all` (syntax, structure, semantic)",
-        ),
-        (
-            severity("fatal").map(|_| ()),
-            "unknown severity `fatal` (error, warning, info)",
         ),
         (
             Settings::default().set("nonsense").map(|_| ()),
@@ -67,18 +60,17 @@ fn settings_apply() {
         "override"
     );
     let bad = "MTD\tmzTab-version\t2.1\n";
-    let records = check(bad.as_bytes(), Format::Tsv, &[], &settings).unwrap_or_default();
+    let records = check(bad.as_bytes(), Format::Tsv, &[], &settings);
     assert!(records.iter().all(|r| r.code != "MZT-S006"), "disabled");
     let syntax = Settings::default().layer(Layer::Syntax);
-    let only = check(bad.as_bytes(), Format::Tsv, &[], &syntax).unwrap_or_default();
+    let only = check(bad.as_bytes(), Format::Tsv, &[], &syntax);
     assert!(only.iter().all(|r| r.layer == "syntax"), "syntax only");
     let semantic = check(
         BASE.as_bytes(),
         Format::Tsv,
         &["[Term]\nid: MS:1\n"],
         &Settings::default(),
-    )
-    .unwrap_or_default();
+    );
     assert!(
         semantic
             .iter()
@@ -90,8 +82,7 @@ fn settings_apply() {
 #[test]
 fn records_flatten_every_location() {
     let text = "MTD\tmzTab-version\t2.1\nMTD\tinstrument[1]-name\t[MS, MS:1, x, ]\n";
-    let records =
-        check(text.as_bytes(), Format::Tsv, &[], &Settings::default()).unwrap_or_default();
+    let records = check(text.as_bytes(), Format::Tsv, &[], &Settings::default());
     let version = records.iter().find(|r| r.code == "MZT-S006");
     assert!(
         version.is_some_and(|r| {
@@ -117,22 +108,11 @@ fn records_flatten_every_location() {
         Format::Json,
         &[],
         &Settings::default(),
-    )
-    .unwrap_or_default();
+    );
     assert!(
         json.iter()
             .any(|r| r.location == "/metadata/x" && r.detail.is_none()),
         "pointer, no detail: {json:?}"
-    );
-    let mut model = read(BASE.as_bytes(), Format::Tsv).mztab;
-    model.layout = mztab_m::SourceLayout::default();
-    model.metadata.title = Some(mztab_m::Cell::Invalid(mztab_m::Raw::new("x")));
-    let findings = mztab_m::validate::structure(&model, &mztab_m::validate::Config::default());
-    assert!(
-        mztab_m_api::records(&findings)
-            .iter()
-            .any(|r| r.location == "metadata.title"),
-        "model path"
     );
 }
 
@@ -183,22 +163,23 @@ fn facts_render() {
     );
     assert_eq!(get("sml_rows"), Some(Fact::Rows(Some(2))), "rows");
     let empty = read(b"MTD\ttitle\ta \"b\" \\ c\x01\n", Format::Tsv);
-    let facts = mztab_m_api::facts(&empty);
-    let rendered: Vec<(String, String)> = facts
-        .iter()
-        .map(|(k, v)| (v.to_json(), format!("{k}={v}")))
-        .collect();
+    let doc_facts = mztab_m_api::facts(&empty);
+    let rendered: Vec<String> = doc_facts.iter().map(|(k, v)| format!("{k}={v}")).collect();
     for expected in [
-        ("null".to_owned(), "version=null".to_owned()),
-        (
-            r#""a \"b\" \\ c\u0001""#.to_owned(),
-            "title=a \"b\" \\ c\u{1}".to_owned(),
-        ),
-        ("null".to_owned(), "sml_rows=null".to_owned()),
-        ("0".to_owned(), "assays=0".to_owned()),
+        "version=null".to_owned(),
+        "title=a \"b\" \\ c\u{1}".to_owned(),
+        "sml_rows=null".to_owned(),
+        "assays=0".to_owned(),
     ] {
         assert!(rendered.contains(&expected), "{expected:?} in {rendered:?}");
     }
+    let json = facts_json(&empty);
+    assert!(
+        json.contains(r#""version":null,"#)
+            && json.contains(r#""title":"a \"b\" \\ c\u0001","#)
+            && json.contains(r#""sml_rows":null,"#),
+        "facts json escaping: {json}"
+    );
 }
 
 #[test]
@@ -283,7 +264,7 @@ fn facade_exposes_codes_facts_json_and_obo_validation() {
     );
 
     let parsed = read(BASE.as_bytes(), Format::Tsv);
-    let json_facts = mztab_m_api::facts_json(&parsed);
+    let json_facts = facts_json(&parsed);
     assert!(
         json_facts.starts_with(r#"{"version":"2.1.0-M","#)
             && json_facts.ends_with(r#""reader_errors":0}"#),

@@ -152,7 +152,13 @@ impl Raw {
             "--fail-on" => {
                 let level = flag_value(arg, args)?;
                 self.fail_on = (level != "never")
-                    .then(|| usage(mztab_m_api::severity(level)))
+                    .then(|| {
+                        usage(
+                            level
+                                .parse::<Severity>()
+                                .map_err(|_| Error::Severity(level.to_owned())),
+                        )
+                    })
                     .transpose()?;
             }
             "--severity" => {

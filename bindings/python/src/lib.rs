@@ -66,7 +66,7 @@ fn validate<'py>(
         settings = settings.set(&format!("{code}={level}")).map_err(error)?;
     }
     let obo: Vec<&str> = vocabularies.iter().map(String::as_str).collect();
-    let records = mztab_m_api::check(&bytes, format, &obo, &settings).map_err(error)?;
+    let records = mztab_m_api::check(&bytes, format, &obo, &settings);
     records
         .iter()
         .map(|r| {

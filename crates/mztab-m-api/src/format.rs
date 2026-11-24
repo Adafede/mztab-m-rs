@@ -4,7 +4,7 @@ use alloc::borrow::ToOwned as _;
 use alloc::string::String;
 use core::fmt;
 
-use mztab_m::{Severity, WriteError};
+use mztab_m::WriteError;
 
 /// A file format.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -113,12 +113,3 @@ impl fmt::Display for Error {
 }
 
 impl core::error::Error for Error {}
-
-/// `"error"`, `"warning"` or `"info"`.
-///
-/// # Errors
-///
-/// [`Error::Severity`] for anything else.
-pub fn severity(name: &str) -> Result<Severity, Error> {
-    name.parse().map_err(|_| Error::Severity(name.to_owned()))
-}

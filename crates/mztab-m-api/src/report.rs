@@ -65,7 +65,7 @@ pub fn codes() -> Vec<CodeRecord> {
 
 /// The findings as records.
 #[must_use]
-pub fn records(findings: &Findings) -> Vec<Record> {
+pub(crate) fn records(findings: &Findings) -> Vec<Record> {
     findings
         .iter()
         .map(|f| {
@@ -103,8 +103,7 @@ pub enum Fact {
 
 impl Fact {
     /// The fact as a JSON value.
-    #[must_use]
-    pub fn to_json(&self) -> String {
+    fn to_json(&self) -> String {
         match self {
             Self::Text(None) | Self::Rows(None) => "null".to_owned(),
             Self::Text(Some(text)) => {
@@ -189,4 +188,27 @@ pub fn facts_json(parsed: &Parsed<'_>) -> String {
     }
     out.push('}');
     out
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(target_arch = "wasm32")]
+    use wasm_bindgen_test::wasm_bindgen_test as test;
+
+    use super::records;
+    use mztab_m::validate;
+    use mztab_m::{Cell, MzTab, Raw};
+
+    #[test]
+    fn records_flatten_model_path_locations() {
+        let mut model = MzTab::default();
+        model.metadata.title = Some(Cell::Invalid(Raw::new("x")));
+        let findings = validate::structure(&model, &validate::Config::default());
+        assert!(
+            records(&findings)
+                .iter()
+                .any(|r| r.location == "metadata.title"),
+            "model path"
+        );
+    }
 }

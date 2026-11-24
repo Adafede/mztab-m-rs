@@ -77,8 +77,7 @@ fn validate(
             .map_err(|e| Error::Other(e.to_string()))?;
     }
     let obo: Vec<&str> = vocabularies.iter().map(AsRef::as_ref).collect();
-    let records = mztab_m_api::check(text.as_bytes(), format, &obo, &settings)
-        .map_err(|e| Error::Other(e.to_string()))?;
+    let records = mztab_m_api::check(text.as_bytes(), format, &obo, &settings);
     let column = |f: fn(&mztab_m_api::Record) -> Option<String>| text_column(&records, f);
     Ok(list!(
         code = column(|r| Some(r.code.to_owned())),

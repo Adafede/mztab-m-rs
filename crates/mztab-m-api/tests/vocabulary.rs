@@ -49,7 +49,7 @@ fn corpus_against_psi_ms() {
             .display()
             .to_string();
         let format = Format::sniff(&name, &bytes);
-        let records = check(&bytes, format, &[&vocabulary], &Settings::default()).expect("checked");
+        let records = check(&bytes, format, &[&vocabulary], &Settings::default());
         let mut codes = BTreeMap::<&str, usize>::new();
         for r in records.iter().filter(|r| r.layer == "semantic") {
             *codes.entry(r.code).or_default() += 1;

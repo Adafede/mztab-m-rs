@@ -2,10 +2,10 @@
 
 use alloc::borrow::ToOwned as _;
 
-use mztab_m::Code;
 use mztab_m::validate::Config;
+use mztab_m::{Code, Severity};
 
-use super::{Error, Layer, severity};
+use super::{Error, Layer};
 
 /// How to validate: the last layer to run and the severity settings.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -47,7 +47,10 @@ impl Settings {
         self.config = if level == "off" {
             self.config.without(code)
         } else {
-            self.config.with_severity(code, severity(level)?)
+            let parsed = level
+                .parse::<Severity>()
+                .map_err(|_| Error::Severity(level.to_owned()))?;
+            self.config.with_severity(code, parsed)
         };
         Ok(self)
     }
