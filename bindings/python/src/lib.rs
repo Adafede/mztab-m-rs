@@ -33,7 +33,7 @@ fn bytes(text: &Bound<'_, PyAny>) -> PyResult<Vec<u8>> {
 fn format(given: Option<&str>, bytes: &[u8]) -> PyResult<Format> {
     given.map_or_else(
         || Ok(Format::sniff("", bytes)),
-        |f| Format::parse(f).map_err(error),
+        |f| f.parse::<Format>().map_err(error),
     )
 }
 
@@ -61,7 +61,10 @@ fn validate<'py>(
 ) -> PyResult<Vec<Bound<'py, PyDict>>> {
     let bytes = bytes(text)?;
     let format = self::format(format, &bytes)?;
-    let mut settings = Settings::default().layer(Layer::parse(layer).map_err(error)?);
+    let parsed_layer = layer
+        .parse::<Layer>()
+        .map_err(|_| error(Error::Layer(layer.to_owned())))?;
+    let mut settings = Settings::default().layer(parsed_layer);
     for (code, level) in &severities {
         settings = settings.set(&format!("{code}={level}")).map_err(error)?;
     }
@@ -98,7 +101,7 @@ fn convert(
 ) -> PyResult<String> {
     let bytes = bytes(text)?;
     let from = self::format(format, &bytes)?;
-    let to = Format::parse(to).map_err(error)?;
+    let to = to.parse::<Format>().map_err(error)?;
     mztab_m_api::convert(&bytes, from, to, lossy).map_err(error)
 }
 

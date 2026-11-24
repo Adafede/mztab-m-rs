@@ -140,13 +140,18 @@ impl Raw {
                     _ => return Err(Failure::Usage("`--format` takes `human` or `json`".into())),
                 };
             }
-            "--input" => self.input = Some(usage(Format::parse(flag_value(arg, args)?))?),
-            "--to" => self.to = Some(usage(Format::parse(flag_value(arg, args)?))?),
+            "--input" => self.input = Some(usage(flag_value(arg, args)?.parse::<Format>())?),
+            "--to" => self.to = Some(usage(flag_value(arg, args)?.parse::<Format>())?),
             "-o" => flag_value(arg, args)?.clone_into(&mut self.output),
             "--check" => self.check = true,
             "--lossy" => self.lossy = true,
             "--layer" => {
-                self.settings.layer = usage(Layer::parse(flag_value(arg, args)?))?;
+                let layer = flag_value(arg, args)?;
+                self.settings.layer = usage(
+                    layer
+                        .parse::<Layer>()
+                        .map_err(|_| Error::Layer(layer.to_owned())),
+                )?;
             }
             "--cv" => self.cv.push(flag_value(arg, args)?.to_owned()),
             "--fail-on" => {

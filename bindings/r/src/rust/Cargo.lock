@@ -63,7 +63,6 @@ name = "mztabm"
 version = "0.1.0"
 dependencies = [
  "extendr-api",
- "mztab-m",
  "mztab-m-api",
 ]
 

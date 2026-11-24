@@ -8,12 +8,21 @@ use mztab_m::{Code, Severity};
 use super::{Error, Layer};
 
 /// How to validate: the last layer to run and the severity settings.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Settings {
     /// The last layer to run.
     pub layer: Layer,
     /// Severity overrides and disabled codes.
     pub config: Config,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            layer: Layer::Semantic,
+            config: Config::default(),
+        }
+    }
 }
 
 impl Settings {

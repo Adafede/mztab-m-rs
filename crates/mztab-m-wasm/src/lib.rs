@@ -34,7 +34,7 @@ pub fn validate(input: &str, obos: Vec<String>) -> String {
 /// Why the document cannot be written in that format.
 #[wasm_bindgen]
 pub fn convert(input: &str, to: &str) -> Result<String, String> {
-    Format::parse(to)
+    to.parse::<Format>()
         .and_then(|to| mztab_m_api::convert(input.as_bytes(), format(input), to, false))
         .map_err(|e| e.to_string())
 }

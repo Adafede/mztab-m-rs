@@ -1,8 +1,9 @@
-//! Format, validation layer, severity parsing, and API error types.
+//! File format and API error types.
 
 use alloc::borrow::ToOwned as _;
 use alloc::string::String;
 use core::fmt;
+use core::str::FromStr;
 
 use mztab_m::WriteError;
 
@@ -16,19 +17,6 @@ pub enum Format {
 }
 
 impl Format {
-    /// `"tsv"` or `"json"`.
-    ///
-    /// # Errors
-    ///
-    /// [`Error::Format`] for anything else.
-    pub fn parse(name: &str) -> Result<Self, Error> {
-        match name {
-            "tsv" => Ok(Self::Tsv),
-            "json" => Ok(Self::Json),
-            other => Err(Error::Format(other.to_owned())),
-        }
-    }
-
     /// JSON if the file name ends in `.json` or the text starts with `{`
     /// (after white space); TSV otherwise.
     ///
@@ -53,30 +41,14 @@ impl Format {
     }
 }
 
-/// The last validation layer to run.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Layer {
-    /// What the reader finds.
-    Syntax,
-    /// And fields, profiles, references, columns and values.
-    Structure,
-    /// And the controlled vocabulary.
-    #[default]
-    Semantic,
-}
+impl FromStr for Format {
+    type Err = Error;
 
-impl Layer {
-    /// `"syntax"`, `"structure"` or `"semantic"`.
-    ///
-    /// # Errors
-    ///
-    /// [`Error::Layer`] for anything else.
-    pub fn parse(name: &str) -> Result<Self, Error> {
-        match name {
-            "syntax" => Ok(Self::Syntax),
-            "structure" => Ok(Self::Structure),
-            "semantic" => Ok(Self::Semantic),
-            other => Err(Error::Layer(other.to_owned())),
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "tsv" => Ok(Self::Tsv),
+            "json" => Ok(Self::Json),
+            other => Err(Error::Format(other.to_owned())),
         }
     }
 }

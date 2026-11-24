@@ -11,18 +11,23 @@ const BASE_JSON: &str = include_str!("../../mztab-m/tests/golden/full.json");
 
 #[test]
 fn names_parse() {
-    assert_eq!(Format::parse("json"), Ok(Format::Json), "json");
-    assert_eq!(Format::parse("tsv"), Ok(Format::Tsv), "tsv");
-    assert_eq!(Layer::parse("syntax"), Ok(Layer::Syntax), "syntax");
-    assert_eq!(Layer::parse("structure"), Ok(Layer::Structure), "structure");
-    assert_eq!(Layer::parse("semantic"), Ok(Layer::Semantic), "semantic");
+    assert_eq!("json".parse::<Format>(), Ok(Format::Json), "json");
+    assert_eq!("tsv".parse::<Format>(), Ok(Format::Tsv), "tsv");
+    assert_eq!("syntax".parse::<Layer>(), Ok(Layer::Syntax), "syntax");
+    assert_eq!(
+        "structure".parse::<Layer>(),
+        Ok(Layer::Structure),
+        "structure"
+    );
+    assert_eq!("semantic".parse::<Layer>(), Ok(Layer::Semantic), "semantic");
+    assert!("all".parse::<Layer>().is_err(), "unknown layer");
     let errors = [
         (
-            Format::parse("xml").map(|_| ()),
+            "xml".parse::<Format>().map(|_| ()),
             "unknown format `xml` (tsv, json)",
         ),
         (
-            Layer::parse("all").map(|_| ()),
+            Err(Error::Layer("all".to_owned())),
             "unknown layer `all` (syntax, structure, semantic)",
         ),
         (

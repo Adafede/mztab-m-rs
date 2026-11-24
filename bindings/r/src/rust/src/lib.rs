@@ -28,7 +28,9 @@ fn format(given: &str, text: &str) -> Result<Format> {
     if given.is_empty() {
         Ok(Format::sniff("", text.as_bytes()))
     } else {
-        Format::parse(given).map_err(|e| Error::Other(e.to_string()))
+        given
+            .parse::<Format>()
+            .map_err(|e| Error::Other(e.to_string()))
     }
 }
 
@@ -69,8 +71,10 @@ fn validate(
     format: &str,
 ) -> Result<List> {
     let format = self::format(format, text)?;
-    let mut settings =
-        Settings::default().layer(Layer::parse(layer).map_err(|e| Error::Other(e.to_string()))?);
+    let parsed_layer = layer
+        .parse::<Layer>()
+        .map_err(|_| Error::Other(mztab_m_api::Error::Layer(layer.to_owned()).to_string()))?;
+    let mut settings = Settings::default().layer(parsed_layer);
     for setting in severities.iter() {
         settings = settings
             .set(setting.as_ref())
@@ -108,7 +112,9 @@ fn mztabm_convert(text: &str, to: &str, lossy: bool, format: &str) -> List {
 
 fn convert(text: &str, to: &str, lossy: bool, format: &str) -> Result<String> {
     let from = self::format(format, text)?;
-    let to = Format::parse(to).map_err(|e| Error::Other(e.to_string()))?;
+    let to = to
+        .parse::<Format>()
+        .map_err(|e| Error::Other(e.to_string()))?;
     mztab_m_api::convert(text.as_bytes(), from, to, lossy).map_err(|e| Error::Other(e.to_string()))
 }
 
