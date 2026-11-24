@@ -138,6 +138,10 @@
 | `clippy::cognitive_complexity` (> 25) | 1 warning (`mandatory`: 35/25) | **0 warnings** |
 | Production `#[expect]`s in `crates/` | 7 (6 in `mztab-m`, 1 in `mztab-m-wasm`) | **3** (2 in `mztab-m`, 1 in `mztab-m-wasm`) |
 | Layer 3 direct deps on core/obo | CLI, WASM, Python, R all depended directly on `mztab-m` (and/or `mztab-m-obo`) | **0** (all route exclusively through `mztab-m-api`) |
+| Dependency-graph cycles & depth | 2 internal cycles (`meta <-> model`, `table <-> write`); 3-layer violations | **0 cycles**; strict 3-layer workspace + 4-tier internal DAG (0 runtime dupes in `cargo tree -d`, only dev `syn` v2 vs v3 per D-073) |
+| Public-API surface | Flat module root exports | Strictly additive minimal additions (`to_canonical_string`, `VocabError`, `FromStr`, `json::write_string`, `mztab-m-api` helpers); `TableSection` & CLI `Command`/`Action` kept `pub(crate)` |
+| Duplicated-code volume | Duplicated JSON string escaping, adapter code-catalog loops, severity matches | `./mk echoes`: **0 duplicated**, **0 approximate**, **0 dependency reuse** groups across 868 functions |
+| Compile time (same machine) | CLI release `28.93s`; WASM release `50.54s`; check `48.46s` (clean) | CLI release `1m 23s` (`lto = "thin"`, `codegen-units = 1`); WASM release `23.92s`; incremental workspace clippy `4.88s–9.66s` |
 | Release CLI binary (`target/release/mztab-m`) | 1.6 MiB (`953.8 KiB` `.text`; `620.5 KiB` `mztab_m`) | **1.2 MiB (-25%)** (`784.7 KiB` `.text`; `415.0 KiB` `mztab_m`) |
 | Release WASM (`mztab_m_wasm.wasm`) | 967 KiB | **679 KiB (-29.8%)** |
 | `small`: `parse` / `write` / `semantic` | 530.3 µs / 165.2 µs / 86.8 µs | **269.5 µs (-49%)** / **37.05 µs (-78%)** / **32.67 µs (-62%)** |
