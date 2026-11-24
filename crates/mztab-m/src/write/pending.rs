@@ -16,7 +16,7 @@ use crate::model::meta_value::ValueRef;
 use crate::model::table::{SmeColumn, SmfColumn, SmlColumn, Table};
 use crate::tsv::table::{Slot, slots};
 use crate::value::text::Raw;
-use crate::vocab::section::{Section, TableSection};
+use crate::vocab::section::TableSection;
 
 /// Header slots computed once per table rather than once per row.
 pub(super) struct TableSlots {
@@ -154,23 +154,23 @@ pub(super) fn item_line(
         Item::Row(section, n) => match section {
             TableSection::Sml => table_row(
                 out,
-                Section::Sml,
+                *section,
                 mztab.sml.as_ref(),
-                table_slots.sml.as_deref(),
+                table_slots.sml.as_deref().unwrap_or_default(),
                 *n,
             ),
             TableSection::Smf => table_row(
                 out,
-                Section::Smf,
+                *section,
                 mztab.smf.as_ref(),
-                table_slots.smf.as_deref(),
+                table_slots.smf.as_deref().unwrap_or_default(),
                 *n,
             ),
             TableSection::Sme => table_row(
                 out,
-                Section::Sme,
+                *section,
                 mztab.sme.as_ref(),
-                table_slots.sme.as_deref(),
+                table_slots.sme.as_deref().unwrap_or_default(),
                 *n,
             ),
         },
@@ -188,20 +188,17 @@ fn table_header<S: fmt::Display, R>(
 
 fn table_row<'a, R: RenderRow<'a>>(
     out: &mut Out<'_>,
-    section: Section,
+    section: TableSection,
     table: Option<&Table<'a, R::Column, R>>,
-    precomputed: Option<&[Slot<R::Column>]>,
+    row_slots: &[Slot<R::Column>],
     n: usize,
 ) -> Result<(), WriteError>
 where
     R::Column: Copy,
 {
     table
-        .and_then(|t| t.rows.get(n).map(|row| (t, row)))
-        .map_or(Ok(()), |(t, row)| match precomputed {
-            Some(s) => row_line(out, section, s, row),
-            None => row_line(out, section, &slots(&t.header), row),
-        })
+        .and_then(|t| t.rows.get(n))
+        .map_or(Ok(()), |row| row_line(out, section, row_slots, row))
 }
 
 /// The canonical text of a table's header line.
@@ -222,9 +219,36 @@ pub(crate) fn row_text(mztab: &MzTab<'_>, section: TableSection, row: usize) -> 
     let mut text = String::new();
     let mut out = Out::new(&mut text);
     let res = match section {
-        TableSection::Sml => table_row(&mut out, Section::Sml, mztab.sml.as_ref(), None, row),
-        TableSection::Smf => table_row(&mut out, Section::Smf, mztab.smf.as_ref(), None, row),
-        TableSection::Sme => table_row(&mut out, Section::Sme, mztab.sme.as_ref(), None, row),
+        TableSection::Sml => table_row(
+            &mut out,
+            section,
+            mztab.sml.as_ref(),
+            &mztab
+                .sml
+                .as_ref()
+                .map_or_else(Vec::new, |t| slots(&t.header)),
+            row,
+        ),
+        TableSection::Smf => table_row(
+            &mut out,
+            section,
+            mztab.smf.as_ref(),
+            &mztab
+                .smf
+                .as_ref()
+                .map_or_else(Vec::new, |t| slots(&t.header)),
+            row,
+        ),
+        TableSection::Sme => table_row(
+            &mut out,
+            section,
+            mztab.sme.as_ref(),
+            &mztab
+                .sme
+                .as_ref()
+                .map_or_else(Vec::new, |t| slots(&t.header)),
+            row,
+        ),
     };
     res.ok()?;
     Some(text)

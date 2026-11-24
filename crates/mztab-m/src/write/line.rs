@@ -12,7 +12,7 @@ use crate::model::table::{Column, Header};
 use crate::tsv::table::Slot;
 use crate::value::NULL;
 use crate::value::text::Raw;
-use crate::vocab::section::{Section, TableSection};
+use crate::vocab::section::TableSection;
 
 /// Writes `MTD\tkey\tvalue` (no line ending).
 pub(crate) fn metadata_line(
@@ -44,7 +44,7 @@ pub(super) fn header_line<S: fmt::Display>(
     section: TableSection,
     header: &Header<'_, S>,
 ) -> Result<(), WriteError> {
-    out.str(section.section().header_prefix().unwrap_or_default())?;
+    out.str(section.header_prefix())?;
     for column in &header.columns {
         out.str("\t")?;
         match column {
@@ -62,7 +62,7 @@ pub(super) fn header_line<S: fmt::Display>(
 /// written as `null`.
 pub(crate) fn row_line<'a, R: RenderRow<'a>>(
     out: &mut Out<'_>,
-    section: Section,
+    section: TableSection,
     slots: &[Slot<R::Column>],
     row: &R,
 ) -> Result<(), WriteError> {

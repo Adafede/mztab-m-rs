@@ -11,7 +11,7 @@ use crate::diag::code::Code;
 use crate::model::document::MzTab;
 use crate::param::Param;
 
-pub(super) fn check(mztab: &MzTab<'_>, term_lookup: &dyn TermLookup, report: &mut Report<'_, '_>) {
+pub(super) fn check(mztab: &MzTab<'_>, terms: &dyn TermLookup, report: &mut Report<'_, '_>) {
     let uses = uses::collect(mztab);
     let columns = uses::column_terms(mztab);
     terms::declarations(mztab, &uses, &columns, report);
@@ -37,14 +37,14 @@ pub(super) fn check(mztab: &MzTab<'_>, term_lookup: &dyn TermLookup, report: &mu
                     value.as_ref().map(crate::param::text::ParamText::as_str),
                 ),
                 u.site,
-                term_lookup,
+                terms,
                 report,
             );
         }
     }
     for c in &columns {
-        terms::term_checks(c.accession, (None, None), c.site, term_lookup, report);
+        terms::term_checks(c.accession, (None, None), c.site, terms, report);
     }
-    rules::check_all(&uses, term_lookup, report);
-    terms::versions(mztab, term_lookup, report);
+    rules::check_all(&uses, terms, report);
+    terms::versions(mztab, terms, report);
 }

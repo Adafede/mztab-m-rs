@@ -98,6 +98,24 @@ impl TableSection {
         }
     }
 
+    /// The prefix of this table's data lines (`SML`, `SMF`, or `SME`).
+    pub(crate) const fn row_prefix(self) -> &'static str {
+        match self {
+            Self::Sml => "SML",
+            Self::Smf => "SMF",
+            Self::Sme => "SME",
+        }
+    }
+
+    /// The prefix of this table's header line (`SMH`, `SFH`, or `SEH`).
+    pub(crate) const fn header_prefix(self) -> &'static str {
+        match self {
+            Self::Sml => "SMH",
+            Self::Smf => "SFH",
+            Self::Sme => "SEH",
+        }
+    }
+
     /// Lowercase model-path name of this table.
     pub(crate) const fn name(self) -> &'static str {
         match self {
@@ -167,6 +185,8 @@ mod tests {
         let mut items = ["a", "b", "c"];
         for (idx, ts) in TableSection::ALL.into_iter().enumerate() {
             assert_eq!(TableSection::from_section(ts.section()), Some(ts));
+            assert_eq!(ts.row_prefix(), ts.section().row_prefix());
+            assert_eq!(Some(ts.header_prefix()), ts.section().header_prefix());
             assert_eq!(ts.index(), idx);
             assert_eq!(Some(*ts.pick(&items)), items.get(idx).copied());
             *ts.pick_mut(&mut items) = ts.name();

@@ -17,7 +17,7 @@ use crate::model::table::{Header, SmeColumn, SmfColumn, SmlColumn};
 use crate::tsv::table::{self, Slot, TableRow};
 use crate::tsv::typing::Cx;
 use crate::value::text::Raw;
-use crate::vocab::section::Section;
+use crate::vocab::section::{Section, TableSection};
 use crate::write::line::{metadata_line, row_line, unknown_line};
 use crate::write::sink::{Compare, Out};
 
@@ -107,9 +107,9 @@ impl Typer {
                 (Some((key, value)), true) => metadata_line(&mut out, *key, value.as_ref()),
                 _ => unknown_line(&mut out, &entry.key, &entry.value),
             },
-            Event::Sml(_, row) => row_line(&mut out, Section::Sml, self.sml.as_deref()?, row),
-            Event::Smf(_, row) => row_line(&mut out, Section::Smf, self.smf.as_deref()?, row),
-            Event::Sme(_, row) => row_line(&mut out, Section::Sme, self.sme.as_deref()?, row),
+            Event::Sml(_, row) => row_line(&mut out, TableSection::Sml, self.sml.as_deref()?, row),
+            Event::Smf(_, row) => row_line(&mut out, TableSection::Smf, self.smf.as_deref()?, row),
+            Event::Sme(_, row) => row_line(&mut out, TableSection::Sme, self.sme.as_deref()?, row),
             // Header lines always render as written; blank, comment and
             // unrecognised lines are stored as written.
             _ => return None,

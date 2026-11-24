@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 
 use mztab_m_api::{
-    Error, Fact, Format, Layer, SPEC_COMMIT, SPEC_VERSION, Settings, vocabulary_size as obo_size,
+    Error, Fact, Format, Layer, SPEC_COMMIT, SPEC_VERSION, Settings,
 };
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -158,7 +158,7 @@ fn codes(py: Python<'_>) -> PyResult<Vec<Bound<'_, PyDict>>> {
 /// Checks that an OBO text parses into terms (returns how many).
 #[pyfunction]
 fn vocabulary_size(text: &str) -> usize {
-    obo_size(text)
+    mztab_m_api::vocabulary_size(text)
 }
 
 /// The `mztab_m._native` extension module.
