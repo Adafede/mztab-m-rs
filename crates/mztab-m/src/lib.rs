@@ -58,7 +58,7 @@ pub use read::{Event, Parsed, StreamReader, parse, parse_bytes};
 pub use value::{Cell, Decimal, DecimalKind, NULL, NumberError, Raw, Text, TextError};
 pub use vocab::{
     AmbiguityCode, Datatype, Profile, ProhibitedProfile, PublicationItem, PublicationItemError,
-    PublicationKind, RuleSet, Section, Version, VersionError,
+    PublicationKind, RuleSet, Section, Version, VersionError, VocabError,
 };
 pub use write::{WriteError, to_string, write};
 

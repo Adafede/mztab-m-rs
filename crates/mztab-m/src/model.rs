@@ -38,7 +38,7 @@ use core::fmt;
 use crate::id::{
     AssayId, ContactId, CvId, DatabaseId, IdConfidenceMeasureId, IndexMap, InstrumentId, Ix,
     MsRunId, ProtocolId, PublicationId, SampleId, SoftwareId, StudyVariableGroupId,
-    StudyVariableId,
+    StudyVariableId, parse_index,
 };
 use crate::param::{Param, ParamError};
 use crate::value::{Cell, Decimal, Raw, Text, TextError};
@@ -1013,14 +1013,6 @@ impl<'a> SpectraRef<'a> {
     }
 }
 
-/// Parses a 1-based mzTab index: ASCII digits only, no sign, no leading zero.
-#[must_use]
-pub(crate) fn parse_index(text: &str) -> Option<u32> {
-    let canonical =
-        !text.is_empty() && !text.starts_with('0') && text.bytes().all(|b| b.is_ascii_digit());
-    canonical.then(|| text.parse().ok()).flatten()
-}
-
 impl fmt::Display for SpectraRef<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}:{}", self.ms_run, self.reference)
@@ -1034,7 +1026,7 @@ mod tests {
 
     use super::{
         AbundanceColumn, ColUnit, ColUnitError, Header, MzTab, OptColumn, OptTarget, SmeColumn,
-        SmfColumn, SmlColumn, SmlId, SpectraRef, SpectraRefError, Table, parse_index,
+        SmfColumn, SmlColumn, SmlId, SpectraRef, SpectraRefError, Table,
     };
     use crate::id::{AssayId, MsRunId, StudyVariableId};
     use crate::param::{ParamError, ParamErrorKind};
@@ -1188,9 +1180,6 @@ mod tests {
             "parts"
         );
         assert_eq!(ok.to_string(), "ms_run[12]:scan=3:x", "display");
-        assert_eq!(parse_index(""), None, "empty index");
-        assert_eq!(parse_index("4294967296"), None, "overflow");
-        assert_eq!(parse_index("4294967295"), Some(u32::MAX), "max");
     }
 
     #[test]

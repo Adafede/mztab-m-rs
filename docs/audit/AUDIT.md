@@ -86,7 +86,7 @@ Baseline measurements and structural smell catalogue recorded on branch `refacto
 - `crates/mztab-m-api/src/lib.rs:355-375` (`Fact::to_json`) duplicates JSON string escaping logic already implemented in `crates/mztab-m/src/json/value.rs:327-341` (`write_string`).
 
 ### Rank 4 (Medium Impact, Low-Medium Effort) — Type-Driven Smells & Ad-Hoc Parsing
-- `crates/mztab-m/src/vocab.rs:410-430` (`Section::pick` / `pick_mut`), `crates/mztab-m/src/write.rs:520-590`, and `crates/mztab-m/src/validate.rs:211-217` use `Section` (4 variants including `Mtd`) in table-only contexts, silently aliasing `Section::Mtd | Section::Sml => sml`. A dedicated `TableSection` (`Sml`, `Smf`, `Sme`) eliminates invalid states.
+- `crates/mztab-m/src/vocab.rs:410-430` (the table-array picking methods on `Section`), `crates/mztab-m/src/write.rs:520-590`, and `crates/mztab-m/src/validate.rs:211-217` use `Section` (4 variants including `Mtd`) in table-only contexts, silently aliasing `Section::Mtd | Section::Sml => sml`. A dedicated `TableSection` (`Sml`, `Smf`, `Sme`) eliminates invalid states.
 - `crates/mztab-m-cli/src/lib.rs:136-260` uses a flat stringly-typed `Options { command: String, to: Option<Format>, ... }` god-struct with `_ =>` catch-all match arms instead of a per-subcommand `Command` enum.
 - Domain and API value types expose ad-hoc `parse` methods (`Version::parse`, `Profile::parse`, `AmbiguityCode::parse`, `Datatype::parse`, `MtdKey::parse`, `mztab_m_api::Format::parse`, `mztab_m_api::Layer::parse`) without implementing `core::str::FromStr`.
 

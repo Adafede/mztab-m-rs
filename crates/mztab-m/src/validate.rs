@@ -36,7 +36,7 @@ use crate::cv::TermLookup;
 use crate::diag::{Code, Detail, Finding, Findings, Location, Path, Severity};
 use crate::meta::MtdKey;
 use crate::model::{LineContent, MzTab};
-use crate::vocab::{RuleSet, Section};
+use crate::vocab::{RuleSet, Section, TableSection};
 
 /// Validation settings: per-code severity overrides and disabled codes.
 ///
@@ -209,10 +209,9 @@ struct Lines {
 /// The model-path name of a table (metadata shares `sml`; no table site
 /// ever names it).
 const fn table_name(section: Section) -> &'static str {
-    match section {
-        Section::Mtd | Section::Sml => "sml",
-        Section::Smf => "smf",
-        Section::Sme => "sme",
+    match TableSection::from_section(section) {
+        Some(ts) => ts.name(),
+        None => "sml",
     }
 }
 
@@ -264,9 +263,15 @@ impl<'m, 'a> Report<'m, 'a> {
                         lines.first.get_or_insert(number);
                     }
                     LineContent::Header(s) => {
-                        s.pick_mut(&mut lines.headers).get_or_insert(number);
+                        if let Some(ts) = TableSection::from_section(*s) {
+                            ts.pick_mut(&mut lines.headers).get_or_insert(number);
+                        }
                     }
-                    LineContent::Row(s) => s.pick_mut(&mut lines.rows).push(number),
+                    LineContent::Row(s) => {
+                        if let Some(ts) = TableSection::from_section(*s) {
+                            ts.pick_mut(&mut lines.rows).push(number);
+                        }
+                    }
                     LineContent::Extra(_) => {}
                 }
             }
@@ -325,13 +330,16 @@ impl<'m, 'a> Report<'m, 'a> {
                 let line = lines.elements.get(&(name, n)).copied();
                 line.map(|n| (n, 2, Item::Key(MtdKey::Title)))
             }
-            Site::Header(s) => (*s.pick(&lines.headers)).map(|n| (n, 1, Item::Header(s))),
-            Site::Column(s, c) => (*s.pick(&lines.headers)).map(|n| (n, cell(c), Item::Header(s))),
-            Site::Cell(s, r, c) => s
-                .pick(&lines.rows)
-                .get(r)
-                .copied()
-                .map(|n| (n, cell(c), Item::Row(s, r))),
+            Site::Header(s) => TableSection::from_section(s)
+                .and_then(|ts| (*ts.pick(&lines.headers)).map(|n| (n, 1, Item::Header(ts)))),
+            Site::Column(s, c) => TableSection::from_section(s)
+                .and_then(|ts| (*ts.pick(&lines.headers)).map(|n| (n, cell(c), Item::Header(ts)))),
+            Site::Cell(s, r, c) => TableSection::from_section(s).and_then(|ts| {
+                ts.pick(&lines.rows)
+                    .get(r)
+                    .copied()
+                    .map(|n| (n, cell(c), Item::Row(ts, r)))
+            }),
         };
         // An item added after reading has no source line: fall back to the
         // first metadata line, or the document.
@@ -347,8 +355,8 @@ impl<'m, 'a> Report<'m, 'a> {
 #[derive(Clone, Copy, Debug)]
 enum Item {
     Key(MtdKey),
-    Header(Section),
-    Row(Section, usize),
+    Header(TableSection),
+    Row(TableSection, usize),
 }
 
 fn first(lines: Option<&Vec<u32>>) -> Option<u32> {

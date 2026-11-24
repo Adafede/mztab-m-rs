@@ -27,6 +27,14 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::num::NonZeroU32;
 
+/// Parses a 1-based mzTab index: ASCII digits only, no sign, no leading zero.
+#[must_use]
+pub(crate) fn parse_index(text: &str) -> Option<u32> {
+    let canonical =
+        !text.is_empty() && !text.starts_with('0') && text.bytes().all(|b| b.is_ascii_digit());
+    canonical.then(|| text.parse().ok()).flatten()
+}
+
 /// An index type for an `element[n]`, used by the reader to parse
 /// references such as `assay[3]` generically.
 pub(crate) trait ElementId: Copy {
@@ -309,13 +317,22 @@ mod tests {
     #[cfg(target_arch = "wasm32")]
     use wasm_bindgen_test::wasm_bindgen_test as test;
 
-    use super::{AssayId, IndexMap, Ix, StudyVariableGroupId};
+    use super::{AssayId, IndexMap, Ix, StudyVariableGroupId, parse_index};
     use alloc::string::ToString as _;
     use alloc::vec::Vec;
     use core::num::NonZeroU32;
 
     fn ix(n: u32) -> Ix {
         Ix::new(n).expect("non-zero index")
+    }
+
+    #[test]
+    fn parse_index_checks_canonical_digits() {
+        assert_eq!(parse_index(""), None, "empty index");
+        assert_eq!(parse_index("0"), None, "zero");
+        assert_eq!(parse_index("01"), None, "leading zero");
+        assert_eq!(parse_index("4294967296"), None, "overflow");
+        assert_eq!(parse_index("4294967295"), Some(u32::MAX), "max");
     }
 
     #[test]

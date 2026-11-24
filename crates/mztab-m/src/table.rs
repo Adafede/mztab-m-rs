@@ -4,10 +4,10 @@ use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
 use crate::diag::{Code, Detail};
-use crate::id::{AssayId, ElementId, IdConfidenceMeasureId, MsRunId, StudyVariableId};
+use crate::id::{AssayId, ElementId, IdConfidenceMeasureId, MsRunId, StudyVariableId, parse_index};
 use crate::model::{
     AbundanceColumn, Column, Header, OptColumn, OptTarget, SmeColumn, SmeId, SmeRow, SmfColumn,
-    SmfId, SmfRow, SmlColumn, SmlId, SmlRow, parse_index,
+    SmfId, SmfRow, SmlColumn, SmlId, SmlRow,
 };
 use crate::typing::{self, Cx, RawCell};
 use crate::value::{Cell, Decimal, Raw, Text};

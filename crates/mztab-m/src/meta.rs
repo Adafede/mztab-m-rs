@@ -17,9 +17,9 @@ use core::num::NonZeroU32;
 use crate::id::{
     AssayId, ContactId, CvId, DatabaseId, IdConfidenceMeasureId, IndexMap, InstrumentId, Ix,
     MsRunId, ProtocolId, PublicationId, SampleId, SoftwareId, StudyVariableGroupId,
-    StudyVariableId,
+    StudyVariableId, parse_index,
 };
-use crate::model::{ColUnit, Field, List, Metadata, parse_index};
+use crate::model::{ColUnit, Field, List, Metadata};
 use crate::param::Param;
 use crate::value::{Cell, Raw, Text};
 use crate::vocab::{Datatype, Profile, PublicationItem, Version};

@@ -26,3 +26,14 @@
   - `write_preserves_comments_for_tsv_and_handles_lossy` (`api.rs`)
   - `flag_combinations_and_missing_values` (`run.rs`)
 - **Verification:** `./mk ci-fast` passed all gates except `fmt` (fixed with `cargo fmt` and re-verified `fmt` + targeted tests).
+
+## Step 3 — Split Core Primitives & Introduce `TableSection`
+
+- **Files touched / created:**
+  - `crates/mztab-m/src/id.rs`: moved `parse_index` here from `model.rs`.
+  - `crates/mztab-m/src/value.rs` -> split into `value.rs`, `value/cell.rs`, `value/text.rs`, `value/decimal.rs` (max prod file ~200 LOC).
+  - `crates/mztab-m/src/param.rs` -> split into `param.rs`, `param/text.rs`, `param/parse.rs` (max prod file ~175 LOC).
+  - `crates/mztab-m/src/vocab.rs` -> split into `vocab.rs`, `vocab/version.rs`, `vocab/profile.rs`, `vocab/section.rs`, `vocab/field.rs`; added `FromStr` for `Version`, `Profile`, `AmbiguityCode`, `Datatype` (plus `VocabError`); added internal `TableSection` (`Sml`, `Smf`, `Sme`), removing `Section`'s silent `Mtd | Sml` aliasing from `write.rs` and `validate.rs`.
+  - `crates/mztab-m/src/lib.rs`, `model.rs`, `meta.rs`, `table.rs`, `typing.rs`, `write.rs`, `validate.rs`.
+- **Tests added:** `parse_index_checks_canonical_digits` (`id.rs`), `table_sections_exclude_metadata` (`vocab/section.rs`), `FromStr` assertions in `vocab/{version,profile,field}.rs`.
+- **Verification:** `check`, `test-fast`, `wasm`, `echoes` (0 duplicated, 0 approximate, 0 reuse), `refquiem` pending re-run + `mutants-diff`.

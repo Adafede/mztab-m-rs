@@ -39,7 +39,9 @@ use crate::param::Param;
 use crate::table::{Slot, TableRow};
 use crate::typing::Splitter;
 use crate::value::{Cell, Decimal, NULL, Raw, Text};
-use crate::vocab::{AmbiguityCode, Datatype, Profile, PublicationItem, Section, Version};
+use crate::vocab::{
+    AmbiguityCode, Datatype, Profile, PublicationItem, Section, TableSection, Version,
+};
 
 /// Why a model could not be written.
 ///
@@ -395,10 +397,10 @@ pub(crate) fn unknown_line(
 /// Writes a header line (no line ending).
 pub(crate) fn header_line<S: fmt::Display>(
     out: &mut Out<'_>,
-    section: Section,
+    section: TableSection,
     header: &Header<'_, S>,
 ) -> Result<(), WriteError> {
-    out.str(section.header_prefix().unwrap_or_default())?;
+    out.str(section.section().header_prefix().unwrap_or_default())?;
     for column in &header.columns {
         out.str("\t")?;
         match column {
@@ -482,8 +484,8 @@ fn extra_line(out: &mut Out<'_>, line: &ExtraLine<'_>) -> Result<(), WriteError>
 enum Item<'r, 'a> {
     Metadata(MtdKey, ValueRef<'r, 'a>),
     Unknown(&'r (Raw<'a>, Raw<'a>)),
-    Header(Section),
-    Row(Section, usize),
+    Header(TableSection),
+    Row(TableSection, usize),
     Extra(&'r ExtraLine<'a>),
 }
 
@@ -517,19 +519,19 @@ impl<'r, 'a> Pending<'r, 'a> {
         }
     }
 
-    fn row_count(&self, section: Section) -> usize {
+    fn row_count(&self, section: TableSection) -> usize {
         match section {
-            Section::Mtd | Section::Sml => self.mztab.sml.as_ref().map_or(0, |t| t.rows.len()),
-            Section::Smf => self.mztab.smf.as_ref().map_or(0, |t| t.rows.len()),
-            Section::Sme => self.mztab.sme.as_ref().map_or(0, |t| t.rows.len()),
+            TableSection::Sml => self.mztab.sml.as_ref().map_or(0, |t| t.rows.len()),
+            TableSection::Smf => self.mztab.smf.as_ref().map_or(0, |t| t.rows.len()),
+            TableSection::Sme => self.mztab.sme.as_ref().map_or(0, |t| t.rows.len()),
         }
     }
 
-    const fn has_table(&self, section: Section) -> bool {
+    const fn has_table(&self, section: TableSection) -> bool {
         match section {
-            Section::Mtd | Section::Sml => self.mztab.sml.is_some(),
-            Section::Smf => self.mztab.smf.is_some(),
-            Section::Sme => self.mztab.sme.is_some(),
+            TableSection::Sml => self.mztab.sml.is_some(),
+            TableSection::Smf => self.mztab.smf.is_some(),
+            TableSection::Sme => self.mztab.sme.is_some(),
         }
     }
 
@@ -548,25 +550,27 @@ impl<'r, 'a> Pending<'r, 'a> {
                 Some(Item::Unknown(entry))
             }
             LineContent::Header(section) => {
-                if !self.has_table(*section) {
+                let table = TableSection::from_section(*section)?;
+                if !self.has_table(table) {
                     return None;
                 }
-                let seen = section.pick_mut(&mut self.headers);
+                let seen = table.pick_mut(&mut self.headers);
                 if *seen {
                     return None;
                 }
                 *seen = true;
-                Some(Item::Header(*section))
+                Some(Item::Header(table))
             }
             LineContent::Row(section) => {
-                let rows = self.row_count(*section);
-                let written = section.pick_mut(&mut self.rows);
+                let table = TableSection::from_section(*section)?;
+                let rows = self.row_count(table);
+                let written = table.pick_mut(&mut self.rows);
                 let n = *written;
                 if n >= rows {
                     return None;
                 }
                 *written += 1;
-                Some(Item::Row(*section, n))
+                Some(Item::Row(table, n))
             }
             LineContent::Extra(line) => Some(Item::Extra(line)),
         }
@@ -579,14 +583,14 @@ fn item_line(out: &mut Out<'_>, mztab: &MzTab<'_>, item: &Item<'_, '_>) -> Resul
         Item::Metadata(key, value) => metadata_line(out, *key, *value),
         Item::Unknown((key, value)) => unknown_line(out, key, value),
         Item::Header(section) => match section {
-            Section::Mtd | Section::Sml => table_header(out, *section, mztab.sml.as_ref()),
-            Section::Smf => table_header(out, *section, mztab.smf.as_ref()),
-            Section::Sme => table_header(out, *section, mztab.sme.as_ref()),
+            TableSection::Sml => table_header(out, *section, mztab.sml.as_ref()),
+            TableSection::Smf => table_header(out, *section, mztab.smf.as_ref()),
+            TableSection::Sme => table_header(out, *section, mztab.sme.as_ref()),
         },
         Item::Row(section, n) => match section {
-            Section::Mtd | Section::Sml => table_row(out, *section, mztab.sml.as_ref(), *n),
-            Section::Smf => table_row(out, *section, mztab.smf.as_ref(), *n),
-            Section::Sme => table_row(out, *section, mztab.sme.as_ref(), *n),
+            TableSection::Sml => table_row(out, section.section(), mztab.sml.as_ref(), *n),
+            TableSection::Smf => table_row(out, section.section(), mztab.smf.as_ref(), *n),
+            TableSection::Sme => table_row(out, section.section(), mztab.sme.as_ref(), *n),
         },
         Item::Extra(line) => extra_line(out, line),
     }
@@ -594,7 +598,7 @@ fn item_line(out: &mut Out<'_>, mztab: &MzTab<'_>, item: &Item<'_, '_>) -> Resul
 
 fn table_header<S: fmt::Display, R>(
     out: &mut Out<'_>,
-    section: Section,
+    section: TableSection,
     table: Option<&Table<'_, S, R>>,
 ) -> Result<(), WriteError> {
     table.map_or(Ok(()), |t| header_line(out, section, &t.header))
@@ -688,7 +692,7 @@ impl<'r, 'a> Writer<'_, 'r, 'a> {
     fn rest_of_rows(
         &mut self,
         pending: &mut Pending<'r, 'a>,
-        section: Section,
+        section: TableSection,
     ) -> Result<(), WriteError> {
         let total = pending.row_count(section);
         let first = core::mem::replace(section.pick_mut(&mut pending.rows), total);
@@ -697,14 +701,14 @@ impl<'r, 'a> Writer<'_, 'r, 'a> {
 }
 
 /// The canonical text of a table's header line.
-pub(crate) fn header_text(mztab: &MzTab<'_>, section: Section) -> Option<String> {
+pub(crate) fn header_text(mztab: &MzTab<'_>, section: TableSection) -> Option<String> {
     let mut text = String::new();
     item_line(&mut Out::new(&mut text), mztab, &Item::Header(section)).ok()?;
     Some(text)
 }
 
 /// The canonical text of a row line.
-pub(crate) fn row_text(mztab: &MzTab<'_>, section: Section, row: usize) -> Option<String> {
+pub(crate) fn row_text(mztab: &MzTab<'_>, section: TableSection, row: usize) -> Option<String> {
     let mut text = String::new();
     item_line(&mut Out::new(&mut text), mztab, &Item::Row(section, row)).ok()?;
     Some(text)
@@ -735,15 +739,15 @@ pub fn write(mztab: &MzTab<'_>, out: &mut dyn fmt::Write) -> Result<(), WriteErr
             LineContent::Metadata(_) | LineContent::UnknownMetadata
         )
     });
-    let last_of = |section: Section| {
+    let last_of = |section: TableSection| {
         lines.iter().rposition(
-            |l| matches!(l.content, LineContent::Header(s) | LineContent::Row(s) if s == section),
+            |l| matches!(l.content, LineContent::Header(s) | LineContent::Row(s) if s == section.section()),
         )
     };
     let last_table = [
-        last_of(Section::Sml),
-        last_of(Section::Smf),
-        last_of(Section::Sme),
+        last_of(TableSection::Sml),
+        last_of(TableSection::Smf),
+        last_of(TableSection::Sme),
     ];
     if last_metadata.is_none() {
         w.rest_of_metadata(&mut pending)?;
@@ -755,10 +759,8 @@ pub fn write(mztab: &MzTab<'_>, out: &mut dyn fmt::Write) -> Result<(), WriteErr
         if last_metadata == Some(i) {
             w.rest_of_metadata(&mut pending)?;
         }
-        for (t, section) in [Section::Sml, Section::Smf, Section::Sme]
-            .into_iter()
-            .enumerate()
-        {
+        for section in TableSection::ALL {
+            let t = section.index();
             if last_table.get(t) == Some(&Some(i)) && pending.headers.get(t) == Some(&true) {
                 w.rest_of_rows(&mut pending, section)?;
             }
@@ -766,10 +768,8 @@ pub fn write(mztab: &MzTab<'_>, out: &mut dyn fmt::Write) -> Result<(), WriteErr
     }
     let mut anything =
         !lines.is_empty() || !pending.entries.is_empty() || !mztab.metadata.unknown.is_empty();
-    for (t, section) in [Section::Sml, Section::Smf, Section::Sme]
-        .into_iter()
-        .enumerate()
-    {
+    for section in TableSection::ALL {
+        let t = section.index();
         if pending.has_table(section) && pending.headers.get(t) == Some(&false) {
             if anything {
                 w.blank()?;
