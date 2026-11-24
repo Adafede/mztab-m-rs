@@ -95,5 +95,9 @@ unescaped_backticks = "warn"
 [profile.dev.package."*"]
 debug = false
 
+[profile.release]
+lto = "thin"
+codegen-units = 1
+
 [profile.test.package."*"]
 debug = false

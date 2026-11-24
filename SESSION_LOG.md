@@ -96,8 +96,17 @@
 
 - **Files touched / created:**
   - `crates/mztab-m-cli/Cargo.toml`, `crates/mztab-m-wasm/Cargo.toml`, `bindings/python/Cargo.toml`, `bindings/r/src/rust/Cargo.toml` (and updated lockfiles) -> removed direct `mztab-m` and `mztab-m-obo` dependencies so all four Layer 3 adapters depend strictly on Layer 2 `mztab-m-api`.
-  - `crates/mztab-m-cli/src/lib.rs` -> split into `lib.rs`, `args.rs`, `exec.rs`, replacing the stringly-typed `Options` struct with a typed `Command` + `Action` enum (`Validate`, `Fmt`, `Convert`, `Inspect`) and `ValidateOpts`/`FmtOpts`/`ConvertOpts`.
+  - `crates/mztab-m-cli/src/lib.rs` -> split into `lib.rs`, `args.rs`, `exec.rs`, replacing the stringly-typed option bag with a typed `Command` + `Action` enum (`Validate`, `Fmt`, `Convert`, `Inspect`) and `ValidateOpts`/`FmtOpts`/`ConvertOpts`.
   - `crates/mztab-m-wasm/src/lib.rs`, `bindings/python/src/lib.rs`, `bindings/r/src/rust/src/lib.rs` -> switched to `mztab_m_api::{validate_json, codes, vocabulary_size, SPEC_COMMIT, SPEC_VERSION, CodeRecord}`.
   - `crates/mztab-m-cli/tests/run.rs` -> added assertions on exact subcommand names in `USAGE` error messages.
   - Updated `docs/audit/AUDIT.md`, `docs/ARCHITECTURE.md`, and `docs/REFACTOR_PLAN.md` (Step 9 `[x]`).
 - **Verification:** `check`, `doc`, `test-fast`, `wasm`, `bindings` (Python wheel + unittest + R tarball/testthat 27/27 PASS), `machete` (0 unused), `echoes` (0 duplicated, 0 approximate, 0 reuse), `refquiem` (0 stale), `typos`, `cargo mutants` on `mztab-m-cli` + `mztab-m-wasm` (57 tested initially: 2 missed `Kind::as_str`, fixed via `run.rs` tests and re-verified `args.rs`: 26 tested — 19 caught, 7 unviable, 0 missed).
+
+## Step 10 — Property Tests, Release Profile Tuning, & Benchmark Helper Cleanup
+
+- **Files touched / created:**
+  - `crates/mztab-m/tests/properties.rs` -> added `tsv_parse_is_total` (arbitrary UTF-8 string + byte slice totality) and `from_str_round_trips` (`Code`, `Severity`, `Layer`, `Profile`, `AmbiguityCode`, `Datatype`, `Version`, `MtdKey`, plus `Section::from_prefix`).
+  - `Cargo.toml` -> added `[profile.release]` tuning (`lto = "thin"`, `codegen-units = 1`).
+  - `benches/src/lib.rs` -> decomposed `Spec::metadata` and `Spec::header` into `HEADER_METADATA`, `TRAILING_METADATA`, `SML_COLUMNS`/`SMF_COLUMNS`/`SME_COLUMNS`, `table_columns`, `push_ms_runs_and_assays`, and `push_study_variables` (`<= 40` LOC per helper; pinned golden unchanged).
+  - Updated `docs/REFACTOR_PLAN.md` (Step 10 `[x]`).
+- **Verification:** `fmt`, `tombi`, `check`, `test` (all unit/integration + 94 doctests), `refquiem` (0 stale), `msrv` (100% pass).

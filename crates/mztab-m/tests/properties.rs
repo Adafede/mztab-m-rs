@@ -6,9 +6,10 @@
 extern crate alloc;
 
 use mztab_m::{
-    Accession, Decimal, DecimalKind, MtdKey, Param, ParamText, Text, TextError, Version,
+    Accession, AmbiguityCode, Code, Datatype, Decimal, DecimalKind, Layer, MtdKey, Param,
+    ParamText, Profile, Section, Severity, Text, TextError, Version,
 };
-use mztab_m::{Event, IntoOwned, Parsed, StreamReader, parse_bytes};
+use mztab_m::{Event, IntoOwned, Parsed, StreamReader, parse, parse_bytes};
 use proptest::prelude::*;
 
 /// Lines of the two reader fixtures: realistic material to shuffle.
@@ -309,14 +310,68 @@ proptest! {
     #[test]
     fn canonical_write_reads_back(input in document()) {
         let parsed = parse_bytes(&input);
-        prop_assume!(!parsed.findings.iter().any(|f| f.code == mztab_m::Code::CellCount));
+        prop_assume!(!parsed.findings.iter().any(|f| f.code == Code::CellCount));
         let mut model = parsed.mztab;
         model.layout = mztab_m::SourceLayout::default();
         let text = mztab_m::to_string(&model);
         prop_assert!(text.is_ok(), "{:?}", text);
-        let mut again = mztab_m::parse(text.as_deref().unwrap_or_default()).mztab;
+        let mut again = parse(text.as_deref().unwrap_or_default()).mztab;
         again.layout = mztab_m::SourceLayout::default();
         prop_assert!(again == model);
+    }
+
+    /// Parser totality: arbitrary UTF-8 strings and arbitrary byte slices never panic.
+    #[test]
+    fn tsv_parse_is_total(text in ".{0,64}", bytes in proptest::collection::vec(any::<u8>(), 0..64)) {
+        let from_str = parse(&text);
+        let from_bytes = parse_bytes(&bytes);
+        prop_assert!(from_str.findings.len() <= text.len() + 2, "bounded text findings");
+        prop_assert!(from_bytes.findings.len() <= bytes.len() + 2, "bounded byte findings");
+    }
+
+    /// `FromStr` round-trips for vocabulary, key, and diagnostic enum types.
+    #[test]
+    fn from_str_round_trips(
+        code in proptest::sample::select(Code::ALL),
+        sev in 0_usize..3,
+        layer in 0_usize..3,
+        profile in proptest::sample::select(&Profile::ALL[..]),
+        ambiguity in 0_usize..3,
+        datatype in proptest::sample::select(&Datatype::ALL[..]),
+        form in proptest::sample::select(KEYS),
+        n in 1_u32..1000,
+        m in 1_u32..1000,
+        major in any::<u16>(),
+        minor in any::<u16>(),
+        patch in any::<u16>(),
+    ) {
+        let sevs = [Severity::Info, Severity::Warning, Severity::Error];
+        let layers = [Layer::Syntax, Layer::Structure, Layer::Semantic];
+        let ambiguities = [
+            AmbiguityCode::AmbiguousIdentification,
+            AmbiguityCode::MultipleEvidenceStreams,
+            AmbiguityCode::Both,
+        ];
+        for sec in Section::ALL {
+            prop_assert_eq!(Section::from_prefix(sec.row_prefix()), Some((sec, false)));
+        }
+
+        prop_assert_eq!(code.id().parse::<Code>(), Ok(code));
+        if let Some(s) = sevs.get(sev) {
+            prop_assert_eq!(s.to_string().parse::<Severity>(), Ok(*s));
+        }
+        if let Some(l) = layers.get(layer) {
+            prop_assert_eq!(l.to_string().parse::<Layer>(), Ok(*l));
+        }
+        prop_assert_eq!(profile.to_string().parse::<Profile>(), Ok(profile));
+        if let Some(a) = ambiguities.get(ambiguity) {
+            prop_assert_eq!(a.to_string().parse::<AmbiguityCode>(), Ok(*a));
+        }
+        prop_assert_eq!(datatype.to_string().parse::<Datatype>(), Ok(datatype));
+        let ver = Version { major, minor, patch };
+        prop_assert_eq!(ver.to_string().parse::<Version>(), Ok(ver));
+        let key = form.replace("#N", &n.to_string()).replace("#M", &m.to_string());
+        prop_assert_eq!(key.parse::<MtdKey>().map(|k| k.to_string()), Ok(key));
     }
 }
 
@@ -337,7 +392,7 @@ proptest! {
         model.layout = mztab_m::SourceLayout::default();
         if let Ok(text) = mztab_m::json::to_string(&model) {
             let tsv = mztab_m::to_string(&model).expect("a JSON-writable model is TSV-writable");
-            let mut expected = mztab_m::parse(&tsv).mztab.into_owned();
+            let mut expected = parse(&tsv).mztab.into_owned();
             expected.layout = mztab_m::SourceLayout::default();
             let back = mztab_m::json::parse(&text);
             prop_assert!(back.mztab == expected, "{}", text);
