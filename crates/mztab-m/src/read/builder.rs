@@ -95,7 +95,7 @@ impl<'a> Builder<'a> {
     }
 }
 
-/// Collects events, from [`StreamReader`](super::StreamReader) for example, into a document.
+/// Collects events, from [`StreamReader`](crate::StreamReader) for example, into a document.
 ///
 /// This is exactly how [`parse_bytes`] builds its result, so collecting the
 /// owned events of a stream gives the owned result of [`parse_bytes`].

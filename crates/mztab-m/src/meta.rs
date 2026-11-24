@@ -1,4 +1,4 @@
-//! Metadata keys ([`MtdKey`]), subkeys, and their expected [`ValueKind`].
+//! Metadata keys ([`MtdKey`](crate::MtdKey)), subkeys, and their expected [`ValueKind`](crate::ValueKind).
 //!
 //! This module sits strictly above Tier 1 primitives (`id`, `vocab`) and has
 //! no dependency on `model`.

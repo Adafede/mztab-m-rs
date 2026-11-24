@@ -9,7 +9,7 @@ use super::NULL;
 /// Text exactly as it appeared in the input, kept when it could not be typed.
 ///
 /// `Raw` is unrestricted: it may hold anything, including text the writer
-/// cannot emit. It only ever appears inside [`Cell::Invalid`](super::Cell::Invalid)
+/// cannot emit. It only ever appears inside [`Cell::Invalid`](crate::Cell::Invalid)
 /// and in unknown metadata entries.
 ///
 /// # Examples

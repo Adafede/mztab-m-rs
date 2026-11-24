@@ -56,7 +56,7 @@ pub struct Verbatim<'a> {
 pub enum LineContent<'a> {
     /// The next value of this key (`colunit-*` keys repeat).
     Metadata(MtdKey),
-    /// The next entry of [`Metadata::unknown`](super::Metadata::unknown).
+    /// The next entry of [`Metadata::unknown`](crate::Metadata::unknown).
     UnknownMetadata,
     /// The header of a table.
     Header(Section),

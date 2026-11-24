@@ -1,5 +1,5 @@
-//! Closed vocabularies: [`Version`], [`Profile`], [`Section`],
-//! [`AmbiguityCode`] and [`PublicationItem`].
+//! Closed vocabularies: [`Version`](crate::Version), [`Profile`](crate::Profile), [`Section`](crate::Section),
+//! [`AmbiguityCode`](crate::AmbiguityCode) and [`PublicationItem`](crate::PublicationItem).
 //!
 //! ```
 //! use mztab_m::{Profile, RuleSet, Version};

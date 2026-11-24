@@ -1,9 +1,9 @@
-//! Reading TSV: [`parse`], [`parse_bytes`] and the push-based
-//! [`StreamReader`].
+//! Reading TSV: [`parse`](crate::parse), [`parse_bytes`](crate::parse_bytes) and the push-based
+//! [`StreamReader`](crate::StreamReader).
 //!
 //! Both entry points run the same line typer, which turns each line into
-//! [`Event`]s. [`parse`] collects the events into an [`MzTab`](crate::MzTab) that borrows
-//! the input; [`StreamReader`] hands them to a callback as complete lines
+//! [`Event`](crate::Event)s. [`parse`](crate::parse) collects the events into an [`MzTab`](crate::MzTab) that borrows
+//! the input; [`StreamReader`](crate::StreamReader) hands them to a callback as complete lines
 //! arrive, so memory stays proportional to one line.
 //!
 //! Reading never fails and never stops early: every problem becomes a

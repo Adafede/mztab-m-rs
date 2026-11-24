@@ -1,4 +1,4 @@
-//! The typed document model: [`MzTab`], [`Metadata`] and the three tables.
+//! The typed document model: [`MzTab`](crate::MzTab), [`Metadata`](crate::Metadata) and the three tables.
 //!
 //! The model follows the 2.1 field reference literally, plus the two fields
 //! that 2.0 had and 2.1 removed (`ms_run[n]-usi_identifier` and
@@ -10,7 +10,7 @@
 //!   `|`-separated list whose items are cells, so `null|HMDB:1` is kept.
 //! - `element[n]` objects live in an [`IndexMap`](crate::id::IndexMap) keyed by their typed id.
 //! - Unknown metadata keys are kept, in source order, in
-//!   [`Metadata::unknown`].
+//!   [`Metadata::unknown`](crate::Metadata::unknown).
 //!
 //! ```
 //! use mztab_m::{Cell, IndexMap, Metadata, MzTab, Text, Version};

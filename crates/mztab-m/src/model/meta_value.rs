@@ -44,19 +44,19 @@ pub enum MtdValue<'a> {
     ColUnit(Cell<'a, ColUnit<'a>>),
 }
 
-/// Why [`Metadata::insert`](super::Metadata::insert) did not place a value.
+/// Why [`Metadata::insert`](crate::Metadata::insert) did not place a value.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum InsertError {
     /// The key already has a value. Only `colunit-*` keys repeat.
     Occupied,
-    /// The value is not of the key's [`ValueKind`](crate::meta::key::ValueKind).
+    /// The value is not of the key's [`ValueKind`](crate::ValueKind).
     WrongKind,
 }
 
 /// One `MTD` line: the key and value as written, and their typed form.
 ///
 /// `typed` is `None` when the key is unknown; the line then belongs in
-/// [`Metadata::unknown`](super::Metadata::unknown).
+/// [`Metadata::unknown`](crate::Metadata::unknown).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MtdEntry<'a> {
     /// The key cell, as written.
@@ -70,7 +70,7 @@ pub struct MtdEntry<'a> {
     pub typed: Option<(MtdKey, MtdValue<'a>)>,
 }
 
-/// A borrowed metadata value, as [`Metadata::entries`](super::Metadata::entries) lists it.
+/// A borrowed metadata value, as [`Metadata::entries`](crate::Metadata::entries) lists it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ValueRef<'r, 'a> {
     /// See [`MtdValue::Version`].

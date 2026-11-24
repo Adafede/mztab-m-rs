@@ -1,8 +1,9 @@
 //! Findings: what the reader and the validators report.
 //!
-//! A [`Finding`] pairs a stable [`Code`] with a [`Severity`], a precise
-//! [`Location`] and structured [`Detail`]. Nothing is pre-formatted: the
-//! English message is rendered by `Display` only when asked for.
+//! A [`Finding`](crate::Finding) pairs a stable [`Code`](crate::Code) with a
+//! [`Severity`](crate::Severity), a precise [`Location`](crate::Location) and
+//! structured [`Detail`](crate::Detail). Nothing is pre-formatted: the English
+//! message is rendered by `Display` only when asked for.
 //!
 //! ```
 //! use mztab_m::{Code, Detail, Finding, Location, Severity};
@@ -16,11 +17,11 @@
 //! # Codes are stable
 //!
 //! A code's id is never reused or renumbered, and a retired code keeps its
-//! number. jmzTab-m codes appear only as a mapping, [`Code::jmztab`], used by
+//! number. jmzTab-m codes appear only as a mapping, [`Code::jmztab`](crate::Code::jmztab), used by
 //! the differential tests (DECISIONS J-17).
 
-/// The path of a specification document: [`SpecDoc::path`] and the
-/// generated docs of each [`Code`].
+/// The path of a specification document: [`SpecDoc::path`](crate::SpecDoc::path) and the
+/// generated docs of each [`Code`](crate::Code).
 macro_rules! spec_path {
     (Format) => {
         "specification_documents/mzTab_format_specification_2_1-M.adoc"

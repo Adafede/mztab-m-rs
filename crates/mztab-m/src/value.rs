@@ -1,6 +1,6 @@
-//! Cell-level values: [`Cell`], [`Text`], [`Raw`] and [`Decimal`].
+//! Cell-level values: [`Cell`](crate::Cell), [`Text`](crate::Text), [`Raw`](crate::Raw) and [`Decimal`](crate::Decimal).
 //!
-//! Every typed field the reader fills from a file is a [`Cell`]. A cell holds
+//! Every typed field the reader fills from a file is a [`Cell`](crate::Cell). A cell holds
 //! a well-typed value, the `null` literal, or the raw text that failed to type.
 //! The last case is what lets the reader collect *all* findings and still hand
 //! the validator a typed model: nothing is lost, and nothing is guessed.

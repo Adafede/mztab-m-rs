@@ -15,7 +15,7 @@ use crate::model::layout::LineEnding;
 /// event to keep it.
 ///
 /// Chunk boundaries never change the events: feeding a document in any
-/// split produces the same events as [`parse_bytes`](super::parse_bytes) sees.
+/// split produces the same events as [`parse_bytes`](crate::parse_bytes) sees.
 ///
 /// # Examples
 ///
