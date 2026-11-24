@@ -153,23 +153,23 @@ fn inspect(text: &str, format: &str) -> Result<List> {
 /// The finding codes, as named columns.
 #[extendr]
 fn mztabm_codes() -> List {
-    let all = mztab_m::Code::ALL;
-    let col = |f: fn(&mztab_m::Code) -> String| -> Strings {
-        all.iter().map(|c| Rstr::from(f(c).as_str())).collect()
+    let all = mztab_m_api::codes();
+    let col = |f: fn(&mztab_m_api::CodeRecord) -> &str| -> Strings {
+        all.iter().map(|c| Rstr::from(f(c))).collect()
     };
     list!(
-        code = col(|c| c.id().to_owned()),
-        layer = col(|c| c.layer().to_string()),
-        requirement = col(|c| format!("{:?}", c.requirement()).to_uppercase()),
-        summary = col(|c| c.summary().to_owned()),
-        spec = col(|c| c.spec_ref().to_string())
+        code = col(|c| c.code),
+        layer = col(|c| c.layer),
+        requirement = col(|c| c.requirement),
+        summary = col(|c| c.summary),
+        spec = col(|c| c.spec.as_str())
     )
 }
 
 /// The pinned specification commit.
 #[extendr]
 fn mztabm_spec_commit() -> &'static str {
-    mztab_m::SPEC_COMMIT
+    mztab_m_api::SPEC_COMMIT
 }
 
 extendr_module! {

@@ -4,8 +4,9 @@
 
 use std::collections::BTreeMap;
 
-use mztab_m_api::{Error, Fact, Format, Layer, Settings};
-use mztab_m_obo::Ontology;
+use mztab_m_api::{
+    Error, Fact, Format, Layer, SPEC_COMMIT, SPEC_VERSION, Settings, vocabulary_size as obo_size,
+};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
@@ -137,18 +138,15 @@ fn inspect<'py>(
 /// `summary` and `spec`.
 #[pyfunction]
 fn codes(py: Python<'_>) -> PyResult<Vec<Bound<'_, PyDict>>> {
-    mztab_m::Code::ALL
-        .iter()
+    mztab_m_api::codes()
+        .into_iter()
         .map(|c| {
             let d = PyDict::new(py);
-            d.set_item("code", c.id())?;
-            d.set_item("layer", format!("{}", c.layer()))?;
-            d.set_item(
-                "requirement",
-                format!("{:?}", c.requirement()).to_uppercase(),
-            )?;
-            d.set_item("summary", c.summary())?;
-            d.set_item("spec", c.spec_ref().to_string())?;
+            d.set_item("code", c.code)?;
+            d.set_item("layer", c.layer)?;
+            d.set_item("requirement", c.requirement)?;
+            d.set_item("summary", c.summary)?;
+            d.set_item("spec", c.spec)?;
             Ok(d)
         })
         .collect()
@@ -157,7 +155,7 @@ fn codes(py: Python<'_>) -> PyResult<Vec<Bound<'_, PyDict>>> {
 /// Checks that an OBO text parses into terms (returns how many).
 #[pyfunction]
 fn vocabulary_size(text: &str) -> usize {
-    Ontology::parse(text).len()
+    obo_size(text)
 }
 
 /// The `mztab_m._native` extension module.
@@ -170,8 +168,8 @@ fn native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(inspect, m)?)?;
     m.add_function(wrap_pyfunction!(codes, m)?)?;
     m.add_function(wrap_pyfunction!(vocabulary_size, m)?)?;
-    m.add("SPEC_COMMIT", mztab_m::SPEC_COMMIT)?;
-    m.add("SPEC_VERSION", mztab_m::SPEC_VERSION)?;
+    m.add("SPEC_COMMIT", SPEC_COMMIT)?;
+    m.add("SPEC_VERSION", SPEC_VERSION)?;
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     Ok(())
 }

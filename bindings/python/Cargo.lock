@@ -37,9 +37,7 @@ dependencies = [
 name = "mztab-m-python"
 version = "0.1.0"
 dependencies = [
- "mztab-m",
  "mztab-m-api",
- "mztab-m-obo",
  "pyo3",
  "pyo3-build-config",
 ]

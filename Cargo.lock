@@ -424,9 +424,7 @@ dependencies = [
 name = "mztab-m-cli"
 version = "0.1.0"
 dependencies = [
- "mztab-m",
  "mztab-m-api",
- "mztab-m-obo",
 ]
 
 [[package]]
@@ -441,9 +439,7 @@ dependencies = [
 name = "mztab-m-wasm"
 version = "0.1.0"
 dependencies = [
- "mztab-m",
  "mztab-m-api",
- "mztab-m-obo",
  "wasm-bindgen",
  "wasm-bindgen-test",
 ]

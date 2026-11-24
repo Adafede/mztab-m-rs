@@ -360,6 +360,12 @@ fn usage_and_io_errors() {
         assert!(io.err.starts_with("error: "), "{args:?}: {}", io.err);
     }
     let mut io = fake();
+    assert_eq!(exec(&mut io, &["validate"]), USAGE);
+    assert!(io.err.contains("`validate` needs a FILE"), "{}", io.err);
+    let mut io = fake();
+    assert_eq!(exec(&mut io, &["fmt", "--cv", "x", "a"]), USAGE);
+    assert!(io.err.contains("`fmt` does not take `--cv`"), "{}", io.err);
+    let mut io = fake();
     assert_eq!(
         exec(&mut io, &["validate", "missing.mztab"]),
         FAILED,

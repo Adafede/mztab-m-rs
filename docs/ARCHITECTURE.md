@@ -65,7 +65,7 @@ Modules inside `crates/mztab-m/src/` are organized into four strict acyclic tier
 
 - **Make invalid states unrepresentable:**
   - `TableSection` (`Sml`, `Smf`, `Sme`) replaces `Section` in all table-only contexts, removing silent `Section::Mtd | Section::Sml` fallbacks.
-  - Typed `Command` enum in `mztab-m-cli` (`Help`, `Version`, `Validate`, `Fmt`, `Convert`, `Inspect`) replaces the stringly-typed `Options` god-struct.
+  - Typed `Command` / `Action` enum in `mztab-m-cli` (`Validate`, `Fmt`, `Convert`, `Inspect`) replaces the old stringly-typed option bag.
   - Standard `core::str::FromStr` implementations on `Version`, `Profile`, `AmbiguityCode`, `Datatype`, `MtdKey`, `Severity`, `Layer`, `Code`, `mztab_m_api::Format`, and `mztab_m_api::Layer` alongside existing `parse` convenience methods for backwards compatibility.
 - **Error strategy:**
   - `mztab-m` and `mztab-m-api` remain zero-dependency `no_std`, so typed errors implement `core::fmt::Display` and `core::error::Error` directly rather than pulling in `thiserror` (which would violate the zero-dependency rule for `mztab-m` and add proc-macro compile overhead to `mztab-m-api`).

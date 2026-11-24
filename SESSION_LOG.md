@@ -91,3 +91,13 @@
   - `crates/mztab-m-api/tests/api.rs` -> added `facade_exposes_codes_facts_json_and_obo_validation`.
   - Updated `docs/REFACTOR_PLAN.md` (Step 8 `[x]`).
 - **Verification:** `check`, `doc`, `test-fast`, `echoes`, `refquiem`, `typos`, `wasm`, and `cargo mutants` on `mztab-m-api` + `mztab-m-obo` (93 tested: 76 caught, 16 unviable; fixed 1 missed `vocabulary_size` mutant, re-verified `ops.rs`: 18 tested — 15 caught, 3 unviable, 0 missed).
+
+## Step 9 — Route All Layer 3 Adapters Through `mztab-m-api` & Split CLI
+
+- **Files touched / created:**
+  - `crates/mztab-m-cli/Cargo.toml`, `crates/mztab-m-wasm/Cargo.toml`, `bindings/python/Cargo.toml`, `bindings/r/src/rust/Cargo.toml` (and updated lockfiles) -> removed direct `mztab-m` and `mztab-m-obo` dependencies so all four Layer 3 adapters depend strictly on Layer 2 `mztab-m-api`.
+  - `crates/mztab-m-cli/src/lib.rs` -> split into `lib.rs`, `args.rs`, `exec.rs`, replacing the stringly-typed `Options` struct with a typed `Command` + `Action` enum (`Validate`, `Fmt`, `Convert`, `Inspect`) and `ValidateOpts`/`FmtOpts`/`ConvertOpts`.
+  - `crates/mztab-m-wasm/src/lib.rs`, `bindings/python/src/lib.rs`, `bindings/r/src/rust/src/lib.rs` -> switched to `mztab_m_api::{validate_json, codes, vocabulary_size, SPEC_COMMIT, SPEC_VERSION, CodeRecord}`.
+  - `crates/mztab-m-cli/tests/run.rs` -> added assertions on exact subcommand names in `USAGE` error messages.
+  - Updated `docs/audit/AUDIT.md`, `docs/ARCHITECTURE.md`, and `docs/REFACTOR_PLAN.md` (Step 9 `[x]`).
+- **Verification:** `check`, `doc`, `test-fast`, `wasm`, `bindings` (Python wheel + unittest + R tarball/testthat 27/27 PASS), `machete` (0 unused), `echoes` (0 duplicated, 0 approximate, 0 reuse), `refquiem` (0 stale), `typos`, `cargo mutants` on `mztab-m-cli` + `mztab-m-wasm` (57 tested initially: 2 missed `Kind::as_str`, fixed via `run.rs` tests and re-verified `args.rs`: 26 tested — 19 caught, 7 unviable, 0 missed).
