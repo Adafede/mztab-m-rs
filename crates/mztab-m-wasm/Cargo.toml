@@ -19,7 +19,7 @@ wasm-bindgen = "=0.2.130"
 
 # Test-only: runs the tests on wasm32-unknown-unknown (see crates/mztab-m).
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
-wasm-bindgen-test = "0.3"
+wasm-bindgen-test.workspace = true
 
 [lints]
 workspace = true

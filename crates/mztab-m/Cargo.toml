@@ -30,7 +30,7 @@ proptest = { version = "1", default-features = false, features = ["std"] }
 # Test-only: runs the core's unit and integration tests on wasm32-unknown-unknown
 # (Node, through wasm-bindgen-test-runner). Never a runtime dependency.
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
-wasm-bindgen-test = "0.3"
+wasm-bindgen-test.workspace = true
 
 [lints]
 workspace = true
