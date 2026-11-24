@@ -48,3 +48,12 @@
   - `crates/mztab-m/src/owned.rs` -> split into `owned.rs`, `owned/model.rs`.
   - `crates/mztab-m/tests/findings_doc.rs`, `docs/findings.md`, `docs/DEBT.md`.
 - **Verification:** `check`, `doc`, `test-fast`, `echoes` (0 duplicated, 0 approximate, 0 reuse), `refquiem` (no stale mentions), `wasm`, `mutants-diff` (`MK_BASE=HEAD`: 157 tested — 123 caught, 34 unviable, 0 missed).
+
+## Step 5 — Break `table <-> write` Cycle; Split `tsv/`, `write/`, `read/`
+
+- **Files touched / created / deleted:**
+  - Deleted `crates/mztab-m/src/typing.rs` and `crates/mztab-m/src/table.rs`, replaced by `tsv.rs` + `tsv/{splitter,typing,mtd,table}.rs` with zero dependency on `write`.
+  - `crates/mztab-m/src/write.rs` -> split into `write.rs`, `write/{error,sink,render,line,pending,layout}.rs`; moved `RenderRow`/`render_stable` into `write/render.rs`; added `TableSlots` precomputed once per write; added `to_canonical_string(mztab, keep_comments)` with zero `MzTab::clone()` and fast canonical empty-layout emission.
+  - `crates/mztab-m/src/read.rs` -> split into `read.rs`, `read/{event,metadata,typer,builder,stream}.rs`.
+  - Updated `crates/mztab-m/src/lib.rs`, `crates/mztab-m/src/json/write.rs`, and `crates/mztab-m/tests/writer.rs` (`canonical_string_matches_layout_variants` + BOM coverage).
+- **Verification:** `check`, `doc`, `test-fast`, `echoes` (0 duplicated, 0 approximate, 0 reuse), `refquiem`, `wasm`, `mutants-diff` (`MK_BASE=HEAD`: 337 tested — 223 caught, 114 unviable, 0 missed, 0 timeouts).

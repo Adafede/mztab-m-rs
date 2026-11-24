@@ -18,7 +18,7 @@ use super::value::{is_number, write_string};
 use crate::meta::MtdKey;
 use crate::model::MzTab;
 use crate::param::Param;
-use crate::typing::split_list;
+use crate::tsv::split_list;
 use crate::write::WriteError;
 
 /// A JSON value to write.

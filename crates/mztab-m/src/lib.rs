@@ -24,8 +24,7 @@ mod model;
 mod owned;
 mod param;
 mod read;
-mod table;
-mod typing;
+mod tsv;
 pub mod validate;
 mod value;
 mod vocab;
@@ -60,7 +59,7 @@ pub use vocab::{
     AmbiguityCode, Datatype, Profile, ProhibitedProfile, PublicationItem, PublicationItemError,
     PublicationKind, RuleSet, Section, Version, VersionError, VocabError,
 };
-pub use write::{WriteError, to_string, write};
+pub use write::{WriteError, to_canonical_string, to_string, write};
 
 /// The mzTab-M specification commit this crate implements.
 ///

@@ -428,3 +428,49 @@ fn unwritable_errors_report_exact_line_numbers() {
         "first data row after MTD, blank, SMH"
     );
 }
+
+#[test]
+fn canonical_string_matches_layout_variants() {
+    let source = "\u{feff}COM\tfirst\r\nMTD\tmzTab-ID\tx\r\nMTD\tcustom_unknown\tv\r\nSMH\tSML_ID\r\nSML\t1\r\n";
+    let model = parse(source).mztab;
+    assert_eq!(
+        mztab_m::to_canonical_string(&model, false).as_deref(),
+        Ok("MTD\tmzTab-ID\tx\nMTD\tcustom_unknown\tv\n\nSMH\tSML_ID\nSML\t1\n"),
+        "strips layout and comments when keep_comments = false"
+    );
+    assert_eq!(
+        mztab_m::to_canonical_string(&model, true).as_deref(),
+        Ok("MTD\tmzTab-ID\tx\nMTD\tcustom_unknown\tv\nCOM\tfirst\n\nSMH\tSML_ID\nSML\t1\n"),
+        "keeps comments after metadata when keep_comments = true"
+    );
+
+    let com_then_table = parse("COM\tnote\r\nSMH\tSML_ID\r\nSML\t1\r\n").mztab;
+    assert_eq!(
+        mztab_m::to_canonical_string(&com_then_table, true).as_deref(),
+        Ok("COM\tnote\n\nSMH\tSML_ID\nSML\t1\n"),
+        "comments without metadata still emit blank line before table"
+    );
+    assert_eq!(
+        mztab_m::to_canonical_string(&com_then_table, false).as_deref(),
+        Ok("SMH\tSML_ID\nSML\t1\n"),
+        "table alone without metadata or comments has no leading blank line"
+    );
+    assert_eq!(
+        mztab_m::to_canonical_string(&MzTab::default(), true).as_deref(),
+        Ok(""),
+        "empty model writes empty string"
+    );
+
+    let mut bom_only = MzTab::default();
+    bom_only.layout.bom = true;
+    assert_eq!(
+        to_string(&bom_only).as_deref(),
+        Ok("\u{feff}"),
+        "bom with empty lines is preserved"
+    );
+    assert_eq!(
+        mztab_m::write(&bom_only, &mut Broken),
+        Err(WriteError::Fmt),
+        "bom output error"
+    );
+}
