@@ -75,6 +75,19 @@
   - `crates/mztab-m/src/json.rs` + `json/schema.rs` + `json/schema_tables.rs` -> stored `(tsv_name, json_key, Col)` pairs statically, eliminating runtime lowercase `String` key allocations per cell.
   - `crates/mztab-m/src/json/value.rs` + `json/lexer.rs` -> separated AST types and `write_string` from JSON tokenizing/scanning.
   - `crates/mztab-m/src/json/read.rs` -> split into `json/read.rs`, `json/read/{emit,meta,table}.rs`; replaced `O(K^2)` linear member scans per row with a single-pass `BTreeMap<&str, &Node<'_>>` lookup map per row while preserving exact duplicate/unknown key diagnostics.
-  - `crates/mztab-m/src/json/write.rs` -> split into `json/write.rs`, `json/write/{emit,meta,table}.rs`; eliminated `MzTab::clone()` and intermediate DOM (`Arr`/`Obj`) allocations via `JsonWriter<'_>` direct streaming, pre-flight metadata buffer + `TablePlan` validation before writing to `out`, and precomputed `RowMember` plans per table.
+  - `crates/mztab-m/src/json/write.rs` -> split into `json/write.rs`, `json/write/{emit,meta,table}.rs`; eliminated `MzTab::clone()` and intermediate JSON DOM node allocations via `JsonWriter<'_>` direct streaming, pre-flight metadata buffer + `TablePlan` validation before writing to `out`, and precomputed `RowMember` plans per table.
   - Updated `docs/audit/AUDIT.md` and `docs/REFACTOR_PLAN.md` (Step 7 `[x]`).
 - **Verification:** `check`, `doc`, `test-fast`, `echoes` (0 duplicated, 0 approximate, 0 reuse), `refquiem` (0 stale mentions), `typos`, `wasm`, and targeted `cargo mutants` on `json/write/emit.rs`, `json/write.rs`, `json/write/table.rs` (83 tested — 71 caught, 12 unviable, 0 missed).
+
+## Step 8 — Modularize `mztab-m-api`, Optimize `mztab-m-obo`, & Share `write_string`
+
+- **Files touched / created:**
+  - `crates/mztab-m/src/json.rs` + `json/value.rs` -> exposed `pub use value::write_string` with doc and doctest.
+  - `crates/mztab-m-obo/src/lib.rs` + `src/parse.rs` -> separated stanza/tag parsing into `parse.rs` and replaced `e.parents.clone()` in `is_descendant` with a `Vec<&[&str]>` slice stack.
+  - `crates/mztab-m-api/src/lib.rs` -> decomposed into `format.rs`, `settings.rs`, `ops.rs`, `report.rs`:
+    - `format.rs` + `settings.rs`: reused `Severity::from_str` and `Code::from_str` instead of manual lookups.
+    - `ops.rs`: eliminated `mztab.clone()` on `!lossy` writes via `mztab_m::to_canonical_string(mztab, true)` / `json::to_string`; added `validate_obo`, `validate_json`, `vocabulary_size`.
+    - `report.rs`: reused `mztab_m::json::write_string` in `Fact::to_json`, `Layer::as_str()`/`Severity::as_str()`/`Requirement::as_str()`, and added `CodeRecord`, `codes`, `facts_json`, and `findings_json`.
+  - `crates/mztab-m-api/tests/api.rs` -> added `facade_exposes_codes_facts_json_and_obo_validation`.
+  - Updated `docs/REFACTOR_PLAN.md` (Step 8 `[x]`).
+- **Verification:** `check`, `doc`, `test-fast`, `echoes`, `refquiem`, `typos`, `wasm`, and `cargo mutants` on `mztab-m-api` + `mztab-m-obo` (93 tested: 76 caught, 16 unviable; fixed 1 missed `vocabulary_size` mutant, re-verified `ops.rs`: 18 tested — 15 caught, 3 unviable, 0 missed).

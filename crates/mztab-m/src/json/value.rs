@@ -47,8 +47,21 @@ pub(crate) struct SyntaxError {
     pub(crate) what: &'static str,
 }
 
-/// Writes `text` as a JSON string.
-pub(crate) fn write_string(out: &mut dyn fmt::Write, text: &str) -> fmt::Result {
+/// Writes `text` as a JSON-escaped quoted string to `out`.
+///
+/// ```
+/// use mztab_m::json;
+///
+/// let mut out = String::new();
+/// json::write_string(&mut out, "a \"b\"\x01")?;
+/// assert_eq!(out, "\"a \\\"b\\\"\\u0001\"");
+/// # Ok::<(), core::fmt::Error>(())
+/// ```
+///
+/// # Errors
+///
+/// Returns [`fmt::Error`] if writing to `out` fails.
+pub fn write_string(out: &mut dyn fmt::Write, text: &str) -> fmt::Result {
     out.write_char('"')?;
     for c in text.chars() {
         match c {

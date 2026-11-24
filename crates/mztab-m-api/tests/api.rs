@@ -260,3 +260,55 @@ fn write_preserves_comments_for_tsv_and_handles_lossy() {
         ))
     );
 }
+
+#[test]
+fn facade_exposes_codes_facts_json_and_obo_validation() {
+    assert!(!mztab_m_api::SPEC_COMMIT.is_empty(), "spec commit exposed");
+    assert_eq!(mztab_m_api::SPEC_VERSION, "2.1.0-M", "spec version exposed");
+
+    let catalog = mztab_m_api::codes();
+    assert_eq!(catalog.len(), Code::ALL.len(), "every code listed");
+    assert!(
+        matches!(
+            (catalog.first(), Code::ALL.first()),
+            (Some(first), Some(code))
+                if first.code == "MZT-S001"
+                    && first.layer == "syntax"
+                    && first.requirement == "MUST"
+                    && first.summary == code.summary()
+                    && first.spec.starts_with("https://github.com/HUPO-PSI/mzTab-M/blob/")
+        ),
+        "first code metadata: {:?}",
+        catalog.first()
+    );
+
+    let parsed = read(BASE.as_bytes(), Format::Tsv);
+    let json_facts = mztab_m_api::facts_json(&parsed);
+    assert!(
+        json_facts.starts_with(r#"{"version":"2.1.0-M","#)
+            && json_facts.ends_with(r#""reader_errors":0}"#),
+        "facts json object: {json_facts}"
+    );
+
+    let json_findings = mztab_m_api::validate_json(
+        BASE.as_bytes(),
+        Format::Tsv,
+        &["[Term]\nid: MS:1\n"],
+        &Settings::default(),
+    );
+    assert!(
+        json_findings.starts_with('[')
+            && json_findings.contains("MZT-X004")
+            && json_findings.ends_with(']'),
+        "validate_json output: {json_findings}"
+    );
+
+    assert_eq!(mztab_m_api::vocabulary_size(""), 0, "empty vocabulary");
+    assert_eq!(
+        mztab_m_api::vocabulary_size(
+            "[Term]\nid: UO:0000010\nname: second\n\n[Term]\nid: UO:0000028\nname: millisecond\n"
+        ),
+        2,
+        "vocabulary size"
+    );
+}

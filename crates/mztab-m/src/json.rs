@@ -35,6 +35,7 @@ use crate::diag::Findings;
 use crate::model::MzTab;
 use crate::read::Parsed;
 use crate::write::WriteError;
+pub use value::write_string;
 
 /// Reads JSCH JSON. Never fails: a document that is not JSON gives an
 /// empty model and a [`JsonSyntax`](crate::Code::JsonSyntax) finding.
