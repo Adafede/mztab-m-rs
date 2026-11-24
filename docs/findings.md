@@ -6,7 +6,7 @@ Every finding emitted by `mztab-m` carries a stable code (`MZT-S*`, `MZT-T*`, or
 
 Codes are never reused or renumbered. Severities can be overridden or disabled per code with `--severity CODE=error|warning|info|off` in the CLI or `validate::Config` in Rust.
 
-This page is generated directly from `mztab_m::Code::ALL` (`crates/mztab-m/src/diag.rs`). CI fails if it drifts out of sync.
+This page is generated directly from `mztab_m::Code::ALL` (`crates/mztab-m/src/diag/code.rs`). CI fails if it drifts out of sync.
 
 ## Syntax (`MZT-S`)
 

@@ -12,9 +12,9 @@ use crate::cv::{self, Logic, Rule, RuleTerm, Target, TermLookup};
 use crate::diag::{Code, Detail};
 use crate::meta::{
     CvKey, DatabaseKey, InstrumentKey, MsRunKey, MtdKey, SampleKey, SoftwareKey,
-    StudyVariableGroupKey, StudyVariableKey, ValueRef,
+    StudyVariableGroupKey, StudyVariableKey,
 };
-use crate::model::{Column, Header, MzTab, SmeColumn, SmlColumn};
+use crate::model::{Column, Header, MzTab, SmeColumn, SmlColumn, ValueRef};
 use crate::param::Param;
 use crate::value::Cell;
 use crate::vocab::Section;

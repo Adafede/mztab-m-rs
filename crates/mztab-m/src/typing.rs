@@ -6,8 +6,8 @@ use core::str::FromStr;
 
 use crate::diag::{Code, Detail, Finding, Location};
 use crate::id::{ElementId, parse_index};
-use crate::meta::{MtdValue, ValueKind};
-use crate::model::{ColUnit, ColUnitError, List, SpectraRef, SpectraRefError};
+use crate::meta::ValueKind;
+use crate::model::{ColUnit, ColUnitError, List, MtdValue, SpectraRef, SpectraRefError};
 use crate::param::{Param, ParamError};
 use crate::value::{Cell, Decimal, NULL, Raw, Text, TextError};
 use crate::vocab::{

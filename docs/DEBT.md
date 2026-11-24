@@ -13,8 +13,6 @@ exclusions (`.cargo/mutants.toml`) and no `refquiem: allow` markers.
 | Location | Lint | Reason | Removal condition |
 |---|---|---|---|
 | `crates/mztab-m/src/id.rs` `IndexMap::get_or_insert_default` | `clippy::indexing_slicing` | `at` was just found or just inserted, so it is in bounds | A non-indexing way to return the slot without a second lookup |
-| `crates/mztab-m/src/meta.rs` `Metadata::insert` | `clippy::too_many_lines` | One arm per key family: the key-to-field table reads best in one place | If the table is generated or split by family |
-| `crates/mztab-m/src/meta.rs` `Metadata::entries` | `clippy::too_many_lines` | One line per field, in field-reference order: the order is the point | Same |
 | `crates/mztab-m/src/read.rs` `Event` | `clippy::large_enum_variant` | Events are consumed one at a time; boxing rows would cost an allocation per row | If a benchmark shows boxing is free |
 | `crates/mztab-m/src/validate/metadata.rs` `mandatory` | `clippy::too_many_lines` | One block per element: the mandatory set reads best as one list | If the mandatory set becomes a data table |
 | `crates/mztab-m/src/validate/tables.rs` `sml_rows` | `clippy::too_many_lines` | One check per SML column, in column order | Same, for SML columns |

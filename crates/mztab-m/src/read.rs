@@ -21,10 +21,10 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use crate::diag::{Code, Detail, Finding, Findings};
-use crate::meta::{MtdEntry, MtdKey};
+use crate::meta::MtdKey;
 use crate::model::{
-    ExtraLine, Header, LineContent, LineEnding, LineInfo, MzTab, SmeColumn, SmeRow, SmfColumn,
-    SmfRow, SmlColumn, SmlRow, SourceLine, Table, Verbatim,
+    ExtraLine, Header, LineContent, LineEnding, LineInfo, MtdEntry, MzTab, SmeColumn, SmeRow,
+    SmfColumn, SmfRow, SmlColumn, SmlRow, SourceLine, Table, Verbatim,
 };
 use crate::table::{self, Slot};
 use crate::typing::{self, Cx, RawCell};

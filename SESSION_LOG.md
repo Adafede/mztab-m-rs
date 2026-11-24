@@ -37,3 +37,14 @@
   - `crates/mztab-m/src/lib.rs`, `model.rs`, `meta.rs`, `table.rs`, `typing.rs`, `write.rs`, `validate.rs`.
 - **Tests added:** `parse_index_checks_canonical_digits` (`id.rs`), `table_sections_exclude_metadata` (`vocab/section.rs`), `FromStr` assertions in `vocab/{version,profile,field}.rs`.
 - **Verification:** `check`, `test-fast`, `wasm`, `echoes` (0 duplicated, 0 approximate, 0 reuse), `refquiem` pending re-run + `mutants-diff`.
+
+## Step 4 — Break `meta <-> model` Cycle & Split `model/`, `meta/`, `diag/`, `cv/`, `owned/`
+
+- **Files touched / created:**
+  - `crates/mztab-m/src/model.rs` -> split into `model.rs`, `model/{document,layout,metadata,colunit,table,rows,meta_value,meta_insert,meta_entries}.rs`; kept `Metadata`'s single inherent `impl` (`insert`, `entries`) in `model/metadata.rs` delegating to `meta_insert`/`meta_entries`, eliminating both `#[expect(clippy::too_many_lines)]` attributes.
+  - `crates/mztab-m/src/meta.rs` -> split into `meta.rs`, `meta/{subkey,key}.rs` (with `ValueKind` in `meta/key.rs`), removing every `crate::model` dependency from `meta` so `model -> meta` is strictly acyclic; added `FromStr` for `MtdKey` returning `VocabError`.
+  - `crates/mztab-m/src/diag.rs` -> split into `diag.rs`, `diag/{severity,code,location,finding}.rs`; added `as_str()` on `Severity`, `Requirement`, `Layer` and `FromStr` on `Severity`, `Layer`, `Code`.
+  - `crates/mztab-m/src/cv.rs` -> split into `cv.rs`, `cv/rule.rs` (kept generated `cv/rules.rs` unchanged).
+  - `crates/mztab-m/src/owned.rs` -> split into `owned.rs`, `owned/model.rs`.
+  - `crates/mztab-m/tests/findings_doc.rs`, `docs/findings.md`, `docs/DEBT.md`.
+- **Verification:** `check`, `doc`, `test-fast`, `echoes` (0 duplicated, 0 approximate, 0 reuse), `refquiem` (no stale mentions), `wasm`, `mutants-diff` (`MK_BASE=HEAD`: 157 tested — 123 caught, 34 unviable, 0 missed).

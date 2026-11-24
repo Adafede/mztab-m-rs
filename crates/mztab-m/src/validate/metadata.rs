@@ -12,9 +12,9 @@ use crate::id::{
 };
 use crate::meta::{
     AssayKey, CvKey, DatabaseKey, MsRunKey, MtdKey, ProtocolKey, StudyVariableGroupKey,
-    StudyVariableKey, ValueRef,
+    StudyVariableKey,
 };
-use crate::model::{Field, List, MzTab};
+use crate::model::{Field, List, MzTab, ValueRef};
 use crate::param::Param;
 use crate::value::{Cell, Decimal, Text};
 use crate::vocab::{Datatype, Profile, RuleSet};

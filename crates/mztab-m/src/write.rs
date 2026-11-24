@@ -30,10 +30,10 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use crate::id::{AssayId, InstrumentId, MsRunId, ProtocolId, SampleId, StudyVariableId};
-use crate::meta::{MtdKey, ValueRef};
+use crate::meta::MtdKey;
 use crate::model::{
     ColUnit, Column, ExtraLine, Header, LineContent, LineEnding, MzTab, SmeId, SmfId, SmlId,
-    SourceLine, SpectraRef, Table,
+    SourceLine, SpectraRef, Table, ValueRef,
 };
 use crate::param::Param;
 use crate::table::{Slot, TableRow};

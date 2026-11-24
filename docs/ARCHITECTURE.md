@@ -47,9 +47,9 @@ Modules inside `crates/mztab-m/src/` are organized into four strict acyclic tier
    - `value` (`cell`, `text`, `decimal`): `Cell<T>`, `Raw`, `Text`, `Decimal`, and lexical number/text errors.
    - `param` (`text`, `parse`): `Param`, `ParamText`, `Accession`, and located parameter parser.
    - `vocab` (`version`, `profile`, `section`, `field`): Closed vocabularies (`Version`, `RuleSet`, `Profile`, `Section`, internal `TableSection`, `AmbiguityCode`, `Datatype`, `PublicationItem`).
-2. **Tier 2 — Domain Model & Diagnostics** (depend on Tier 1 only):
-   - `meta` (`subkey`, `key`, `value`, `insert`, `entries`): Metadata key grammar (`MtdKey`, `*Key`), `MtdValue`, and insertion/iteration on `Metadata`. `meta::key` depends only on Tier 1; `meta::insert` and `meta::entries` depend on `model`.
-   - `model` (`document`, `layout`, `metadata`, `colunit`, `table`): `MzTab`, `SourceLayout`, `Metadata` structs, `ColUnit`, `SpectraRef`, and table/row/column definitions.
+2. **Tier 2 — Domain Model & Diagnostics** (strictly acyclic: `model -> meta`, Tier 2 -> Tier 1 only):
+   - `meta` (`subkey`, `key`): Metadata key grammar (`MtdKey`, `*Key`, `ValueKind`); depends only on Tier 1 (`id`, `vocab`) and has zero dependency on `model`.
+   - `model` (`document`, `layout`, `metadata`, `colunit`, `table`, `rows`, `meta_value`, `meta_insert`, `meta_entries`): `MzTab`, `SourceLayout`, `Metadata` (with `insert`/`entries`), `MtdValue`/`ValueRef`, `ColUnit`, `SpectraRef`, and table/row/column definitions.
    - `diag` (`severity`, `code`, `location`, `finding`): `Severity`, `Requirement`, `Layer`, `SpecRef`, stable `Code` registry, `Path`/`Location`, and `Finding`/`Findings`.
    - `cv` (`rule`, `rules`): `Term`, `TermLookup`, `NoTerms`, and generated CV-mapping `Rule`s.
 3. **Tier 3 — Serialization & Event Streaming** (depend on Tiers 1–2):

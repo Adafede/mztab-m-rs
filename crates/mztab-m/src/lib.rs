@@ -41,16 +41,16 @@ pub use id::{
     StudyVariableId,
 };
 pub use meta::{
-    AssayKey, ContactKey, CvKey, DatabaseKey, InsertError, InstrumentKey, MsRunKey, MtdEntry,
-    MtdKey, MtdValue, ProtocolKey, SampleKey, SoftwareKey, StudyVariableGroupKey, StudyVariableKey,
-    ValueKind, ValueRef,
+    AssayKey, ContactKey, CvKey, DatabaseKey, InstrumentKey, MsRunKey, MtdKey, ProtocolKey,
+    SampleKey, SoftwareKey, StudyVariableGroupKey, StudyVariableKey, ValueKind,
 };
 pub use model::{
     AbundanceColumn, Assay, ColUnit, ColUnitError, Column, Contact, Cv, Database, ExtraLine, Field,
-    Header, Instrument, LineContent, LineEnding, LineInfo, List, Metadata, MsRun, MzTab, OptColumn,
-    OptTarget, Protocol, Sample, SmeColumn, SmeId, SmeRow, SmfColumn, SmfId, SmfRow, SmlColumn,
-    SmlId, SmlRow, Software, SourceLayout, SourceLine, SpectraRef, SpectraRefError, Stripped,
-    StudyVariable, StudyVariableGroup, Table, Verbatim,
+    Header, InsertError, Instrument, LineContent, LineEnding, LineInfo, List, Metadata, MsRun,
+    MtdEntry, MtdValue, MzTab, OptColumn, OptTarget, Protocol, Sample, SmeColumn, SmeId, SmeRow,
+    SmfColumn, SmfId, SmfRow, SmlColumn, SmlId, SmlRow, Software, SourceLayout, SourceLine,
+    SpectraRef, SpectraRefError, Stripped, StudyVariable, StudyVariableGroup, Table, ValueRef,
+    Verbatim,
 };
 pub use owned::IntoOwned;
 pub use param::{Accession, Param, ParamError, ParamErrorKind, ParamText, ParamTextError};
