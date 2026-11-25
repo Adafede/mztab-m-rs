@@ -608,8 +608,8 @@ fn lenient_forms_read() {
 fn indices_survive_without_ids() {
     let edits = BASE
         .replace(
-            "MTD\tsoftware[1]-setting[1]\t",
-            "MTD\tsoftware[1]-setting[3]\t",
+            "MTD\tsoftware[1]-setting[1]\tMass tolerance = 5 ppm",
+            "MTD\tsoftware[1]-setting[3]\tMass tolerance = 5 ppm\nMTD\tsoftware[1]-setting[4]\tRT tolerance = 10 s",
         )
         .replace(
             "MTD\tms_run[1]-scan_polarity[1]\t[MS, MS:1000130, positive scan, ]",
@@ -618,6 +618,10 @@ fn indices_survive_without_ids() {
     let mut model = parse(&edits).mztab;
     model.layout = SourceLayout::default();
     let text = json::to_string(&model).expect("writable");
+    assert!(
+        text.contains(r#""setting":[null,null,"Mass tolerance = 5 ppm","RT tolerance = 10 s"]"#),
+        "consecutive positioned strings: {text}"
+    );
     assert!(
         text.contains(r#""scan_polarity":[null,"[MS-broken"]"#),
         "padded: {text}"

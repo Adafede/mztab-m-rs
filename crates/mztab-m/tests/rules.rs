@@ -804,6 +804,21 @@ fn clean_cases_do_not_trigger_their_codes() {
 }
 
 #[test]
+fn missing_non_nullable_columns_are_not_reported_as_null() {
+    let d = Doc::base();
+    for (section, label) in [
+        (Section::Sml, "best_id_confidence_value"),
+        (Section::Smf, "exp_mass_to_charge"),
+    ] {
+        let found = codes(&d.clone().drop_column(section, label).bytes());
+        assert!(
+            !found.contains(&Code::NullValue),
+            "{label} missing: NullValue reported; found {found:?}"
+        );
+    }
+}
+
+#[test]
 fn the_base_document_triggers_nothing() {
     assert_eq!(codes(BASE.as_bytes()), [], "valid base");
 }

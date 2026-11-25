@@ -94,6 +94,74 @@ fn every_rule_field_is_checked() {
     }
 }
 
+/// Replaces `from` with `to` on the first line starting with `prefix`.
+fn replace_on_line(prefix: &str, from: &str, to: &str) -> String {
+    let mut replaced = false;
+    let out: String = BASE
+        .lines()
+        .map(|line| {
+            if line.starts_with(prefix) && !replaced {
+                assert!(line.contains(from), "{from} is in line {prefix}");
+                replaced = true;
+                format!("{}\n", line.replacen(from, to, 1))
+            } else {
+                format!("{line}\n")
+            }
+        })
+        .collect();
+    assert!(replaced, "{prefix} is in the base document");
+    out
+}
+
+/// Table cells with semantic rules point at their exact row line and cell.
+#[test]
+fn table_semantic_findings_point_at_their_cell() {
+    let cases = [
+        (
+            "SML\t1\t",
+            "[MS, MS:1002890, fragmentation score, ]",
+            "[MS, MS:1000130, positive scan, ]",
+            Code::CvRule,
+            13,
+        ),
+        (
+            "SMF\t1\t",
+            "[, , monoisotopic, ]",
+            "[MS, MS:9999999, nothing, ]",
+            Code::UnknownTerm,
+            6,
+        ),
+        (
+            "SME\t1\t",
+            "[MS, MS:1000511, ms level, 2]",
+            "[MS, MS:1000511, ms level, two]",
+            Code::TermValueType,
+            17,
+        ),
+    ];
+    for (prefix, from, to, code, cell) in cases {
+        let text = replace_on_line(prefix, from, to);
+        let line = line_of(&text, prefix);
+        let model = parse(&text).mztab;
+        let findings = validate::semantic(&model, &Config::default(), &Mini);
+        let finding = findings
+            .iter()
+            .find(|f| f.code == code)
+            .expect("expected semantic finding");
+        assert!(
+            matches!(
+                finding.location,
+                Location::Text {
+                    line: l,
+                    cell: Some(c),
+                    ..
+                } if l == line && c == cell
+            ),
+            "{prefix}: expected line {line} cell {cell}, found {finding}"
+        );
+    }
+}
+
 /// Repeated `colunit` lines are told apart.
 #[test]
 fn findings_on_repeated_keys_point_at_their_line() {
