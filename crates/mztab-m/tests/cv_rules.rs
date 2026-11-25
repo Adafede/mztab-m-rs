@@ -174,7 +174,7 @@ fn generate(xml: &str) -> String {
          //! `schema/mzTab_2_1-M_mapping.xml` (DECISIONS D-068). Do not edit:\n\
          //! rerun that test with `BLESS=1`.\n\n\
          use super::{Logic, Rule, RuleTerm, Target};\n\
-         use crate::diag::Requirement;\n\n\
+         use crate::diag::severity::Requirement;\n\n\
          pub(super) const RULES: &[Rule] = &[\n",
     );
     for chunk in xml.split("<CvMappingRule ").skip(1) {

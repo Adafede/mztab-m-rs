@@ -18,6 +18,9 @@ rust-version = "1.100.0"
 repository = "https://github.com/Adafede/mztab-m-rs"
 license = "MIT OR Apache-2.0"
 
+[workspace.dependencies]
+wasm-bindgen-test = "0.3"
+
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }
 # Curated `restriction` lints: each prevents a real bug class at little noise.
@@ -94,6 +97,10 @@ unescaped_backticks = "warn"
 
 [profile.dev.package."*"]
 debug = false
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
 
 [profile.test.package."*"]
 debug = false

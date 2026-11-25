@@ -772,6 +772,12 @@ fn clean_cases() -> Vec<(Code, Vec<u8>)> {
             d().add_mtd(&["MTD\tms_run[1]-scan_polarity[2]\t[MS, MS:1000129, negative scan, ]"])
                 .bytes(),
         ),
+        // A repeatable term may appear twice in the same scope.
+        (
+            Code::CvRuleRepeat,
+            d().add_mtd(&["MTD\tms_run[1]-fragmentation_method[2]\t[MS, MS:1000133, CID, ]"])
+                .bytes(),
+        ),
     ]
 }
 

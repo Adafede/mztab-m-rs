@@ -12,9 +12,7 @@ crate-type = ["cdylib"]
 name = "_native"
 
 [dependencies]
-mztab-m = { path = "../../crates/mztab-m", features = ["json"] }
 mztab-m-api = { path = "../../crates/mztab-m-api" }
-mztab-m-obo = { path = "../../crates/mztab-m-obo" }
 # The stable ABI (abi3) from Python 3.9: one wheel per platform for every
 # Python version from 3.9 on.
 pyo3 = { version = "0.30", features = ["abi3-py39", "extension-module"] }

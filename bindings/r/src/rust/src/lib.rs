@@ -28,7 +28,9 @@ fn format(given: &str, text: &str) -> Result<Format> {
     if given.is_empty() {
         Ok(Format::sniff("", text.as_bytes()))
     } else {
-        Format::parse(given).map_err(|e| Error::Other(e.to_string()))
+        given
+            .parse::<Format>()
+            .map_err(|e| Error::Other(e.to_string()))
     }
 }
 
@@ -69,16 +71,17 @@ fn validate(
     format: &str,
 ) -> Result<List> {
     let format = self::format(format, text)?;
-    let mut settings =
-        Settings::default().layer(Layer::parse(layer).map_err(|e| Error::Other(e.to_string()))?);
+    let parsed_layer = layer
+        .parse::<Layer>()
+        .map_err(|_| Error::Other(mztab_m_api::Error::Layer(layer.to_owned()).to_string()))?;
+    let mut settings = Settings::default().layer(parsed_layer);
     for setting in severities.iter() {
         settings = settings
             .set(setting.as_ref())
             .map_err(|e| Error::Other(e.to_string()))?;
     }
     let obo: Vec<&str> = vocabularies.iter().map(AsRef::as_ref).collect();
-    let records = mztab_m_api::check(text.as_bytes(), format, &obo, &settings)
-        .map_err(|e| Error::Other(e.to_string()))?;
+    let records = mztab_m_api::check(text.as_bytes(), format, &obo, &settings);
     let column = |f: fn(&mztab_m_api::Record) -> Option<String>| text_column(&records, f);
     Ok(list!(
         code = column(|r| Some(r.code.to_owned())),
@@ -109,7 +112,9 @@ fn mztabm_convert(text: &str, to: &str, lossy: bool, format: &str) -> List {
 
 fn convert(text: &str, to: &str, lossy: bool, format: &str) -> Result<String> {
     let from = self::format(format, text)?;
-    let to = Format::parse(to).map_err(|e| Error::Other(e.to_string()))?;
+    let to = to
+        .parse::<Format>()
+        .map_err(|e| Error::Other(e.to_string()))?;
     mztab_m_api::convert(text.as_bytes(), from, to, lossy).map_err(|e| Error::Other(e.to_string()))
 }
 
@@ -153,23 +158,23 @@ fn inspect(text: &str, format: &str) -> Result<List> {
 /// The finding codes, as named columns.
 #[extendr]
 fn mztabm_codes() -> List {
-    let all = mztab_m::Code::ALL;
-    let col = |f: fn(&mztab_m::Code) -> String| -> Strings {
-        all.iter().map(|c| Rstr::from(f(c).as_str())).collect()
+    let all = mztab_m_api::codes();
+    let col = |f: fn(&mztab_m_api::CodeRecord) -> &str| -> Strings {
+        all.iter().map(|c| Rstr::from(f(c))).collect()
     };
     list!(
-        code = col(|c| c.id().to_owned()),
-        layer = col(|c| c.layer().to_string()),
-        requirement = col(|c| format!("{:?}", c.requirement()).to_uppercase()),
-        summary = col(|c| c.summary().to_owned()),
-        spec = col(|c| c.spec_ref().to_string())
+        code = col(|c| c.code),
+        layer = col(|c| c.layer),
+        requirement = col(|c| c.requirement),
+        summary = col(|c| c.summary),
+        spec = col(|c| c.spec.as_str())
     )
 }
 
 /// The pinned specification commit.
 #[extendr]
 fn mztabm_spec_commit() -> &'static str {
-    mztab_m::SPEC_COMMIT
+    mztab_m_api::SPEC_COMMIT
 }
 
 extendr_module! {

@@ -13,11 +13,7 @@ exclusions (`.cargo/mutants.toml`) and no `refquiem: allow` markers.
 | Location | Lint | Reason | Removal condition |
 |---|---|---|---|
 | `crates/mztab-m/src/id.rs` `IndexMap::get_or_insert_default` | `clippy::indexing_slicing` | `at` was just found or just inserted, so it is in bounds | A non-indexing way to return the slot without a second lookup |
-| `crates/mztab-m/src/meta.rs` `Metadata::insert` | `clippy::too_many_lines` | One arm per key family: the key-to-field table reads best in one place | If the table is generated or split by family |
-| `crates/mztab-m/src/meta.rs` `Metadata::entries` | `clippy::too_many_lines` | One line per field, in field-reference order: the order is the point | Same |
-| `crates/mztab-m/src/read.rs` `Event` | `clippy::large_enum_variant` | Events are consumed one at a time; boxing rows would cost an allocation per row | If a benchmark shows boxing is free |
-| `crates/mztab-m/src/validate/metadata.rs` `mandatory` | `clippy::too_many_lines` | One block per element: the mandatory set reads best as one list | If the mandatory set becomes a data table |
-| `crates/mztab-m/src/validate/tables.rs` `sml_rows` | `clippy::too_many_lines` | One check per SML column, in column order | Same, for SML columns |
+| `crates/mztab-m/src/read/event.rs` `Event` | `clippy::large_enum_variant` | Events are consumed one at a time; boxing rows would cost an allocation per row | If a benchmark shows boxing is free |
 | `crates/mztab-m/tests/cv_rules.rs` (crate) | `clippy::expect_used` | test helpers | Test code; stays |
 | `crates/mztab-m/tests/json.rs` (crate) | `clippy::expect_used` | test helpers | Test code; stays |
 | `crates/mztab-m/tests/oracle.rs` (crate) | `clippy::expect_used` | test setup: unreadable oracle files are a broken checkout | Test code; stays |
@@ -35,3 +31,13 @@ exclusions (`.cargo/mutants.toml`) and no `refquiem: allow` markers.
 | `benches/benches/heap.rs` `row` | `clippy::cast_precision_loss` | a ratio for display | Stays |
 | `mk.local` `task_miri` | `miri` gate override (`mztab-m --lib` and `mztab-m-obo`) | Workspace forbids `unsafe_code`; `mztab-m-cli` spawns subprocesses unsupported by Miri and the 35 MB corpus / 2,000-case proptests exceed nightly time budgets under Miri | If Miri becomes fast enough for the corpus and proptests and `mztab-m-cli` is scoped via `MIRI_PACKAGES` |
 | `mk.local` `task_outdated` | `outdated` gate override (`--ignore criterion`) | `criterion` is pinned to `0.5` because `0.8` builds `alloca`'s C object, which fails to link with Xcode clang 21 (DECISIONS D-073) | When `criterion` drops `alloca` or Xcode clang links it |
+
+## Intentional exceptions
+
+| Item | Exception | Justification |
+|---|---|---|
+| `crates/mztab-m/src/lib.rs` | Flat crate-root `pub use` exports and `pub(crate) use spec_commit` | Deliberate curated public entry point hiding internal module layout (`AGENTS.md` / design boundary) and macro scoping |
+| `crates/mztab-m/Cargo.toml` | Optional `json` feature flag | Keeps the default `mztab-m` build zero-dependency while gating the JSON parser, writer, and schema |
+| `crates/mztab-m-api` | Intermediate application crate between core/OBO and adapters | Shared stateless text-in/text-out API for `mztab-m-cli`, `mztab-m-wasm`, Python, and R adapters (DECISIONS D-074) |
+| `crates/*/Cargo.toml` | Explicit path dependencies on sibling workspace crates | Required by `bindings/r/bootstrap.R`, which rejects `.workspace = true` inside `[dependencies]` when assembling the standalone R tarball |
+| `Cargo.lock` | Dev-only duplicate `syn` version (`criterion 0.5`) | Bench dev-dependency only; zero runtime duplicate dependency versions (`DECISIONS D-073`) |

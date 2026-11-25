@@ -378,26 +378,86 @@ fn output_errors_are_reported() {
     );
 }
 
-/// `comments_only` keeps the `COM` lines alone, as `\n` lines without
-/// source text or byte order mark.
 #[test]
-fn comments_only_layout() {
-    let source = "\u{feff}COM\tfirst\r\nMTD\tmzTab-version\t2.1.0-M\r\nCOM\t second \r\n";
-    let mut model = parse(source).mztab;
-    let layout = model.layout.clone().comments_only();
-    assert!(!layout.bom, "no byte order mark");
-    assert_eq!(layout.lines.len(), 2, "two comments");
-    assert!(
-        layout
-            .lines
-            .iter()
-            .all(|l| l.ending == mztab_m::LineEnding::Lf && l.verbatim.is_none()),
-        "plain lines"
-    );
-    model.layout = layout;
+fn unwritable_errors_report_exact_line_numbers() {
+    let mut m = without_layout(parse("MTD\tmzTab-version\t2.1.0-M\nMTD\ttitle\tok\n").mztab);
+    m.metadata.description = Some(Cell::Invalid(Raw::new("bad\ttab")));
     assert_eq!(
-        to_string(&model).as_deref(),
-        Ok("MTD\tmzTab-version\t2.1.0-M\nCOM\tfirst\nCOM\t second \n"),
-        "canonical, comments after the metadata"
+        to_string(&m),
+        Err(WriteError::Unwritable {
+            line: 3,
+            reason: "raw text with a tab or line break"
+        }),
+        "third metadata line"
+    );
+
+    let mut table_doc = without_layout(parse("MTD\tmzTab-ID\tx\n\nSMH\tSML_ID\nSML\t1\n").mztab);
+    if let Some(row) = table_doc.sml.as_mut().and_then(|t| t.rows.first_mut()) {
+        row.sml_id = Cell::Invalid(Raw::new("null"));
+    }
+    assert_eq!(
+        to_string(&table_doc),
+        Err(WriteError::Unwritable {
+            line: 4,
+            reason: "invalid text `null`, which reads back as null"
+        }),
+        "first data row after MTD, blank, SMH"
+    );
+}
+
+#[test]
+fn canonical_string_matches_layout_variants() {
+    let source = "\u{feff}COM\tfirst\r\nMTD\tmzTab-ID\tx\r\nMTD\tcustom_unknown\tv\r\nSMH\tSML_ID\r\nSML\t1\r\n";
+    let model = parse(source).mztab;
+    assert_eq!(
+        mztab_m::to_canonical_string(&model, false).as_deref(),
+        Ok("MTD\tmzTab-ID\tx\nMTD\tcustom_unknown\tv\n\nSMH\tSML_ID\nSML\t1\n"),
+        "strips layout and comments when keep_comments = false"
+    );
+    assert_eq!(
+        mztab_m::to_canonical_string(&model, true).as_deref(),
+        Ok("MTD\tmzTab-ID\tx\nMTD\tcustom_unknown\tv\nCOM\tfirst\n\nSMH\tSML_ID\nSML\t1\n"),
+        "keeps comments after metadata when keep_comments = true"
+    );
+
+    let com_then_table = parse("COM\tnote\r\nSMH\tSML_ID\r\nSML\t1\r\n").mztab;
+    assert_eq!(
+        mztab_m::to_canonical_string(&com_then_table, true).as_deref(),
+        Ok("COM\tnote\n\nSMH\tSML_ID\nSML\t1\n"),
+        "comments without metadata still emit blank line before table"
+    );
+    assert_eq!(
+        mztab_m::to_canonical_string(&com_then_table, false).as_deref(),
+        Ok("SMH\tSML_ID\nSML\t1\n"),
+        "table alone without metadata or comments has no leading blank line"
+    );
+    assert_eq!(
+        mztab_m::to_canonical_string(&MzTab::default(), true).as_deref(),
+        Ok(""),
+        "empty model writes empty string"
+    );
+
+    let mut bom_only = MzTab::default();
+    bom_only.layout.bom = true;
+    assert_eq!(
+        to_string(&bom_only).as_deref(),
+        Ok("\u{feff}"),
+        "bom with empty lines is preserved"
+    );
+    assert_eq!(
+        mztab_m::write(&bom_only, &mut Broken),
+        Err(WriteError::Fmt),
+        "bom output error"
+    );
+
+    let mut with_unknown = parse("MTD\tmzTab-ID\tx\n").mztab;
+    with_unknown
+        .metadata
+        .unknown
+        .push((Raw::new("custom_tail"), Raw::new("v")));
+    assert_eq!(
+        to_string(&with_unknown).as_deref(),
+        Ok("MTD\tmzTab-ID\tx\nMTD\tcustom_tail\tv\n"),
+        "appended unknown metadata is written after layout metadata"
     );
 }

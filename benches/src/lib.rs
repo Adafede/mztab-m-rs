@@ -31,6 +31,97 @@ pub struct Spec {
 /// Study variables: assays alternate between the two.
 const STUDY_VARIABLES: u32 = 2;
 
+const HEADER_METADATA: &[&str] = &[
+    "MTD\tmzTab-version\t2.1.0-M",
+    "MTD\tmzTab-ID\tSYNTHETIC",
+    "MTD\tmzTab-profile\tM+S+F+E",
+    "MTD\ttitle\tSynthetic benchmark document",
+    "MTD\tsoftware[1]\t[MS, MS:1002879, Progenesis QI, 3.0]",
+    "MTD\tquantification_method\t[MS, MS:1001834, LC-MS label-free quantitation analysis, ]",
+];
+
+const TRAILING_METADATA: &[&str] = &[
+    "MTD\tstudy_variable_group[1]\t[STATO, STATO:0000087, independent variable, ]",
+    "MTD\tstudy_variable_group[1]-study_variable_refs\tstudy_variable[1]|study_variable[2]",
+    "MTD\tcv[1]-label\tMS",
+    "MTD\tcv[1]-full_name\tPSI-MS controlled vocabulary",
+    "MTD\tcv[1]-version\t4.1.0",
+    "MTD\tcv[1]-uri\thttps://purl.obolibrary.org/obo/ms.obo",
+    "MTD\tcv[2]-label\tSTATO",
+    "MTD\tcv[2]-full_name\tStatistics Ontology",
+    "MTD\tcv[2]-version\tRC1.4",
+    "MTD\tcv[2]-uri\thttp://purl.obolibrary.org/obo/stato.owl",
+    "MTD\tcv[3]-label\tPRIDE",
+    "MTD\tcv[3]-full_name\tPRIDE Controlled Vocabulary",
+    "MTD\tcv[3]-version\t2023",
+    "MTD\tcv[3]-uri\thttps://github.com/PRIDE-Utilities/pride-ontology",
+    "MTD\tdatabase[1]\t[, , HMDB, ]",
+    "MTD\tdatabase[1]-prefix\thmdb",
+    "MTD\tdatabase[1]-version\t5.0",
+    "MTD\tdatabase[1]-uri\thttps://hmdb.ca",
+    "MTD\tsmall_molecule-quantification_unit\t[PRIDE, PRIDE:0000330, Arbitrary quantification unit, ]",
+    "MTD\tsmall_molecule_feature-quantification_unit\t[PRIDE, PRIDE:0000330, Arbitrary quantification unit, ]",
+    "MTD\tid_confidence_measure[1]\t[MS, MS:1002890, fragmentation score, ]",
+];
+
+const SML_COLUMNS: &[&str] = &[
+    "SML_ID",
+    "SMF_ID_REFS",
+    "database_identifier",
+    "chemical_formula",
+    "smiles",
+    "inchi",
+    "chemical_name",
+    "uri",
+    "theoretical_neutral_mass",
+    "adduct_ions",
+    "reliability",
+    "best_id_confidence_measure",
+    "best_id_confidence_value",
+];
+
+const SMF_COLUMNS: &[&str] = &[
+    "SMF_ID",
+    "SME_ID_REFS",
+    "SME_ID_REF_ambiguity_code",
+    "adduct_ion",
+    "isotopomer",
+    "exp_mass_to_charge",
+    "charge",
+    "retention_time_in_seconds",
+    "retention_time_in_seconds_start",
+    "retention_time_in_seconds_end",
+];
+
+const SME_COLUMNS: &[&str] = &[
+    "SME_ID",
+    "evidence_input_id",
+    "database_identifier",
+    "chemical_formula",
+    "smiles",
+    "inchi",
+    "chemical_name",
+    "uri",
+    "derivatized_form",
+    "adduct_ion",
+    "exp_mass_to_charge",
+    "charge",
+    "theoretical_mass_to_charge",
+    "spectra_ref",
+    "identification_method",
+    "ms_level",
+    "id_confidence_measure[1]",
+    "rank",
+];
+
+const fn table_columns(prefix: &str) -> &'static [&'static str] {
+    match prefix.as_bytes() {
+        b"SMH" => SML_COLUMNS,
+        b"SFH" => SMF_COLUMNS,
+        _ => SME_COLUMNS,
+    }
+}
+
 /// A small xorshift generator: deterministic across platforms.
 #[derive(Clone, Debug)]
 struct Rng(u64);
@@ -100,14 +191,14 @@ impl Spec {
     }
 
     fn metadata(&self) -> Vec<String> {
-        let mut m = vec![
-            "MTD\tmzTab-version\t2.1.0-M".to_owned(),
-            "MTD\tmzTab-ID\tSYNTHETIC".to_owned(),
-            "MTD\tmzTab-profile\tM+S+F+E".to_owned(),
-            "MTD\ttitle\tSynthetic benchmark document".to_owned(),
-            "MTD\tsoftware[1]\t[MS, MS:1002879, Progenesis QI, 3.0]".to_owned(),
-            "MTD\tquantification_method\t[MS, MS:1001834, LC-MS label-free quantitation analysis, ]".to_owned(),
-        ];
+        let mut m: Vec<String> = HEADER_METADATA.iter().map(|s| (*s).to_owned()).collect();
+        self.push_ms_runs_and_assays(&mut m);
+        self.push_study_variables(&mut m);
+        m.extend(TRAILING_METADATA.iter().map(|s| (*s).to_owned()));
+        m.into_iter().map(|line| line + "\n").collect()
+    }
+
+    fn push_ms_runs_and_assays(&self, m: &mut Vec<String>) {
         for n in 1..=self.assays {
             m.push(format!(
                 "MTD\tms_run[{n}]-location\tfile:///data/run{n}.mzML"
@@ -126,6 +217,9 @@ impl Spec {
             m.push(format!("MTD\tassay[{n}]\tassay {n}"));
             m.push(format!("MTD\tassay[{n}]-ms_run_ref\tms_run[{n}]"));
         }
+    }
+
+    fn push_study_variables(&self, m: &mut Vec<String>) {
         for v in 1..=STUDY_VARIABLES {
             let refs: Vec<String> = (1..=self.assays)
                 .filter(|a| a % STUDY_VARIABLES == v % STUDY_VARIABLES)
@@ -138,85 +232,11 @@ impl Spec {
             ));
             m.push(format!("MTD\tstudy_variable[{v}]-description\tgroup {v}"));
         }
-        m.extend([
-            "MTD\tstudy_variable_group[1]\t[STATO, STATO:0000087, independent variable, ]".to_owned(),
-            "MTD\tstudy_variable_group[1]-study_variable_refs\tstudy_variable[1]|study_variable[2]"
-                .to_owned(),
-            "MTD\tcv[1]-label\tMS".to_owned(),
-            "MTD\tcv[1]-full_name\tPSI-MS controlled vocabulary".to_owned(),
-            "MTD\tcv[1]-version\t4.1.0".to_owned(),
-            "MTD\tcv[1]-uri\thttps://purl.obolibrary.org/obo/ms.obo".to_owned(),
-            "MTD\tcv[2]-label\tSTATO".to_owned(),
-            "MTD\tcv[2]-full_name\tStatistics Ontology".to_owned(),
-            "MTD\tcv[2]-version\tRC1.4".to_owned(),
-            "MTD\tcv[2]-uri\thttp://purl.obolibrary.org/obo/stato.owl".to_owned(),
-            "MTD\tcv[3]-label\tPRIDE".to_owned(),
-            "MTD\tcv[3]-full_name\tPRIDE Controlled Vocabulary".to_owned(),
-            "MTD\tcv[3]-version\t2023".to_owned(),
-            "MTD\tcv[3]-uri\thttps://github.com/PRIDE-Utilities/pride-ontology".to_owned(),
-            "MTD\tdatabase[1]\t[, , HMDB, ]".to_owned(),
-            "MTD\tdatabase[1]-prefix\thmdb".to_owned(),
-            "MTD\tdatabase[1]-version\t5.0".to_owned(),
-            "MTD\tdatabase[1]-uri\thttps://hmdb.ca".to_owned(),
-            "MTD\tsmall_molecule-quantification_unit\t[PRIDE, PRIDE:0000330, Arbitrary quantification unit, ]".to_owned(),
-            "MTD\tsmall_molecule_feature-quantification_unit\t[PRIDE, PRIDE:0000330, Arbitrary quantification unit, ]".to_owned(),
-            "MTD\tid_confidence_measure[1]\t[MS, MS:1002890, fragmentation score, ]".to_owned(),
-        ]);
-        m.into_iter().map(|line| line + "\n").collect()
     }
 
     fn header(&self, prefix: &str) -> String {
         let mut line = String::from(prefix);
-        let columns: &[&str] = match prefix {
-            "SMH" => &[
-                "SML_ID",
-                "SMF_ID_REFS",
-                "database_identifier",
-                "chemical_formula",
-                "smiles",
-                "inchi",
-                "chemical_name",
-                "uri",
-                "theoretical_neutral_mass",
-                "adduct_ions",
-                "reliability",
-                "best_id_confidence_measure",
-                "best_id_confidence_value",
-            ],
-            "SFH" => &[
-                "SMF_ID",
-                "SME_ID_REFS",
-                "SME_ID_REF_ambiguity_code",
-                "adduct_ion",
-                "isotopomer",
-                "exp_mass_to_charge",
-                "charge",
-                "retention_time_in_seconds",
-                "retention_time_in_seconds_start",
-                "retention_time_in_seconds_end",
-            ],
-            _ => &[
-                "SME_ID",
-                "evidence_input_id",
-                "database_identifier",
-                "chemical_formula",
-                "smiles",
-                "inchi",
-                "chemical_name",
-                "uri",
-                "derivatized_form",
-                "adduct_ion",
-                "exp_mass_to_charge",
-                "charge",
-                "theoretical_mass_to_charge",
-                "spectra_ref",
-                "identification_method",
-                "ms_level",
-                "id_confidence_measure[1]",
-                "rank",
-            ],
-        };
-        for column in columns {
+        for column in table_columns(prefix) {
             line.push('\t');
             line.push_str(column);
         }

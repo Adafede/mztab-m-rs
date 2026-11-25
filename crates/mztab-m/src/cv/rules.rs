@@ -3,7 +3,7 @@
 //! rerun that test with `BLESS=1`.
 
 use super::{Logic, Rule, RuleTerm, Target};
-use crate::diag::Requirement;
+use crate::diag::severity::Requirement;
 
 pub(super) const RULES: &[Rule] = &[
     Rule {

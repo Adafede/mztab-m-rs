@@ -1,12 +1,12 @@
 # Status
 
-Last checked on 2026-11-23 on branch `main`. `./mk ci`, `./mk site`, and `./mk bindings`
-pass locally on 2026-11-23; `./mk ci-nightly-checks` (`coverage`, `powerset`,
-`miri`, `outdated`, `local:vocab`) and full-workspace mutation testing passed
-locally on 2026-11-22, and GitHub Actions (`CI Quality Gate`, `Bindings`, and
-`Docs and Demo Site`) pass on `ubuntu-latest`. Everything described as verified
-was run on 2026-11-22 or 2026-11-23 unless noted otherwise; the commands are in
-[Verified how](#verified-how).
+Last checked on 2026-11-24. `./mk ci`, `./mk site`, `./mk bindings`, and
+`./mk coverage` pass locally on 2026-11-24; `./mk ci-nightly-checks`
+(`powerset`, `miri`, `outdated`, `local:vocab`) and full-workspace mutation
+testing passed locally on 2026-11-22, and GitHub Actions (`CI Quality Gate`,
+`Bindings`, and `Docs and Demo Site`) pass on `ubuntu-latest`. Everything
+described as verified was run on 2026-11-24 unless noted otherwise; the
+commands are in [Verified how](#verified-how).
 
 **In one line:** the Rust library and the `mztab-m` command work on every
 example file of the specification, with a large test suite and passing CI on
@@ -23,7 +23,7 @@ Nothing here is Stable yet.
 
 | Component | Status | Verified, and how | Known limitations | Next level needs |
 |---|---|---|---|---|
-| Core TSV reader (`mztab_m::parse`, `parse_bytes`) | Working | Workspace tests (154 unit/integration passed, 2 ignored, and 94 doc tests passed), including findings for all 23 spec example files pinned in a golden file; property tests; wasm32 tests | Rules follow a draft spec; 9 interpretation questions are OPEN in [DECISIONS.md](DECISIONS.md) | Outside review of the decisions; a released 2.1 spec; real-world files beyond the spec examples |
+| Core TSV reader (`mztab_m::parse`, `parse_bytes`) | Working | Workspace tests (166 unit/integration passed, 2 ignored, and 93 doc tests passed), including findings for all 23 spec example files pinned in a golden file; property tests; wasm32 tests | Rules follow a draft spec; 9 interpretation questions are OPEN in [DECISIONS.md](DECISIONS.md) | Outside review of the decisions; a released 2.1 spec; real-world files beyond the spec examples |
 | Streaming reader (`StreamReader`) | Working | Tests and a property test that it equals a whole read; a 1 GB synthetic file was streamed on 2026-11-18 ([BENCHMARKS.md](docs/BENCHMARKS.md)) | Not re-run since | Same as above |
 | Writer (canonical form, byte-exact round trip) | Working | Round-trip tests and properties; `mztab-m fmt --check` run on a spec example | Non-string cells with spaces around them are not written back byte-exact (D-056) | Same as above |
 | Structure validator | Working | Tests per rule and per finding code; each code links an anchor that exists in the pinned spec (tested) | 37 decisions behind the rules are PROPOSED, 9 OPEN | Review of DECISIONS.md; comparison with jmzTab-m (see below) |
@@ -74,18 +74,18 @@ Draft issues for these and other open gaps are in
 
 ## Tests, coverage and CI
 
-| What | Result (2026-11-22) |
+| What | Result |
 |---|---|
-| Workspace tests (`./mk test`) | 154 unit/integration tests passed, 2 ignored (`oracle` and PSI-MS `vocabulary`), and 94 doc tests passed |
-| Line coverage (`./mk coverage`, cargo-llvm-cov) | 100% (7539 of 7539 lines) of the five workspace crates; bindings, benches and fuzz targets are not measured; branch coverage is not measured |
-| wasm32 tests (`./mk wasm`) | 129 tests pass across `mztab-m`, `mztab-m-obo`, `mztab-m-api`, `mztab-m-wasm` |
-| Full PR gate (`./mk ci`) | pass (2026-11-23: lints, format, typos, licenses, audit, machete, MSRV, duplication, stale refs, wasm, demo, fuzz/bench check, mutants-diff) |
+| Workspace tests (`./mk test`) | 166 unit/integration tests passed, 2 ignored (`oracle` and PSI-MS `vocabulary`), and 93 doc tests passed (2026-11-24) |
+| Line coverage (`./mk coverage`, cargo-llvm-cov) | 100% (8397 of 8397 lines) of the five `crates/*` packages (2026-11-24); bindings, benches and fuzz targets are not measured; branch coverage is not measured |
+| wasm32 tests (`./mk wasm`) | 138 tests pass across `mztab-m`, `mztab-m-obo`, `mztab-m-api`, `mztab-m-wasm` (2026-11-24) |
+| Full PR gate (`./mk ci`) | pass (`ci-core` + `mutants-diff` 78 mutants: 50 caught, 28 unviable, 0 missed on 2026-11-24) |
 | Full mutation run (`./mk mutants`) | pass locally on 2026-11-22 across all 1,726 workspace mutants (0 missed, 0 timeouts; run across slices locally due to host free-disk floor) |
 | Nightly checks (`./mk ci-nightly-checks`) | pass on 2026-11-22 (`coverage` 100%, `powerset`, `miri` on `mztab-m --lib` and `mztab-m-obo`, `outdated` ignoring pinned `criterion` per D-073, PSI-MS `local:vocab`) |
 | Fuzzing (`cargo-fuzz`) | not run (compiles in `./mk ci`) |
-| Docs site & link check (`./mk site`) | pass (2026-11-23; findings freshness, mdBook, WASM demo, rustdoc `-D warnings`, `lychee --offline` 0 errors) |
-| Python / R package tests (`./mk bindings`) | pass (2026-11-23) locally on macOS arm64 (`uv pip install .`, `uv sync --frozen`, `./mk bindings python` 7 tests + doctests; `devtools::install()`, direct `R CMD INSTALL`, `./mk bindings r` 27 testthat checks) and on Linux `x86_64` in CI |
-| CI on GitHub | `CI Quality Gate`, `Bindings`, and `Docs and Demo Site` pass on `ubuntu-latest`; `Nightly` failed on 2026-11-22 before these fixes and awaits re-run; `Oracle` and `Release` not yet run |
+| Docs site & link check (`./mk site`) | pass (2026-11-24; findings freshness, mdBook, WASM demo, rustdoc `-D warnings`, `lychee --offline` 0 errors) |
+| Python / R package tests (`./mk bindings`) | pass (2026-11-24) locally on macOS arm64 (`uv pip install .`, `uv sync --frozen`, `./mk bindings python` 7 tests + doctests; `devtools::install()`, direct `R CMD INSTALL`, `./mk bindings r` 27 testthat checks) and on Linux `x86_64` in CI |
+| CI on GitHub | `CI Quality Gate`, `Bindings`, and `Docs and Demo Site` pass on `ubuntu-latest`; `Nightly` awaits scheduled run; `Oracle` and `Release` not yet run |
 
 ## Platforms and toolchains tested
 

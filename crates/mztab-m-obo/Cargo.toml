@@ -22,7 +22,7 @@ mztab-m = { path = "../mztab-m", version = "0.1.0" }
 
 # Test-only: runs the tests on wasm32-unknown-unknown (see crates/mztab-m).
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
-wasm-bindgen-test = "0.3"
+wasm-bindgen-test.workspace = true
 
 [lints]
 workspace = true

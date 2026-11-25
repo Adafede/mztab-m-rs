@@ -4,8 +4,9 @@
 
 use std::collections::BTreeMap;
 
-use mztab_m_api::{Error, Fact, Format, Layer, Settings};
-use mztab_m_obo::Ontology;
+use mztab_m_api::{
+    Error, Fact, Format, Layer, SPEC_COMMIT, SPEC_VERSION, Settings,
+};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
@@ -32,7 +33,7 @@ fn bytes(text: &Bound<'_, PyAny>) -> PyResult<Vec<u8>> {
 fn format(given: Option<&str>, bytes: &[u8]) -> PyResult<Format> {
     given.map_or_else(
         || Ok(Format::sniff("", bytes)),
-        |f| Format::parse(f).map_err(error),
+        |f| f.parse::<Format>().map_err(error),
     )
 }
 
@@ -60,12 +61,15 @@ fn validate<'py>(
 ) -> PyResult<Vec<Bound<'py, PyDict>>> {
     let bytes = bytes(text)?;
     let format = self::format(format, &bytes)?;
-    let mut settings = Settings::default().layer(Layer::parse(layer).map_err(error)?);
+    let parsed_layer = layer
+        .parse::<Layer>()
+        .map_err(|_| error(Error::Layer(layer.to_owned())))?;
+    let mut settings = Settings::default().layer(parsed_layer);
     for (code, level) in &severities {
         settings = settings.set(&format!("{code}={level}")).map_err(error)?;
     }
     let obo: Vec<&str> = vocabularies.iter().map(String::as_str).collect();
-    let records = mztab_m_api::check(&bytes, format, &obo, &settings).map_err(error)?;
+    let records = mztab_m_api::check(&bytes, format, &obo, &settings);
     records
         .iter()
         .map(|r| {
@@ -97,7 +101,7 @@ fn convert(
 ) -> PyResult<String> {
     let bytes = bytes(text)?;
     let from = self::format(format, &bytes)?;
-    let to = Format::parse(to).map_err(error)?;
+    let to = to.parse::<Format>().map_err(error)?;
     mztab_m_api::convert(&bytes, from, to, lossy).map_err(error)
 }
 
@@ -137,18 +141,15 @@ fn inspect<'py>(
 /// `summary` and `spec`.
 #[pyfunction]
 fn codes(py: Python<'_>) -> PyResult<Vec<Bound<'_, PyDict>>> {
-    mztab_m::Code::ALL
-        .iter()
+    mztab_m_api::codes()
+        .into_iter()
         .map(|c| {
             let d = PyDict::new(py);
-            d.set_item("code", c.id())?;
-            d.set_item("layer", format!("{}", c.layer()))?;
-            d.set_item(
-                "requirement",
-                format!("{:?}", c.requirement()).to_uppercase(),
-            )?;
-            d.set_item("summary", c.summary())?;
-            d.set_item("spec", c.spec_ref().to_string())?;
+            d.set_item("code", c.code)?;
+            d.set_item("layer", c.layer)?;
+            d.set_item("requirement", c.requirement)?;
+            d.set_item("summary", c.summary)?;
+            d.set_item("spec", c.spec)?;
             Ok(d)
         })
         .collect()
@@ -157,7 +158,7 @@ fn codes(py: Python<'_>) -> PyResult<Vec<Bound<'_, PyDict>>> {
 /// Checks that an OBO text parses into terms (returns how many).
 #[pyfunction]
 fn vocabulary_size(text: &str) -> usize {
-    Ontology::parse(text).len()
+    mztab_m_api::vocabulary_size(text)
 }
 
 /// The `mztab_m._native` extension module.
@@ -170,8 +171,8 @@ fn native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(inspect, m)?)?;
     m.add_function(wrap_pyfunction!(codes, m)?)?;
     m.add_function(wrap_pyfunction!(vocabulary_size, m)?)?;
-    m.add("SPEC_COMMIT", mztab_m::SPEC_COMMIT)?;
-    m.add("SPEC_VERSION", mztab_m::SPEC_VERSION)?;
+    m.add("SPEC_COMMIT", SPEC_COMMIT)?;
+    m.add("SPEC_VERSION", SPEC_VERSION)?;
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     Ok(())
 }

@@ -13,7 +13,6 @@ name = "mztabm"
 
 [dependencies]
 extendr-api = "0.9"
-mztab-m = { path = "../../../../crates/mztab-m", features = ["json"] }
 mztab-m-api = { path = "../../../../crates/mztab-m-api" }
 
 [lints.clippy]

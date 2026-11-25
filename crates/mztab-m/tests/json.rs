@@ -890,3 +890,27 @@ fn stripping_unknown_content() {
     base.layout = SourceLayout::default();
     assert_eq!(model, base, "what remains is the base document");
 }
+
+#[test]
+fn malformed_params_and_spectra_refs_fall_back_to_json_strings() {
+    let input = concat!(
+        "MTD\tmzTab-version\t2.1.0-M\n",
+        "MTD\tmzTab-ID\tX\n",
+        "MTD\tsample_processing[1]\tnot-a-param\n",
+        "SEH\tSME_ID\tspectra_ref\n",
+        "SME\t1\tbad-ref\n",
+    );
+    let mut model = parse(input).mztab;
+    model.layout = SourceLayout::default();
+    let text = json::to_string(&model).expect("writable");
+    assert!(
+        text.contains(r#""sample_processing":"not-a-param""#),
+        "param list fallback: {text}"
+    );
+    assert!(
+        text.contains(r#""spectra_ref":"bad-ref""#),
+        "spectra_ref fallback: {text}"
+    );
+    let back = json::parse(&text);
+    assert_eq!(back.mztab, model, "round-trips via fallback string");
+}

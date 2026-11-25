@@ -1,18 +1,21 @@
-//! Typing table headers and rows.
+//! Typing table headers and rows against header slots.
 
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-use crate::diag::{Code, Detail};
-use crate::id::{AssayId, ElementId, IdConfidenceMeasureId, MsRunId, StudyVariableId};
-use crate::model::{
-    AbundanceColumn, Column, Header, OptColumn, OptTarget, SmeColumn, SmeId, SmeRow, SmfColumn,
-    SmfId, SmfRow, SmlColumn, SmlId, SmlRow, parse_index,
+use super::typing::{self, Cx, RawCell};
+use crate::diag::code::Code;
+use crate::diag::finding::Detail;
+use crate::id::{AssayId, ElementId, IdConfidenceMeasureId, MsRunId, StudyVariableId, parse_index};
+use crate::model::rows::{SmeRow, SmfRow, SmlRow};
+use crate::model::table::{
+    AbundanceColumn, Column, Header, OptColumn, OptTarget, SmeColumn, SmeId, SmfColumn, SmfId,
+    SmlColumn, SmlId,
 };
-use crate::typing::{self, Cx, RawCell};
-use crate::value::{Cell, Decimal, Raw, Text};
-use crate::vocab::Section;
-use crate::write::{Out, Render as _, WriteError};
+use crate::value::cell::Cell;
+use crate::value::decimal::Decimal;
+use crate::value::text::{Raw, Text};
+use crate::vocab::section::Section;
 
 /// What a header column holds, without borrowing the header text. The
 /// reader keeps one per column to type rows, including across stream chunks.
@@ -34,6 +37,11 @@ impl<S: Copy> Slot<S> {
             Column::Unknown(_) => Self::Unknown,
         }
     }
+}
+
+/// The slots for a header: what each column holds.
+pub(crate) fn slots<S: Copy>(header: &Header<'_, S>) -> Vec<Slot<S>> {
+    header.columns.iter().map(Slot::of).collect()
 }
 
 /// Parses `element[n]_` at the start of `text`, returning the id and the rest.
@@ -115,7 +123,7 @@ pub(crate) fn header<'a, S: Copy + Ord>(
 ) -> (Header<'a, S>, Vec<Slot<S>>) {
     let mut seen = BTreeSet::new();
     let mut columns = Vec::new();
-    let mut slots = Vec::new();
+    let mut column_slots = Vec::new();
     for cell in cells {
         let label = cell.text;
         let column = stable(label)
@@ -135,10 +143,10 @@ pub(crate) fn header<'a, S: Copy + Ord>(
             );
             Column::Unknown(Raw::new(label))
         };
-        slots.push(Slot::of(&column));
+        column_slots.push(Slot::of(&column));
         columns.push(column);
     }
-    (Header { columns }, slots)
+    (Header { columns }, column_slots)
 }
 
 /// A table row the reader can fill column by column.
@@ -163,21 +171,6 @@ pub(crate) trait TableRow<'a>: Sized {
 
     /// The cells beyond the header.
     fn extra(&mut self) -> &mut Vec<Raw<'a>>;
-
-    /// Writes the stable field `column`.
-    fn render_stable(&self, column: Self::Column, out: &mut Out<'_>) -> Result<(), WriteError>;
-
-    /// The numeric non-stable cells.
-    fn numbers_ref(&self) -> &[Cell<'a, Decimal<'a>>];
-
-    /// The `opt_` cells.
-    fn opt_ref(&self) -> &[Cell<'a, Text<'a>>];
-
-    /// The unknown-column cells.
-    fn unknown_ref(&self) -> &[Raw<'a>];
-
-    /// The cells beyond the header.
-    fn extra_ref(&self) -> &[Raw<'a>];
 }
 
 /// Types a row against its header's slots. `cells` excludes the prefix.
@@ -264,28 +257,6 @@ macro_rules! table_row {
             fn extra(&mut self) -> &mut Vec<Raw<'a>> {
                 &mut self.extra
             }
-
-            fn render_stable(&self, column: $col, out: &mut Out<'_>) -> Result<(), WriteError> {
-                match column {
-                    $($col::$variant => self.$field.render(out),)+
-                }
-            }
-
-            fn numbers_ref(&self) -> &[Cell<'a, Decimal<'a>>] {
-                &self.$numbers
-            }
-
-            fn opt_ref(&self) -> &[Cell<'a, Text<'a>>] {
-                &self.opt
-            }
-
-            fn unknown_ref(&self) -> &[Raw<'a>] {
-                &self.unknown
-            }
-
-            fn extra_ref(&self) -> &[Raw<'a>] {
-                &self.extra
-            }
         }
     };
     (@parse $cx:ident, $raw:ident, id($wrap:path)) => {
@@ -358,8 +329,8 @@ mod tests {
 
     use super::Special;
     use crate::id::{AssayId, IdConfidenceMeasureId};
-    use crate::model::{AbundanceColumn, Column, OptColumn, OptTarget, SmlColumn};
-    use crate::value::Text;
+    use crate::model::table::{AbundanceColumn, Column, OptColumn, OptTarget, SmlColumn};
+    use crate::value::text::Text;
 
     /// The reader only builds the combinations a table allows; any table type
     /// can hold every kind of special column.

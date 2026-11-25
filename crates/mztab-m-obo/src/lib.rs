@@ -3,24 +3,13 @@
 
 extern crate alloc;
 
+mod parse;
+
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::vec::Vec;
 
-use mztab_m::cv::{Term, TermLookup, prefix};
-
-/// One `[Term]` stanza.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-struct Entry<'a> {
-    name: &'a str,
-    obsolete: bool,
-    /// The local name of the `xsd:` value type (`relationship:
-    /// has_value_type`, or the older `xref: value-type:`).
-    value_type: Option<&'a str>,
-    /// Exact synonyms (`synonym: "CID" EXACT []`).
-    synonyms: Vec<&'a str>,
-    /// `is_a` and `relationship: part_of` targets.
-    parents: Vec<&'a str>,
-}
+use mztab_m::cv::{Term, TermLookup};
+use parse::Entry;
 
 /// The terms of one OBO 1.4 document, borrowed from its text.
 ///
@@ -53,77 +42,7 @@ impl<'a> Ontology<'a> {
     /// ```
     #[must_use]
     pub fn parse(text: &'a str) -> Self {
-        let mut ontology = Self::default();
-        let mut stanza: Option<(Option<&'a str>, Entry<'a>)> = None;
-        let mut in_header = true;
-        for line in text.lines() {
-            let line = line.trim();
-            if line.starts_with('[') {
-                ontology.close(stanza.take());
-                in_header = false;
-                if line == "[Term]" {
-                    stanza = Some((None, Entry::default()));
-                }
-                continue;
-            }
-            let Some((tag, value)) = line.split_once(':') else {
-                continue;
-            };
-            let value = value.trim();
-            if in_header {
-                match tag {
-                    "data-version" => ontology.data_version = Some(value),
-                    "ontology" => ontology.namespace = Some(value),
-                    _ => {}
-                }
-                continue;
-            }
-            let Some((id, entry)) = stanza.as_mut() else {
-                continue;
-            };
-            match tag {
-                "id" => *id = Some(target(value)),
-                "name" => entry.name = value,
-                "synonym" => {
-                    if let Some(synonym) = exact_synonym(value) {
-                        entry.synonyms.push(synonym);
-                    }
-                }
-                "is_obsolete" => entry.obsolete = value == "true",
-                "xref" => {
-                    if let Some(kind) = value_type(value) {
-                        entry.value_type = Some(kind);
-                    }
-                }
-                "is_a" => entry.parents.push(target(value)),
-                "relationship" => {
-                    if let Some(parent) = value.strip_prefix("part_of ") {
-                        entry.parents.push(target(parent));
-                    } else if let Some(kind) = value
-                        .strip_prefix("has_value_type ")
-                        .and_then(|t| target(t).strip_prefix("xsd:"))
-                    {
-                        // PSI-MS since 4.1: `relationship: has_value_type xsd:int`.
-                        entry.value_type = Some(kind);
-                    }
-                }
-                _ => {}
-            }
-        }
-        ontology.close(stanza);
-        ontology
-    }
-
-    fn close(&mut self, stanza: Option<(Option<&'a str>, Entry<'a>)>) {
-        if let Some((Some(id), entry)) = stanza {
-            let own = self
-                .namespace
-                .is_none_or(|ns| ns.eq_ignore_ascii_case(prefix(id)));
-            if own {
-                self.covered.insert(prefix(id));
-            }
-            self.terms.entry(id).or_insert(entry);
-        }
+        parse::parse_ontology(text)
     }
 
     /// Also covers `prefix`: answers for that vocabulary's terms from this
@@ -162,29 +81,6 @@ impl<'a> Ontology<'a> {
     }
 }
 
-/// The text of an exact synonym: `"CID" EXACT []` gives `CID`.
-fn exact_synonym(value: &str) -> Option<&str> {
-    let rest = value.strip_prefix('"')?;
-    let (text, scope) = rest.split_once('"')?;
-    scope.trim_start().starts_with("EXACT").then_some(text)
-}
-
-/// The local name in `value-type:xsd\:int "…"` (`int`): the older PSI-MS
-/// form, as an `xref`.
-fn value_type(xref: &str) -> Option<&str> {
-    let rest = xref.strip_prefix("value-type:")?;
-    let rest = rest
-        .strip_prefix("xsd\\:")
-        .or_else(|| rest.strip_prefix("xsd:"))?;
-    rest.split([' ', '"']).next().filter(|s| !s.is_empty())
-}
-
-/// The identifier in a tag value: before any `!` comment or `{`
-/// qualifiers.
-fn target(value: &str) -> &str {
-    value.split(['!', '{']).next().map_or(value, str::trim)
-}
-
 impl TermLookup for Ontology<'_> {
     fn covers(&self, prefix: &str) -> bool {
         self.covered.contains(prefix)
@@ -203,16 +99,20 @@ impl TermLookup for Ontology<'_> {
     /// cycles end.
     fn is_descendant(&self, accession: &str, ancestor: &str) -> bool {
         let mut seen = BTreeSet::new();
-        let mut stack: Vec<&str> = self
+        let mut stack: Vec<&[&str]> = self
             .terms
             .get(accession)
-            .map_or_else(Vec::new, |e| e.parents.clone());
-        while let Some(term) = stack.pop() {
-            if term == ancestor {
-                return true;
-            }
-            if seen.insert(term) {
-                stack.extend(self.terms.get(term).into_iter().flat_map(|e| &e.parents));
+            .map_or_else(Vec::new, |e| alloc::vec![e.parents.as_slice()]);
+        while let Some(parents) = stack.pop() {
+            for &term in parents {
+                if term == ancestor {
+                    return true;
+                }
+                if seen.insert(term)
+                    && let Some(entry) = self.terms.get(term)
+                {
+                    stack.push(&entry.parents);
+                }
             }
         }
         false

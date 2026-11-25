@@ -1,7 +1,7 @@
 //! Generator and freshness check for `docs/findings.md`.
 //!
 //! Reads every finding code from [`mztab_m::Code::ALL`] together with its doc
-//! comment in `src/diag.rs` and verifies that `docs/findings.md` matches the
+//! comment in `src/diag/code.rs` and verifies that `docs/findings.md` matches the
 //! generated table. Run `./mk findings` (or set `BLESS=1`) to rewrite it.
 
 extern crate alloc;
@@ -14,11 +14,11 @@ use core::fmt::Write as _;
 
 use mztab_m::{Code, Layer, Requirement, SPEC_COMMIT, SPEC_VERSION};
 
-const DIAG_RS: &str = include_str!("../src/diag.rs");
+const DIAG_RS: &str = include_str!("../src/diag/code.rs");
 const COMMITTED: &str = include_str!("../../../docs/findings.md");
 
 /// Extracts the `///` doc comment immediately preceding each `= "MZT-..."`
-/// entry in `src/diag.rs`.
+/// entry in `src/diag/code.rs`.
 fn parse_code_docs(source: &str) -> BTreeMap<&str, String> {
     let mut docs = BTreeMap::new();
     let mut current: Vec<&str> = Vec::new();
@@ -120,7 +120,7 @@ fn generate() -> Result<String, String> {
     out.push_str(
         "\nCodes are never reused or renumbered. Severities can be overridden or disabled per code \
          with `--severity CODE=error|warning|info|off` in the CLI or `validate::Config` in Rust.\n\n\
-         This page is generated directly from `mztab_m::Code::ALL` (`crates/mztab-m/src/diag.rs`). \
+         This page is generated directly from `mztab_m::Code::ALL` (`crates/mztab-m/src/diag/code.rs`). \
          CI fails if it drifts out of sync.\n",
     );
 
@@ -135,7 +135,7 @@ fn generate() -> Result<String, String> {
             let meaning = docs
                 .get(id)
                 .filter(|s| !s.is_empty())
-                .ok_or_else(|| format!("missing doc comment in src/diag.rs for {id}"))?;
+                .ok_or_else(|| format!("missing doc comment in src/diag/code.rs for {id}"))?;
             let severity = severity_cell(code);
             let spec = code.spec_ref();
             let jmztab = if code.jmztab().is_empty() {

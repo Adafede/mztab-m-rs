@@ -22,20 +22,18 @@ use mztab_m_api::{Format, Layer, Settings, check};
 
 let text = b"MTD\tmzTab-version\t2.1.0-M\nMTD\tmzTab-ID\tx\n";
 let settings = Settings::default().layer(Layer::Structure);
-let records = check(text, Format::Tsv, &[], &settings)?;
+let records = check(text, Format::Tsv, &[], &settings);
 assert!(records.iter().any(|r| r.code == "MZT-T009"), "missing fields");
-# Ok::<(), mztab_m_api::Error>(())
 ```
 
 Read, validate, and write as canonical JSON:
 
 ```rust
 use mztab_m_api::{Format, Settings, read, validate, write};
-use mztab_m_obo::Ontology;
 
 let tsv = "MTD\tmzTab-version\t2.1.0-M\nMTD\tmzTab-ID\tAPI-1\n";
 let parsed = read(tsv.as_bytes(), Format::Tsv);
-let findings = validate(&parsed, &Settings::default(), &Ontology::parse(""));
+let findings = validate(&parsed, &Settings::default(), &[]);
 assert!(findings.has_errors(), "mandatory fields missing");
 let (json_text, _) = write(&parsed.mztab, Format::Json, false)?;
 assert!(json_text.contains("\"mzTab-ID\":\"API-1\""));

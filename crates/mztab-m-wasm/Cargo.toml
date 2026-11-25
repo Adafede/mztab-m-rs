@@ -12,16 +12,14 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-mztab-m = { path = "../mztab-m", version = "0.1.0", features = ["json"] }
 mztab-m-api = { path = "../mztab-m-api", version = "0.1.0" }
-mztab-m-obo = { path = "../mztab-m-obo", version = "0.1.0" }
 # The only way to export functions to JavaScript without writing `unsafe`
 # (PLAN §5). Demo only; never a dependency of a published crate.
 wasm-bindgen = "=0.2.130"
 
 # Test-only: runs the tests on wasm32-unknown-unknown (see crates/mztab-m).
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
-wasm-bindgen-test = "0.3"
+wasm-bindgen-test.workspace = true
 
 [lints]
 workspace = true

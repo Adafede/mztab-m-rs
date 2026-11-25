@@ -360,6 +360,12 @@ fn usage_and_io_errors() {
         assert!(io.err.starts_with("error: "), "{args:?}: {}", io.err);
     }
     let mut io = fake();
+    assert_eq!(exec(&mut io, &["validate"]), USAGE);
+    assert!(io.err.contains("`validate` needs a FILE"), "{}", io.err);
+    let mut io = fake();
+    assert_eq!(exec(&mut io, &["fmt", "--cv", "x", "a"]), USAGE);
+    assert!(io.err.contains("`fmt` does not take `--cv`"), "{}", io.err);
+    let mut io = fake();
     assert_eq!(
         exec(&mut io, &["validate", "missing.mztab"]),
         FAILED,
@@ -372,4 +378,46 @@ fn usage_and_io_errors() {
     let mut io = fake();
     io.files.insert("-".into(), BASE.into());
     assert_eq!(exec(&mut io, &["validate", "-"]), OK, "standard input");
+}
+
+#[test]
+fn flag_combinations_and_missing_values() {
+    let missing_val: &[&[&str]] = &[
+        &["validate", "--input"],
+        &["validate", "--layer"],
+        &["validate", "--cv"],
+        &["validate", "--fail-on"],
+        &["validate", "--severity"],
+        &["fmt", "-o"],
+        &["convert", "--to"],
+        &["validate", "a.mztab", "--extra"],
+    ];
+    for args in missing_val {
+        let mut io = fake();
+        assert_eq!(exec(&mut io, args), USAGE, "{args:?}");
+        assert!(io.err.starts_with("error: "), "{args:?}: {}", io.err);
+    }
+
+    let mut io = fake();
+    assert_eq!(
+        exec(
+            &mut io,
+            &["inspect", "--format", "json", "--input", "json", "noname"]
+        ),
+        OK,
+        "inspect forced json"
+    );
+    assert!(io.out.starts_with("{\"version\":\"2.1.0-M\""));
+
+    let mut io = fake();
+    assert_eq!(
+        exec(
+            &mut io,
+            &["convert", "--to", "tsv", "--lossy", "unknown.mztab"]
+        ),
+        OK,
+        "lossy tsv conversion"
+    );
+    assert_eq!(io.out, BASE);
+    assert!(io.err.contains("dropped 1 unknown metadata lines"));
 }

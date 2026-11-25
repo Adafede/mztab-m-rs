@@ -4,7 +4,8 @@ use alloc::string::ToString as _;
 use core::fmt;
 
 use super::value::write_string;
-use crate::diag::{Detail, Findings, Location};
+use crate::diag::finding::{Detail, Findings};
+use crate::diag::location::Location;
 
 /// Writes `findings` as a JSON array of objects:
 ///

@@ -4,7 +4,6 @@
 //! `wasm-bindgen`'s. Natively they are plain functions, tested as such.
 
 use mztab_m_api::{Format, Settings};
-use mztab_m_obo::Ontology;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 /// JSON if the text starts with `{`, TSV otherwise.
@@ -16,7 +15,7 @@ fn format(input: &str) -> Format {
 ///
 /// Accepts TSV (or JSON if it starts with `{`) and checks terms against the
 /// OBO vocabularies in `obos` (one file text per entry); see
-/// `mztab_m::json::write_findings` for the JSON shape.
+/// `mztab_m_api::validate_json` / `findings_json` for the JSON shape.
 #[wasm_bindgen]
 #[must_use]
 #[expect(
@@ -24,13 +23,8 @@ fn format(input: &str) -> Format {
     reason = "wasm-bindgen passes JS string arrays by value"
 )]
 pub fn validate(input: &str, obos: Vec<String>) -> String {
-    let parsed = mztab_m_api::read(input.as_bytes(), format(input));
-    let vocabularies: Vec<Ontology<'_>> = obos.iter().map(|t| Ontology::parse(t)).collect();
-    let findings = mztab_m_api::validate(&parsed, &Settings::default(), &vocabularies.as_slice());
-    let mut out = String::new();
-    // Writing into a `String` cannot fail.
-    mztab_m::json::write_findings(&findings, &mut out).unwrap_or_default();
-    out
+    let obo: Vec<&str> = obos.iter().map(String::as_str).collect();
+    mztab_m_api::validate_json(input.as_bytes(), format(input), &obo, &Settings::default())
 }
 
 /// Converts a document to `"json"` or `"tsv"`.
@@ -40,7 +34,7 @@ pub fn validate(input: &str, obos: Vec<String>) -> String {
 /// Why the document cannot be written in that format.
 #[wasm_bindgen]
 pub fn convert(input: &str, to: &str) -> Result<String, String> {
-    Format::parse(to)
+    to.parse::<Format>()
         .and_then(|to| mztab_m_api::convert(input.as_bytes(), format(input), to, false))
         .map_err(|e| e.to_string())
 }

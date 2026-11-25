@@ -4,33 +4,31 @@
 use wasm_bindgen_test::wasm_bindgen_test as test;
 
 use mztab_m::{Code, Severity};
-use mztab_m_api::{Error, Fact, Format, Layer, Settings, check, convert, facts, read, severity};
+use mztab_m_api::{Error, Fact, Format, Layer, Settings, check, convert, facts, facts_json, read};
 
 const BASE: &str = include_str!("../../mztab-m/tests/golden/full.canonical.mztab");
 const BASE_JSON: &str = include_str!("../../mztab-m/tests/golden/full.json");
 
 #[test]
 fn names_parse() {
-    assert_eq!(Format::parse("json"), Ok(Format::Json), "json");
-    assert_eq!(Format::parse("tsv"), Ok(Format::Tsv), "tsv");
-    assert_eq!(Layer::parse("syntax"), Ok(Layer::Syntax), "syntax");
-    assert_eq!(Layer::parse("structure"), Ok(Layer::Structure), "structure");
-    assert_eq!(Layer::parse("semantic"), Ok(Layer::Semantic), "semantic");
-    assert_eq!(severity("info"), Ok(Severity::Info), "info");
-    assert_eq!(severity("warning"), Ok(Severity::Warning), "warning");
-    assert_eq!(severity("error"), Ok(Severity::Error), "error");
+    assert_eq!("json".parse::<Format>(), Ok(Format::Json), "json");
+    assert_eq!("tsv".parse::<Format>(), Ok(Format::Tsv), "tsv");
+    assert_eq!("syntax".parse::<Layer>(), Ok(Layer::Syntax), "syntax");
+    assert_eq!(
+        "structure".parse::<Layer>(),
+        Ok(Layer::Structure),
+        "structure"
+    );
+    assert_eq!("semantic".parse::<Layer>(), Ok(Layer::Semantic), "semantic");
+    assert!("all".parse::<Layer>().is_err(), "unknown layer");
     let errors = [
         (
-            Format::parse("xml").map(|_| ()),
+            "xml".parse::<Format>().map(|_| ()),
             "unknown format `xml` (tsv, json)",
         ),
         (
-            Layer::parse("all").map(|_| ()),
+            Err(Error::Layer("all".to_owned())),
             "unknown layer `all` (syntax, structure, semantic)",
-        ),
-        (
-            severity("fatal").map(|_| ()),
-            "unknown severity `fatal` (error, warning, info)",
         ),
         (
             Settings::default().set("nonsense").map(|_| ()),
@@ -67,18 +65,17 @@ fn settings_apply() {
         "override"
     );
     let bad = "MTD\tmzTab-version\t2.1\n";
-    let records = check(bad.as_bytes(), Format::Tsv, &[], &settings).unwrap_or_default();
+    let records = check(bad.as_bytes(), Format::Tsv, &[], &settings);
     assert!(records.iter().all(|r| r.code != "MZT-S006"), "disabled");
     let syntax = Settings::default().layer(Layer::Syntax);
-    let only = check(bad.as_bytes(), Format::Tsv, &[], &syntax).unwrap_or_default();
+    let only = check(bad.as_bytes(), Format::Tsv, &[], &syntax);
     assert!(only.iter().all(|r| r.layer == "syntax"), "syntax only");
     let semantic = check(
         BASE.as_bytes(),
         Format::Tsv,
         &["[Term]\nid: MS:1\n"],
         &Settings::default(),
-    )
-    .unwrap_or_default();
+    );
     assert!(
         semantic
             .iter()
@@ -90,8 +87,7 @@ fn settings_apply() {
 #[test]
 fn records_flatten_every_location() {
     let text = "MTD\tmzTab-version\t2.1\nMTD\tinstrument[1]-name\t[MS, MS:1, x, ]\n";
-    let records =
-        check(text.as_bytes(), Format::Tsv, &[], &Settings::default()).unwrap_or_default();
+    let records = check(text.as_bytes(), Format::Tsv, &[], &Settings::default());
     let version = records.iter().find(|r| r.code == "MZT-S006");
     assert!(
         version.is_some_and(|r| {
@@ -117,22 +113,11 @@ fn records_flatten_every_location() {
         Format::Json,
         &[],
         &Settings::default(),
-    )
-    .unwrap_or_default();
+    );
     assert!(
         json.iter()
             .any(|r| r.location == "/metadata/x" && r.detail.is_none()),
         "pointer, no detail: {json:?}"
-    );
-    let mut model = read(BASE.as_bytes(), Format::Tsv).mztab;
-    model.layout = mztab_m::SourceLayout::default();
-    model.metadata.title = Some(mztab_m::Cell::Invalid(mztab_m::Raw::new("x")));
-    let findings = mztab_m::validate::structure(&model, &mztab_m::validate::Config::default());
-    assert!(
-        mztab_m_api::records(&findings)
-            .iter()
-            .any(|r| r.location == "metadata.title"),
-        "model path"
     );
 }
 
@@ -183,22 +168,23 @@ fn facts_render() {
     );
     assert_eq!(get("sml_rows"), Some(Fact::Rows(Some(2))), "rows");
     let empty = read(b"MTD\ttitle\ta \"b\" \\ c\x01\n", Format::Tsv);
-    let facts = mztab_m_api::facts(&empty);
-    let rendered: Vec<(String, String)> = facts
-        .iter()
-        .map(|(k, v)| (v.to_json(), format!("{k}={v}")))
-        .collect();
+    let doc_facts = mztab_m_api::facts(&empty);
+    let rendered: Vec<String> = doc_facts.iter().map(|(k, v)| format!("{k}={v}")).collect();
     for expected in [
-        ("null".to_owned(), "version=null".to_owned()),
-        (
-            r#""a \"b\" \\ c\u0001""#.to_owned(),
-            "title=a \"b\" \\ c\u{1}".to_owned(),
-        ),
-        ("null".to_owned(), "sml_rows=null".to_owned()),
-        ("0".to_owned(), "assays=0".to_owned()),
+        "version=null".to_owned(),
+        "title=a \"b\" \\ c\u{1}".to_owned(),
+        "sml_rows=null".to_owned(),
+        "assays=0".to_owned(),
     ] {
         assert!(rendered.contains(&expected), "{expected:?} in {rendered:?}");
     }
+    let json = facts_json(&empty);
+    assert!(
+        json.contains(r#""version":null,"#)
+            && json.contains(r#""title":"a \"b\" \\ c\u0001","#)
+            && json.contains(r#""sml_rows":null,"#),
+        "facts json escaping: {json}"
+    );
 }
 
 #[test]
@@ -229,4 +215,86 @@ fn reader_errors_count_errors_only() {
     };
     assert_eq!(get("reader_findings"), Some(Fact::Count(3)), "all three");
     assert_eq!(get("reader_errors"), Some(Fact::Count(1)), "the error");
+}
+
+#[test]
+fn write_preserves_comments_for_tsv_and_handles_lossy() {
+    let commented = format!("COM\theader note\r\n{BASE}");
+    let parsed = read(commented.as_bytes(), Format::Tsv);
+    let res = mztab_m_api::write(&parsed.mztab, Format::Tsv, false);
+    assert!(
+        res.as_ref().is_ok_and(|(tsv_out, stripped)| {
+            *stripped == mztab_m::Stripped::default()
+                && tsv_out.contains("COM\theader note\n")
+                && !tsv_out.contains("\r\n")
+        }),
+        "comments preserved and line endings normalized: {res:?}"
+    );
+
+    let with_unknown = format!("MTD\textra_key\tval\n{BASE}");
+    let parsed_unknown = read(with_unknown.as_bytes(), Format::Tsv);
+    let lossy = mztab_m_api::write(&parsed_unknown.mztab, Format::Tsv, true);
+    assert_eq!(
+        lossy,
+        Ok((
+            BASE.to_owned(),
+            mztab_m::Stripped {
+                metadata: 1,
+                columns: 0,
+                cells: 0,
+            }
+        ))
+    );
+}
+
+#[test]
+fn facade_exposes_codes_facts_json_and_obo_validation() {
+    assert!(!mztab_m_api::SPEC_COMMIT.is_empty(), "spec commit exposed");
+    assert_eq!(mztab_m_api::SPEC_VERSION, "2.1.0-M", "spec version exposed");
+
+    let catalog = mztab_m_api::codes();
+    assert_eq!(catalog.len(), Code::ALL.len(), "every code listed");
+    assert!(
+        matches!(
+            (catalog.first(), Code::ALL.first()),
+            (Some(first), Some(code))
+                if first.code == "MZT-S001"
+                    && first.layer == "syntax"
+                    && first.requirement == "MUST"
+                    && first.summary == code.summary()
+                    && first.spec.starts_with("https://github.com/HUPO-PSI/mzTab-M/blob/")
+        ),
+        "first code metadata: {:?}",
+        catalog.first()
+    );
+
+    let parsed = read(BASE.as_bytes(), Format::Tsv);
+    let json_facts = facts_json(&parsed);
+    assert!(
+        json_facts.starts_with(r#"{"version":"2.1.0-M","#)
+            && json_facts.ends_with(r#""reader_errors":0}"#),
+        "facts json object: {json_facts}"
+    );
+
+    let json_findings = mztab_m_api::validate_json(
+        BASE.as_bytes(),
+        Format::Tsv,
+        &["[Term]\nid: MS:1\n"],
+        &Settings::default(),
+    );
+    assert!(
+        json_findings.starts_with('[')
+            && json_findings.contains("MZT-X004")
+            && json_findings.ends_with(']'),
+        "validate_json output: {json_findings}"
+    );
+
+    assert_eq!(mztab_m_api::vocabulary_size(""), 0, "empty vocabulary");
+    assert_eq!(
+        mztab_m_api::vocabulary_size(
+            "[Term]\nid: UO:0000010\nname: second\n\n[Term]\nid: UO:0000028\nname: millisecond\n"
+        ),
+        2,
+        "vocabulary size"
+    );
 }
