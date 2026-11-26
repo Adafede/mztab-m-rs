@@ -51,7 +51,14 @@ pub(crate) fn mtd_value<'a>(cx: &mut Cx<'_>, kind: ValueKind, raw: RawCell<'a>) 
                         0,
                         Detail::Expected("`pubmed:`, `doi:` or `uri:` followed by an accession"),
                     ),
-                    PublicationItemError::Accession(t) => (Code::TextCell, 0, Detail::Text(t)),
+                    PublicationItemError::Accession(t) => {
+                        let at = item
+                            .text
+                            .trim_start_matches(' ')
+                            .find(':')
+                            .map_or(0, |c| c + 1);
+                        (Code::TextCell, at + t.offset(), Detail::Text(t))
+                    }
                 },
             )
         })),
@@ -78,7 +85,7 @@ pub(crate) fn mtd_value<'a>(cx: &mut Cx<'_>, kind: ValueKind, raw: RawCell<'a>) 
                     0,
                     Detail::Expected("`column=[unit parameter]`"),
                 ),
-                ColUnitError::Column(t) => (Code::TextCell, 0, Detail::Text(t)),
+                ColUnitError::Column(t) => (Code::TextCell, t.offset(), Detail::Text(t)),
                 ColUnitError::Param(p) => {
                     let at = raw
                         .text

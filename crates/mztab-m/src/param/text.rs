@@ -110,7 +110,7 @@ impl<'a> ParamText<'a> {
 
     /// Whether the writer must quote this text.
     fn needs_quotes(&self) -> bool {
-        self.0.contains(',') || self.0.starts_with(' ') || self.0.ends_with(' ')
+        self.0.contains([',', '[', ']', '|']) || self.0.starts_with(' ') || self.0.ends_with(' ')
     }
 }
 

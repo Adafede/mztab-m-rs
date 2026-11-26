@@ -16,6 +16,7 @@ struct Writer<'o, 'r, 'a> {
     mztab: &'r MzTab<'a>,
     slots: TableSlots,
     open: bool,
+    wrote_any: bool,
 }
 
 impl<'r, 'a> Writer<'_, 'r, 'a> {
@@ -23,12 +24,14 @@ impl<'r, 'a> Writer<'_, 'r, 'a> {
     fn canonical(&mut self, item: &Item<'r, 'a>) -> Result<(), WriteError> {
         self.close()?;
         item_line(&mut self.out, self.mztab, &self.slots, item)?;
+        self.wrote_any = true;
         self.out.ending(LineEnding::Lf)
     }
 
     /// Writes a blank separator line.
     fn blank(&mut self) -> Result<(), WriteError> {
         self.close()?;
+        self.wrote_any = true;
         self.out.ending(LineEnding::Lf)
     }
 
@@ -57,6 +60,7 @@ impl<'r, 'a> Writer<'_, 'r, 'a> {
             Some(v) => self.out.str(v.text.as_str())?,
             None => item_line(&mut self.out, self.mztab, &self.slots, item)?,
         }
+        self.wrote_any = true;
         self.out.ending(line.ending)?;
         self.open = line.ending == LineEnding::None;
         Ok(())
@@ -105,6 +109,7 @@ pub(super) fn write_layout(mztab: &MzTab<'_>, out: &mut dyn fmt::Write) -> Resul
         mztab,
         slots: TableSlots::of(mztab),
         open: false,
+        wrote_any: false,
     };
     if mztab.layout.bom {
         w.out.str("\u{feff}")?;
@@ -153,11 +158,12 @@ fn append_unplaced_tables<'r, 'a>(
     w: &mut Writer<'_, 'r, 'a>,
     pending: &mut Pending<'r, 'a>,
 ) -> Result<(), WriteError> {
-    // Non-empty `layout.lines` already wrote at least one section or line.
     for section in TableSection::ALL {
         let t = section.index();
         if has_table(w.mztab, section) && pending.headers.get(t) == Some(&false) {
-            w.blank()?;
+            if w.wrote_any {
+                w.blank()?;
+            }
             w.canonical(&Item::Header(section))?;
             w.rest_of_rows(pending, section)?;
         }
@@ -178,6 +184,7 @@ pub(super) fn write_canonical_opts(
         mztab,
         slots: TableSlots::of(mztab),
         open: false,
+        wrote_any: false,
     };
     let mut anything = !entries.is_empty() || !mztab.metadata.unknown.is_empty();
     for (key, value) in entries {

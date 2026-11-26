@@ -87,7 +87,7 @@ impl Typer {
         sink: &mut dyn FnMut(Event<'a>),
     ) {
         let valid = bytes.get(..valid_up_to).unwrap_or_default();
-        let column = String::from_utf8_lossy(valid).chars().count();
+        let column = core::str::from_utf8(valid).map_or(0, |s| s.chars().count());
         let column = u32::try_from(column).map_or(u32::MAX, |n| n.saturating_add(1));
         self.findings.push(Finding::new(
             Code::Utf8,
@@ -227,7 +227,7 @@ fn known_prefix_ignoring_case(prefix: &str) -> Option<&'static str> {
 }
 
 /// Types a header line, unless the section already has one.
-fn header_slot<'a, S: Copy + Ord>(
+fn header_slot<'a, S: Copy>(
     cx: &mut Cx<'_>,
     slots: &mut Option<Vec<Slot<S>>>,
     section: Section,

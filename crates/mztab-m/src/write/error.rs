@@ -21,11 +21,13 @@ use core::fmt;
 pub enum WriteError {
     /// The output (`fmt::Write`) failed.
     Fmt,
-    /// A value cannot be written so that it reads back the same. Only
-    /// models built or edited in code can hit this: raw text (in
-    /// [`Cell::Invalid`](crate::Cell::Invalid), unknown columns or unknown metadata) that contains
-    /// a tab or line break, a list item containing `|`, an empty list, or a
-    /// unit column name containing `=`.
+    /// A value cannot be written so that it reads back the same. Models built
+    /// or edited in code can hit this: raw text (in [`Cell::Invalid`](crate::Cell::Invalid),
+    /// unknown columns, unknown metadata, or verbatim layout lines) containing
+    /// a tab or line break, invalid text `null`, a list item containing `|` or
+    /// leaving `[` or `"` open, an empty list, a list of one `null` or empty
+    /// item, a unit column name containing `=`, a line ending in `\r`, or a
+    /// blank/unrecognized layout line that mimics another line kind.
     Unwritable {
         /// 1-based output line being written.
         line: u32,

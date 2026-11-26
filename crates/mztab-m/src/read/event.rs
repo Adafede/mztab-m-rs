@@ -10,9 +10,9 @@ use crate::value::text::Raw;
 
 /// One step of reading: a typed line, a layout fact, or a finding.
 ///
-/// Every line of the input produces exactly one line event (all variants
-/// but [`Event::Bom`] and [`Event::Finding`]), followed by the findings
-/// about it.
+/// Every line of the input produces one line event (all variants except
+/// [`Event::Bom`], [`Event::Verbatim`], and [`Event::Finding`]), followed by
+/// its [`Event::Verbatim`] if non-canonical and any [`Event::Finding`]s about it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[expect(
     clippy::large_enum_variant,

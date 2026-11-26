@@ -115,7 +115,7 @@ fn special_column(label: &str, section: Section) -> Option<Special<'_>> {
 
 /// Types a header line's column cells. Unknown and repeated columns become
 /// [`Column::Unknown`], with a finding.
-pub(crate) fn header<'a, S: Copy + Ord>(
+pub(crate) fn header<'a, S: Copy>(
     cx: &mut Cx<'_>,
     section: Section,
     cells: impl Iterator<Item = RawCell<'a>>,

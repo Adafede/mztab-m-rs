@@ -213,9 +213,68 @@ fn metadata_keys_hold_one_value_of_their_kind() {
         assert_eq!(metadata.insert(key, value), again, "{key}: second value");
         checked += 1;
     }
+    assert!(
+        metadata.insert(
+            mztab_m::MtdKey::Software(
+                mztab_m::SoftwareId::new(99).expect("non-zero"),
+                mztab_m::SoftwareKey::Software,
+            ),
+            text(),
+        ) == Err(InsertError::WrongKind)
+            && !metadata
+                .software
+                .contains_key(mztab_m::SoftwareId::new(99).expect("non-zero")),
+        "WrongKind insert must not mutate IndexMap"
+    );
     assert_eq!(
         checked, 123,
         "all 78 key forms, one colunit twice, eleven more CVs (four keys each)"
+    );
+}
+
+#[test]
+fn keep_spaces_text_and_sub_cell_error_columns() {
+    // Spaces::Keep preserves `" null"` and `"   "` with a whitespace warning.
+    let padded_null = parse_bytes(b"MTD\ttitle\t null\n");
+    assert_eq!(
+        padded_null.mztab.metadata.title,
+        Some(mztab_m::Cell::Value(
+            mztab_m::Text::new(" null").expect("valid")
+        ))
+    );
+    assert_eq!(padded_null.findings.len(), 1);
+    assert_eq!(
+        padded_null.findings.iter().next().map(|f| f.code),
+        Some(Code::CellWhitespace)
+    );
+
+    let spaces_only = parse_bytes(b"MTD\ttitle\t   \n");
+    assert_eq!(
+        spaces_only.mztab.metadata.title,
+        Some(mztab_m::Cell::Value(
+            mztab_m::Text::new("   ").expect("valid")
+        ))
+    );
+    assert_eq!(
+        spaces_only.findings.iter().next().map(|f| f.code),
+        Some(Code::CellWhitespace)
+    );
+
+    // Sub-cell TextError offsets include prefix (`doi:`, `ms_run[1]:`, colunit column).
+    let pub_err = parse_bytes(b"MTD\tpublication[1]\tdoi:abc\rdef\n");
+    assert_eq!(
+        pub_err.findings.iter().next().map(|f| f.location.clone()),
+        Some(Location::text(1, 27).with_cell(3))
+    );
+    let col_err = parse_bytes(b"MTD\tcolunit-small_molecule\tx\ry=[,,u,]\n");
+    assert_eq!(
+        col_err.findings.iter().next().map(|f| f.location.clone()),
+        Some(Location::text(1, 29).with_cell(3))
+    );
+    let spec_err = parse_bytes(b"SEH\tspectra_ref\nSME\tms_run[1]:a\rb\n");
+    assert_eq!(
+        spec_err.findings.iter().next().map(|f| f.location.clone()),
+        Some(Location::text(2, 16).with_cell(2))
     );
 }
 

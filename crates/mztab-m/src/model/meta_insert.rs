@@ -131,10 +131,19 @@ impl<'a> Inserter<'_, 'a> {
         k: SoftwareKey,
         value: MtdValue<'a>,
     ) -> Result<(), InsertError> {
-        let software = self.0.software.get_or_insert_default(n);
         match k {
-            SoftwareKey::Software => put(&mut software.param, expect_kind!(value, Param)),
-            SoftwareKey::Setting(m) => put_at(&mut software.setting, m, expect_kind!(value, Text)),
+            SoftwareKey::Software => {
+                let cell = expect_kind!(value, Param);
+                put(&mut self.0.software.get_or_insert_default(n).param, cell)
+            }
+            SoftwareKey::Setting(m) => {
+                let cell = expect_kind!(value, Text);
+                put_at(
+                    &mut self.0.software.get_or_insert_default(n).setting,
+                    m,
+                    cell,
+                )
+            }
         }
     }
 
@@ -163,13 +172,28 @@ impl<'a> Inserter<'_, 'a> {
         k: ProtocolKey,
         value: MtdValue<'a>,
     ) -> Result<(), InsertError> {
-        let protocol = self.0.protocol.get_or_insert_default(n);
         match k {
-            ProtocolKey::Name => put(&mut protocol.name, expect_kind!(value, Text)),
-            ProtocolKey::Description => put(&mut protocol.description, expect_kind!(value, Text)),
-            ProtocolKey::Type => put(&mut protocol.type_, expect_kind!(value, Param)),
+            ProtocolKey::Name => {
+                let cell = expect_kind!(value, Text);
+                put(&mut self.0.protocol.get_or_insert_default(n).name, cell)
+            }
+            ProtocolKey::Description => {
+                let cell = expect_kind!(value, Text);
+                put(
+                    &mut self.0.protocol.get_or_insert_default(n).description,
+                    cell,
+                )
+            }
+            ProtocolKey::Type => {
+                let cell = expect_kind!(value, Param);
+                put(&mut self.0.protocol.get_or_insert_default(n).type_, cell)
+            }
             ProtocolKey::Parameters => {
-                put(&mut protocol.parameters, expect_kind!(value, ParamList))
+                let cell = expect_kind!(value, ParamList);
+                put(
+                    &mut self.0.protocol.get_or_insert_default(n).parameters,
+                    cell,
+                )
             }
         }
     }
@@ -194,12 +218,23 @@ impl<'a> Inserter<'_, 'a> {
         k: DatabaseKey,
         value: MtdValue<'a>,
     ) -> Result<(), InsertError> {
-        let database = self.0.database.get_or_insert_default(n);
         match k {
-            DatabaseKey::Database => put(&mut database.param, expect_kind!(value, Param)),
-            DatabaseKey::Prefix => put(&mut database.prefix, expect_kind!(value, Text)),
-            DatabaseKey::Version => put(&mut database.version, expect_kind!(value, Text)),
-            DatabaseKey::Uri => put(&mut database.uri, expect_kind!(value, Text)),
+            DatabaseKey::Database => {
+                let cell = expect_kind!(value, Param);
+                put(&mut self.0.database.get_or_insert_default(n).param, cell)
+            }
+            DatabaseKey::Prefix => {
+                let cell = expect_kind!(value, Text);
+                put(&mut self.0.database.get_or_insert_default(n).prefix, cell)
+            }
+            DatabaseKey::Version => {
+                let cell = expect_kind!(value, Text);
+                put(&mut self.0.database.get_or_insert_default(n).version, cell)
+            }
+            DatabaseKey::Uri => {
+                let cell = expect_kind!(value, Text);
+                put(&mut self.0.database.get_or_insert_default(n).uri, cell)
+            }
         }
     }
 
@@ -209,14 +244,30 @@ impl<'a> Inserter<'_, 'a> {
         k: InstrumentKey,
         value: MtdValue<'a>,
     ) -> Result<(), InsertError> {
-        let instrument = self.0.instrument.get_or_insert_default(n);
         match k {
             InstrumentKey::Analyzer(m) => {
-                put_at(&mut instrument.analyzer, m, expect_kind!(value, ParamList))
+                let cell = expect_kind!(value, ParamList);
+                put_at(
+                    &mut self.0.instrument.get_or_insert_default(n).analyzer,
+                    m,
+                    cell,
+                )
             }
-            InstrumentKey::Name => put(&mut instrument.name, expect_kind!(value, Param)),
-            InstrumentKey::Source => put(&mut instrument.source, expect_kind!(value, Param)),
-            InstrumentKey::Detector => put(&mut instrument.detector, expect_kind!(value, Param)),
+            InstrumentKey::Name => {
+                let cell = expect_kind!(value, Param);
+                put(&mut self.0.instrument.get_or_insert_default(n).name, cell)
+            }
+            InstrumentKey::Source => {
+                let cell = expect_kind!(value, Param);
+                put(&mut self.0.instrument.get_or_insert_default(n).source, cell)
+            }
+            InstrumentKey::Detector => {
+                let cell = expect_kind!(value, Param);
+                put(
+                    &mut self.0.instrument.get_or_insert_default(n).detector,
+                    cell,
+                )
+            }
         }
     }
 
@@ -226,17 +277,42 @@ impl<'a> Inserter<'_, 'a> {
         k: SampleKey,
         value: MtdValue<'a>,
     ) -> Result<(), InsertError> {
-        let sample = self.0.sample.get_or_insert_default(n);
         match k {
-            SampleKey::Name => put(&mut sample.name, expect_kind!(value, Text)),
-            SampleKey::Description => put(&mut sample.description, expect_kind!(value, Text)),
-            SampleKey::Species(m) => put_at(&mut sample.species, m, expect_kind!(value, ParamList)),
-            SampleKey::Tissue(m) => put_at(&mut sample.tissue, m, expect_kind!(value, ParamList)),
-            SampleKey::CellType(m) => {
-                put_at(&mut sample.cell_type, m, expect_kind!(value, ParamList))
+            SampleKey::Name => {
+                let cell = expect_kind!(value, Text);
+                put(&mut self.0.sample.get_or_insert_default(n).name, cell)
             }
-            SampleKey::Disease(m) => put_at(&mut sample.disease, m, expect_kind!(value, ParamList)),
-            SampleKey::Custom(m) => put_at(&mut sample.custom, m, expect_kind!(value, ParamList)),
+            SampleKey::Description => {
+                let cell = expect_kind!(value, Text);
+                put(
+                    &mut self.0.sample.get_or_insert_default(n).description,
+                    cell,
+                )
+            }
+            SampleKey::Species(m) => {
+                let cell = expect_kind!(value, ParamList);
+                put_at(&mut self.0.sample.get_or_insert_default(n).species, m, cell)
+            }
+            SampleKey::Tissue(m) => {
+                let cell = expect_kind!(value, ParamList);
+                put_at(&mut self.0.sample.get_or_insert_default(n).tissue, m, cell)
+            }
+            SampleKey::CellType(m) => {
+                let cell = expect_kind!(value, ParamList);
+                put_at(
+                    &mut self.0.sample.get_or_insert_default(n).cell_type,
+                    m,
+                    cell,
+                )
+            }
+            SampleKey::Disease(m) => {
+                let cell = expect_kind!(value, ParamList);
+                put_at(&mut self.0.sample.get_or_insert_default(n).disease, m, cell)
+            }
+            SampleKey::Custom(m) => {
+                let cell = expect_kind!(value, ParamList);
+                put_at(&mut self.0.sample.get_or_insert_default(n).custom, m, cell)
+            }
         }
     }
 
@@ -246,25 +322,63 @@ impl<'a> Inserter<'_, 'a> {
         k: MsRunKey,
         value: MtdValue<'a>,
     ) -> Result<(), InsertError> {
-        let run = self.0.ms_run.get_or_insert_default(n);
         match k {
-            MsRunKey::Location => put(&mut run.location, expect_kind!(value, Text)),
-            MsRunKey::Hash => put(&mut run.hash, expect_kind!(value, Text)),
-            MsRunKey::UsiIdentifier => put(&mut run.usi_identifier, expect_kind!(value, Text)),
-            MsRunKey::InstrumentRef => {
-                put(&mut run.instrument_ref, expect_kind!(value, InstrumentRef))
+            MsRunKey::Location => {
+                let cell = expect_kind!(value, Text);
+                put(&mut self.0.ms_run.get_or_insert_default(n).location, cell)
             }
-            MsRunKey::Format => put(&mut run.format, expect_kind!(value, Param)),
-            MsRunKey::IdFormat => put(&mut run.id_format, expect_kind!(value, Param)),
-            MsRunKey::HashMethod => put(&mut run.hash_method, expect_kind!(value, Param)),
-            MsRunKey::Parameters => put(&mut run.parameters, expect_kind!(value, ParamList)),
-            MsRunKey::FragmentationMethod(m) => put_at(
-                &mut run.fragmentation_method,
-                m,
-                expect_kind!(value, ParamList),
-            ),
+            MsRunKey::Hash => {
+                let cell = expect_kind!(value, Text);
+                put(&mut self.0.ms_run.get_or_insert_default(n).hash, cell)
+            }
+            MsRunKey::UsiIdentifier => {
+                let cell = expect_kind!(value, Text);
+                put(
+                    &mut self.0.ms_run.get_or_insert_default(n).usi_identifier,
+                    cell,
+                )
+            }
+            MsRunKey::InstrumentRef => {
+                let cell = expect_kind!(value, InstrumentRef);
+                put(
+                    &mut self.0.ms_run.get_or_insert_default(n).instrument_ref,
+                    cell,
+                )
+            }
+            MsRunKey::Format => {
+                let cell = expect_kind!(value, Param);
+                put(&mut self.0.ms_run.get_or_insert_default(n).format, cell)
+            }
+            MsRunKey::IdFormat => {
+                let cell = expect_kind!(value, Param);
+                put(&mut self.0.ms_run.get_or_insert_default(n).id_format, cell)
+            }
+            MsRunKey::HashMethod => {
+                let cell = expect_kind!(value, Param);
+                put(
+                    &mut self.0.ms_run.get_or_insert_default(n).hash_method,
+                    cell,
+                )
+            }
+            MsRunKey::Parameters => {
+                let cell = expect_kind!(value, ParamList);
+                put(&mut self.0.ms_run.get_or_insert_default(n).parameters, cell)
+            }
+            MsRunKey::FragmentationMethod(m) => {
+                let cell = expect_kind!(value, ParamList);
+                put_at(
+                    &mut self.0.ms_run.get_or_insert_default(n).fragmentation_method,
+                    m,
+                    cell,
+                )
+            }
             MsRunKey::ScanPolarity(m) => {
-                put_at(&mut run.scan_polarity, m, expect_kind!(value, ParamList))
+                let cell = expect_kind!(value, ParamList);
+                put_at(
+                    &mut self.0.ms_run.get_or_insert_default(n).scan_polarity,
+                    m,
+                    cell,
+                )
             }
         }
     }
@@ -275,17 +389,41 @@ impl<'a> Inserter<'_, 'a> {
         k: AssayKey,
         value: MtdValue<'a>,
     ) -> Result<(), InsertError> {
-        let assay = self.0.assay.get_or_insert_default(n);
         match k {
-            AssayKey::Name => put(&mut assay.name, expect_kind!(value, Text)),
-            AssayKey::ExternalUri => put(&mut assay.external_uri, expect_kind!(value, Text)),
-            AssayKey::Custom(m) => put_at(&mut assay.custom, m, expect_kind!(value, ParamList)),
-            AssayKey::SampleRef => put(&mut assay.sample_ref, expect_kind!(value, SampleRef)),
-            AssayKey::MsRunRef => put(&mut assay.ms_run_ref, expect_kind!(value, MsRunRefs)),
-            AssayKey::ProtocolRefs => {
-                put(&mut assay.protocol_refs, expect_kind!(value, ProtocolRefs))
+            AssayKey::Name => {
+                let cell = expect_kind!(value, Text);
+                put(&mut self.0.assay.get_or_insert_default(n).name, cell)
             }
-            AssayKey::Parameters => put(&mut assay.parameters, expect_kind!(value, ParamList)),
+            AssayKey::ExternalUri => {
+                let cell = expect_kind!(value, Text);
+                put(
+                    &mut self.0.assay.get_or_insert_default(n).external_uri,
+                    cell,
+                )
+            }
+            AssayKey::Custom(m) => {
+                let cell = expect_kind!(value, ParamList);
+                put_at(&mut self.0.assay.get_or_insert_default(n).custom, m, cell)
+            }
+            AssayKey::SampleRef => {
+                let cell = expect_kind!(value, SampleRef);
+                put(&mut self.0.assay.get_or_insert_default(n).sample_ref, cell)
+            }
+            AssayKey::MsRunRef => {
+                let cell = expect_kind!(value, MsRunRefs);
+                put(&mut self.0.assay.get_or_insert_default(n).ms_run_ref, cell)
+            }
+            AssayKey::ProtocolRefs => {
+                let cell = expect_kind!(value, ProtocolRefs);
+                put(
+                    &mut self.0.assay.get_or_insert_default(n).protocol_refs,
+                    cell,
+                )
+            }
+            AssayKey::Parameters => {
+                let cell = expect_kind!(value, ParamList);
+                put(&mut self.0.assay.get_or_insert_default(n).parameters, cell)
+            }
         }
     }
 
@@ -295,19 +433,64 @@ impl<'a> Inserter<'_, 'a> {
         k: StudyVariableKey,
         value: MtdValue<'a>,
     ) -> Result<(), InsertError> {
-        let sv = self.0.study_variable.get_or_insert_default(n);
         match k {
-            StudyVariableKey::Name => put(&mut sv.name, expect_kind!(value, Text)),
-            StudyVariableKey::Description => put(&mut sv.description, expect_kind!(value, Text)),
-            StudyVariableKey::AssayRefs => put(&mut sv.assay_refs, expect_kind!(value, AssayRefs)),
-            StudyVariableKey::MsRunRefs => put(&mut sv.ms_run_refs, expect_kind!(value, MsRunRefs)),
+            StudyVariableKey::Name => {
+                let cell = expect_kind!(value, Text);
+                put(
+                    &mut self.0.study_variable.get_or_insert_default(n).name,
+                    cell,
+                )
+            }
+            StudyVariableKey::Description => {
+                let cell = expect_kind!(value, Text);
+                put(
+                    &mut self.0.study_variable.get_or_insert_default(n).description,
+                    cell,
+                )
+            }
+            StudyVariableKey::AssayRefs => {
+                let cell = expect_kind!(value, AssayRefs);
+                put(
+                    &mut self.0.study_variable.get_or_insert_default(n).assay_refs,
+                    cell,
+                )
+            }
+            StudyVariableKey::MsRunRefs => {
+                let cell = expect_kind!(value, MsRunRefs);
+                put(
+                    &mut self.0.study_variable.get_or_insert_default(n).ms_run_refs,
+                    cell,
+                )
+            }
             StudyVariableKey::AverageFunction => {
-                put(&mut sv.average_function, expect_kind!(value, Param))
+                let cell = expect_kind!(value, Param);
+                put(
+                    &mut self
+                        .0
+                        .study_variable
+                        .get_or_insert_default(n)
+                        .average_function,
+                    cell,
+                )
             }
             StudyVariableKey::VariationFunction => {
-                put(&mut sv.variation_function, expect_kind!(value, Param))
+                let cell = expect_kind!(value, Param);
+                put(
+                    &mut self
+                        .0
+                        .study_variable
+                        .get_or_insert_default(n)
+                        .variation_function,
+                    cell,
+                )
             }
-            StudyVariableKey::Factors => put(&mut sv.factors, expect_kind!(value, ParamList)),
+            StudyVariableKey::Factors => {
+                let cell = expect_kind!(value, ParamList);
+                put(
+                    &mut self.0.study_variable.get_or_insert_default(n).factors,
+                    cell,
+                )
+            }
         }
     }
 
@@ -317,21 +500,61 @@ impl<'a> Inserter<'_, 'a> {
         k: StudyVariableGroupKey,
         value: MtdValue<'a>,
     ) -> Result<(), InsertError> {
-        let group = self.0.study_variable_group.get_or_insert_default(n);
         match k {
-            StudyVariableGroupKey::Group => put(&mut group.param, expect_kind!(value, Param)),
+            StudyVariableGroupKey::Group => {
+                let cell = expect_kind!(value, Param);
+                put(
+                    &mut self.0.study_variable_group.get_or_insert_default(n).param,
+                    cell,
+                )
+            }
             StudyVariableGroupKey::Description => {
-                put(&mut group.description, expect_kind!(value, Text))
+                let cell = expect_kind!(value, Text);
+                put(
+                    &mut self
+                        .0
+                        .study_variable_group
+                        .get_or_insert_default(n)
+                        .description,
+                    cell,
+                )
             }
-            StudyVariableGroupKey::Type => put(&mut group.type_, expect_kind!(value, Param)),
+            StudyVariableGroupKey::Type => {
+                let cell = expect_kind!(value, Param);
+                put(
+                    &mut self.0.study_variable_group.get_or_insert_default(n).type_,
+                    cell,
+                )
+            }
             StudyVariableGroupKey::Datatype => {
-                put(&mut group.datatype, expect_kind!(value, Datatype))
+                let cell = expect_kind!(value, Datatype);
+                put(
+                    &mut self
+                        .0
+                        .study_variable_group
+                        .get_or_insert_default(n)
+                        .datatype,
+                    cell,
+                )
             }
-            StudyVariableGroupKey::Unit => put(&mut group.unit, expect_kind!(value, Param)),
-            StudyVariableGroupKey::StudyVariableRefs => put(
-                &mut group.study_variable_refs,
-                expect_kind!(value, StudyVariableRefs),
-            ),
+            StudyVariableGroupKey::Unit => {
+                let cell = expect_kind!(value, Param);
+                put(
+                    &mut self.0.study_variable_group.get_or_insert_default(n).unit,
+                    cell,
+                )
+            }
+            StudyVariableGroupKey::StudyVariableRefs => {
+                let cell = expect_kind!(value, StudyVariableRefs);
+                put(
+                    &mut self
+                        .0
+                        .study_variable_group
+                        .get_or_insert_default(n)
+                        .study_variable_refs,
+                    cell,
+                )
+            }
         }
     }
 }

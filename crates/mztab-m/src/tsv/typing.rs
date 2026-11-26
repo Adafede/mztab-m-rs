@@ -91,7 +91,11 @@ impl<'a> Pre<'a> {
     /// cell types.
     fn of(cx: &mut Cx<'_>, raw: RawCell<'a>, spaces: Spaces) -> Self {
         let trimmed = raw.text.trim_matches(' ');
-        if trimmed.is_empty() {
+        let effective = match spaces {
+            Spaces::Keep => raw.text,
+            Spaces::Trim | Spaces::List => trimmed,
+        };
+        if effective.is_empty() {
             cx.report(
                 Code::TextCell,
                 raw.offset,
@@ -101,15 +105,15 @@ impl<'a> Pre<'a> {
             return Self::Invalid(Raw::new(raw.text));
         }
         let padded = trimmed.len() != raw.text.len();
-        if padded && (spaces != Spaces::List || trimmed == NULL) {
+        if padded && (spaces != Spaces::List || effective == NULL) {
             cx.report(Code::CellWhitespace, raw.offset, raw.number, Detail::None);
         }
-        if trimmed == NULL {
+        if effective == NULL {
             return Self::Null;
         }
         match spaces {
-            Spaces::Keep => Self::Parse(raw.text, 0),
-            Spaces::Trim | Spaces::List => Self::Parse(
+            Spaces::Keep | Spaces::List => Self::Parse(raw.text, 0),
+            Spaces::Trim => Self::Parse(
                 trimmed,
                 raw.text.len() - raw.text.trim_start_matches(' ').len(),
             ),
@@ -188,7 +192,14 @@ pub(super) fn spectra_ref<'a>(cx: &mut Cx<'_>, raw: RawCell<'a>) -> Cell<'a, Spe
             0,
             Detail::Expected("`ms_run[n]:` followed by a spectrum reference"),
         ),
-        SpectraRefError::Reference(t) => (Code::TextCell, 0, Detail::Text(t)),
+        SpectraRefError::Reference(t) => {
+            let at = raw
+                .text
+                .trim_start_matches(' ')
+                .find(':')
+                .map_or(0, |c| c + 1);
+            (Code::TextCell, at + t.offset(), Detail::Text(t))
+        }
     })
 }
 

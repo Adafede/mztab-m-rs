@@ -106,6 +106,9 @@ impl<'r, 'a> Pending<'r, 'a> {
             }
             LineContent::Row(section) => {
                 let table = TableSection::from_section(*section)?;
+                if !*table.pick(&self.headers) {
+                    return None;
+                }
                 let rows = self.row_count(table);
                 let written = table.pick_mut(&mut self.rows);
                 let n = *written;
@@ -206,9 +209,9 @@ pub(crate) fn header_text(mztab: &MzTab<'_>, section: TableSection) -> Option<St
     let mut text = String::new();
     let mut out = Out::new(&mut text);
     let res = match section {
-        TableSection::Sml => table_header(&mut out, section, mztab.sml.as_ref()),
-        TableSection::Smf => table_header(&mut out, section, mztab.smf.as_ref()),
-        TableSection::Sme => table_header(&mut out, section, mztab.sme.as_ref()),
+        TableSection::Sml => header_line(&mut out, section, &mztab.sml.as_ref()?.header),
+        TableSection::Smf => header_line(&mut out, section, &mztab.smf.as_ref()?.header),
+        TableSection::Sme => header_line(&mut out, section, &mztab.sme.as_ref()?.header),
     };
     res.ok()?;
     Some(text)
@@ -219,37 +222,47 @@ pub(crate) fn row_text(mztab: &MzTab<'_>, section: TableSection, row: usize) -> 
     let mut text = String::new();
     let mut out = Out::new(&mut text);
     let res = match section {
-        TableSection::Sml => table_row(
-            &mut out,
-            section,
-            mztab.sml.as_ref(),
-            &mztab
-                .sml
-                .as_ref()
-                .map_or_else(Vec::new, |t| slots(&t.header)),
-            row,
-        ),
-        TableSection::Smf => table_row(
-            &mut out,
-            section,
-            mztab.smf.as_ref(),
-            &mztab
-                .smf
-                .as_ref()
-                .map_or_else(Vec::new, |t| slots(&t.header)),
-            row,
-        ),
-        TableSection::Sme => table_row(
-            &mut out,
-            section,
-            mztab.sme.as_ref(),
-            &mztab
-                .sme
-                .as_ref()
-                .map_or_else(Vec::new, |t| slots(&t.header)),
-            row,
-        ),
+        TableSection::Sml => {
+            let t = mztab.sml.as_ref()?;
+            row_line(&mut out, section, &slots(&t.header), t.rows.get(row)?)
+        }
+        TableSection::Smf => {
+            let t = mztab.smf.as_ref()?;
+            row_line(&mut out, section, &slots(&t.header), t.rows.get(row)?)
+        }
+        TableSection::Sme => {
+            let t = mztab.sme.as_ref()?;
+            row_line(&mut out, section, &slots(&t.header), t.rows.get(row)?)
+        }
     };
     res.ok()?;
     Some(text)
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(target_arch = "wasm32")]
+    use wasm_bindgen_test::wasm_bindgen_test as test;
+
+    use super::{header_text, row_text};
+    use crate::model::document::MzTab;
+    use crate::parse;
+    use crate::vocab::section::TableSection;
+
+    #[test]
+    fn absent_header_and_row_text_return_none() {
+        let empty = MzTab::default();
+        for section in TableSection::ALL {
+            assert_eq!(header_text(&empty, section), None, "no header");
+            assert_eq!(row_text(&empty, section, 0), None, "no table row");
+        }
+        let with_tables = parse("SMH\tSML_ID\nSFH\tSMF_ID\nSEH\tSME_ID\n").mztab;
+        for section in TableSection::ALL {
+            assert_eq!(
+                row_text(&with_tables, section, 0),
+                None,
+                "no row at index 0"
+            );
+        }
+    }
 }

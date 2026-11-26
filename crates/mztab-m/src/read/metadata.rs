@@ -73,7 +73,7 @@ fn check_trailing_cells<'a>(
     } else if !trailing.is_empty() {
         cx.report(
             Code::TrailingEmptyCells,
-            trailing_at,
+            trailing_at + 1,
             value.map_or(3, |v| v.number + 1),
             Detail::None,
         );

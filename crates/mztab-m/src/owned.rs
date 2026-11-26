@@ -47,7 +47,7 @@ pub trait IntoOwned {
     fn into_owned(self) -> Self::Owned;
 }
 
-macro_rules! owned_copy {
+macro_rules! owned_static {
     ($($ty:ty),+ $(,)?) => {$(
         impl IntoOwned for $ty {
             type Owned = Self;
@@ -61,7 +61,7 @@ macro_rules! owned_copy {
 
 // Only the types that sit inside converted values; index keys and ids that
 // are only ever map keys are copied as they are.
-owned_copy! {
+owned_static! {
     u32, i32, bool,
     crate::id::AssayId, crate::id::InstrumentId, crate::id::MsRunId, crate::id::ProtocolId,
     crate::id::SampleId, crate::id::StudyVariableId,

@@ -138,7 +138,9 @@ impl<'o> Out<'o> {
             LineEnding::CrLf => "\r\n",
             LineEnding::None => "",
         };
-        self.line = self.line.saturating_add(1);
+        if ending != LineEnding::None {
+            self.line = self.line.saturating_add(1);
+        }
         self.str(text)
     }
 

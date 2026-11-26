@@ -280,12 +280,12 @@ fn list_items_split_as_the_reader_splits_them() {
         "canonical keeps the one item"
     );
 
-    let opens = Param::parse("[, , [x, ]").expect("a name may hold `[`");
-    let closes = Param::parse("[, , y, ]").expect("valid param");
+    let opens = Cell::Invalid(Raw::new("[, , [x,"));
+    let closes = Cell::Value(Param::parse("[, , y, ]").expect("valid param"));
     let mut m = MzTab::default();
     m.metadata.custom.insert(
         mztab_m::Ix::new(1).expect("non-zero"),
-        Cell::Value(vec![Cell::Value(opens), Cell::Value(closes)]),
+        Cell::Value(vec![opens, closes]),
     );
     assert_eq!(
         unwritable(&m),
@@ -302,6 +302,86 @@ fn list_items_split_as_the_reader_splits_them() {
         unwritable(&m),
         Some("a list of one `null`, which reads back as a null cell"),
         "single null"
+    );
+
+    m.metadata.custom = mztab_m::IndexMap::new();
+    m.metadata.custom.insert(
+        mztab_m::Ix::new(1).expect("non-zero"),
+        Cell::Value(vec![Cell::Invalid(Raw::new("   "))]),
+    );
+    assert_eq!(
+        unwritable(&m),
+        Some("a list of one empty item, which reads back as an invalid cell"),
+        "single space-only invalid"
+    );
+
+    m.metadata.title = Some(Cell::Invalid(Raw::new(" null ")));
+    assert_eq!(
+        unwritable(&m),
+        Some("invalid text `null`, which reads back as null"),
+        "padded invalid null"
+    );
+
+    // Valid ParamList values containing `[`, `]`, and `|` must round-trip.
+    for input in [
+        "MTD\tsample_processing[1]\t[,,\"]|\",]\n",
+        "MTD\tsample_processing[1]\t[,,\"[\",]|[,,b,]\n",
+    ] {
+        let parsed = parse(input).mztab;
+        assert_eq!(to_string(&parsed).as_deref(), Ok(input), "{input:?}");
+        let canonical = without_layout(parsed);
+        let canon_str = to_string(&canonical).expect("canonical writable");
+        assert_eq!(
+            without_layout(parse(&canon_str).mztab),
+            canonical,
+            "canonical round-trip for {input:?}"
+        );
+    }
+}
+
+#[test]
+fn layout_edge_cases_line_numbers_blank_and_headerless_rows() {
+    // Appending after an unterminated source line counts line numbers once.
+    let mut m = parse("MTD\tmzTab-ID\t1").mztab;
+    m.metadata.title = Some(Cell::Invalid(Raw::new("a\tb")));
+    assert_eq!(
+        to_string(&m),
+        Err(WriteError::Unwritable {
+            line: 2,
+            reason: "raw text with a tab or line break",
+        }),
+        "error on line 2, not line 3"
+    );
+
+    // If every layout line was stripped, appending a table must not start with `\n`.
+    let mut stripped = parse("MTD\tnot-a-key\tx\n").mztab;
+    stripped.strip_unknown();
+    stripped.sml = without_layout(parse("SMH\tSML_ID\nSML\t1\n").mztab).sml;
+    let out = to_string(&stripped).expect("writable");
+    assert!(
+        out.starts_with("SMH\t"),
+        "no leading blank line when nothing preceded table: {out:?}"
+    );
+
+    // A headerless Row in layout must not be emitted before its appended header.
+    let row = parse("SMH\tSML_ID\nSML\t1\n")
+        .mztab
+        .sml
+        .expect("sml")
+        .rows
+        .remove(0);
+    let headerless: mztab_m::Parsed<'_> = core::iter::once(mztab_m::Event::Sml(
+        mztab_m::LineInfo {
+            number: 1,
+            ending: mztab_m::LineEnding::Lf,
+        },
+        row,
+    ))
+    .collect();
+    let out = to_string(&headerless.mztab).expect("writable");
+    assert!(
+        out.starts_with("SMH\nSML\n"),
+        "header precedes rows: {out:?}"
     );
 }
 

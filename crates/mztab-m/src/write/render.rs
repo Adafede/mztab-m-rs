@@ -89,7 +89,7 @@ impl<T: Render> Render for Cell<'_, T> {
         match self {
             Self::Value(value) => value.render(out),
             Self::Null => out.str(NULL),
-            Self::Invalid(raw) if raw.as_str() == NULL => {
+            Self::Invalid(raw) if raw.as_str().trim_matches(' ') == NULL => {
                 Err(out.fail("invalid text `null`, which reads back as null"))
             }
             Self::Invalid(raw) => raw.render(out),
@@ -103,19 +103,36 @@ impl Render for Raw<'_> {
     }
 }
 
-/// Refuses lists that cannot be written: empty, or a single `null` (which
-/// reads back as a null cell, not a list). Not generic, so covered once.
-const fn list_shape(out: &Out<'_>, len: usize, first_is_null: bool) -> Result<(), WriteError> {
-    match (len, first_is_null) {
-        (0, _) => Err(out.fail("an empty list")),
-        (1, true) => Err(out.fail("a list of one `null`, which reads back as a null cell")),
+/// Refuses lists that cannot be written: empty, a single `null` (reads back as
+/// a null cell), or a single empty invalid item (reads back as invalid).
+const fn list_shape(
+    out: &Out<'_>,
+    len: usize,
+    first_is_null: bool,
+    first_is_empty_invalid: bool,
+) -> Result<(), WriteError> {
+    match (len, first_is_null, first_is_empty_invalid) {
+        (0, _, _) => Err(out.fail("an empty list")),
+        (1, true, _) => Err(out.fail("a list of one `null`, which reads back as a null cell")),
+        (1, _, true) => {
+            Err(out.fail("a list of one empty item, which reads back as an invalid cell"))
+        }
         _ => Ok(()),
     }
 }
 
 impl<T: Render> Render for Vec<Cell<'_, T>> {
     fn render(&self, out: &mut Out<'_>) -> Result<(), WriteError> {
-        list_shape(out, self.len(), self.first().is_some_and(Cell::is_null))?;
+        let first_is_empty_invalid = matches!(
+            self.first(),
+            Some(Cell::Invalid(raw)) if raw.as_str().trim_matches(' ').is_empty()
+        );
+        list_shape(
+            out,
+            self.len(),
+            self.first().is_some_and(Cell::is_null),
+            first_is_empty_invalid,
+        )?;
         out.with_list(T::BRACKETS, |out| {
             self.iter().enumerate().try_for_each(|(i, item)| {
                 if i > 0 {

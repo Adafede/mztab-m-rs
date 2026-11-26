@@ -81,8 +81,9 @@ pub struct Metadata<'a> {
     pub colunit_small_molecule_feature: Vec<Cell<'a, ColUnit<'a>>>,
     /// `colunit-small_molecule_evidence`, one entry per line.
     pub colunit_small_molecule_evidence: Vec<Cell<'a, ColUnit<'a>>>,
-    /// Lines with a key this crate does not recognise: `(key, value)`, in
-    /// source order. The value is every cell after the key, tabs included.
+    /// `MTD` lines that could not be placed in typed fields (unrecognised keys
+    /// or duplicate single-value keys): `(key, value)` in source order. The value
+    /// is every cell after the key, tabs included.
     pub unknown: Vec<(Raw<'a>, Raw<'a>)>,
 }
 
