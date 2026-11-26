@@ -185,6 +185,17 @@ pub(super) fn ambiguity<'a>(cx: &mut Cx<'_>, raw: RawCell<'a>) -> Cell<'a, Ambig
     })
 }
 
+/// Maps a `TextError` in the suffix after the first `:` of a trimmed cell to
+/// a `TextCell` diagnostic tuple anchored past that colon.
+pub(super) fn text_after_colon(raw: RawCell<'_>, t: TextError) -> (Code, usize, Detail) {
+    let at = raw
+        .text
+        .trim_start_matches(' ')
+        .find(':')
+        .map_or(0, |c| c + 1);
+    (Code::TextCell, at + t.offset(), Detail::Text(t))
+}
+
 pub(super) fn spectra_ref<'a>(cx: &mut Cx<'_>, raw: RawCell<'a>) -> Cell<'a, SpectraRef<'a>> {
     typed(cx, raw, Spaces::Trim, SpectraRef::parse, |e| match e {
         SpectraRefError::MsRun => (
@@ -192,14 +203,7 @@ pub(super) fn spectra_ref<'a>(cx: &mut Cx<'_>, raw: RawCell<'a>) -> Cell<'a, Spe
             0,
             Detail::Expected("`ms_run[n]:` followed by a spectrum reference"),
         ),
-        SpectraRefError::Reference(t) => {
-            let at = raw
-                .text
-                .trim_start_matches(' ')
-                .find(':')
-                .map_or(0, |c| c + 1);
-            (Code::TextCell, at + t.offset(), Detail::Text(t))
-        }
+        SpectraRefError::Reference(t) => text_after_colon(raw, t),
     })
 }
 

@@ -1,6 +1,6 @@
 //! Typing metadata cell values according to their key's [`ValueKind`].
 
-use super::typing::{Cx, RawCell, Spaces, list, param, reference, text, typed};
+use super::typing::{Cx, RawCell, Spaces, list, param, reference, text, text_after_colon, typed};
 use crate::diag::code::Code;
 use crate::diag::finding::Detail;
 use crate::meta::key::ValueKind;
@@ -51,14 +51,7 @@ pub(crate) fn mtd_value<'a>(cx: &mut Cx<'_>, kind: ValueKind, raw: RawCell<'a>) 
                         0,
                         Detail::Expected("`pubmed:`, `doi:` or `uri:` followed by an accession"),
                     ),
-                    PublicationItemError::Accession(t) => {
-                        let at = item
-                            .text
-                            .trim_start_matches(' ')
-                            .find(':')
-                            .map_or(0, |c| c + 1);
-                        (Code::TextCell, at + t.offset(), Detail::Text(t))
-                    }
+                    PublicationItemError::Accession(t) => text_after_colon(item, t),
                 },
             )
         })),
