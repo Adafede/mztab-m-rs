@@ -23,10 +23,10 @@ exclusions (`.cargo/mutants.toml`) and no `refquiem: allow` markers.
 | `crates/mztab-m/tests/semantic.rs` (crate) | `clippy::expect_used` | test helpers | Test code; stays |
 | `crates/mztab-m/tests/writer.rs` (crate) | `clippy::expect_used` | test helpers: a fixture that does not parse is a setup error | Test code; stays |
 | `crates/mztab-m-api/tests/vocabulary.rs` (crate) | `clippy::expect_used` | test helpers | Test code; stays |
-| `crates/mztab-m-wasm/src/lib.rs` `validate` | `clippy::needless_pass_by_value` | wasm-bindgen passes JS string arrays by value | Stays while wasm-bindgen requires it |
+| `crates/mztab-m-wasm/src/lib.rs` `validate`, `convert` | `clippy::needless_pass_by_value` | wasm-bindgen passes JS string arrays and options by value | Stays while wasm-bindgen requires it |
 | `bindings/python/src/lib.rs` `error` | `clippy::needless_pass_by_value` | a function for `map_err`, which passes the error by value | Stays while used with `map_err` |
-| `bindings/python/src/lib.rs` `validate` | `clippy::needless_pass_by_value` | PyO3 extracts arguments by value | Stays while PyO3 requires it |
 | `bindings/r/src/rust/src/lib.rs` (crate) | `clippy::needless_pass_by_value`, `clippy::used_underscore_binding` | `#[extendr]` passes R vectors by value and names bindings with underscores | Stays while extendr requires it |
+| `bindings/r/src/rust/src/lib.rs` `count_robj` | `clippy::cast_precision_loss` | R double numeric represents integer counts above i32::MAX up to 2^53 exactly | Stays while extendr lacks u64 scalar conversion |
 | `benches/benches/heap.rs` (crate) | `clippy::print_stdout` | the bench prints its report table | Bench output; stays |
 | `benches/benches/heap.rs` `row` | `clippy::cast_precision_loss` | a ratio for display | Stays |
 | `mk.local` `task_miri` | `miri` gate override (`mztab-m --lib` and `mztab-m-obo`) | Workspace forbids `unsafe_code`; `mztab-m-cli` spawns subprocesses unsupported by Miri and the 35 MB corpus / 2,000-case proptests exceed nightly time budgets under Miri | If Miri becomes fast enough for the corpus and proptests and `mztab-m-cli` is scoped via `MIRI_PACKAGES` |

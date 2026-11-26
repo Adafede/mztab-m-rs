@@ -9,6 +9,8 @@ and writer as the `mztab-m` command, in process.
 'MZT-S006'
 """
 
+from typing import TYPE_CHECKING
+
 from ._native import (
     SPEC_COMMIT,
     SPEC_VERSION,
@@ -21,10 +23,16 @@ from ._native import (
     vocabulary_size,
 )
 
+if TYPE_CHECKING:
+    from ._native import CodeInfo, Finding, InspectResult
+
 __all__ = [
     "SPEC_COMMIT",
     "SPEC_VERSION",
     "__version__",
+    "CodeInfo",
+    "Finding",
+    "InspectResult",
     "canonical",
     "codes",
     "convert",

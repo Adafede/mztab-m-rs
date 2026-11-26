@@ -27,10 +27,10 @@ print(mztab_m.inspect(text)["sml_rows"])
   returns a list of dicts (`code`, `severity`, `layer`, `line`, `column`,
   `cell`, `location`, `summary`, `detail`, `spec`).
 - `convert(text, to, *, lossy=False, format=None)`, `canonical(text)`,
-  `inspect(text)`, `codes()`.
-- `text` may be `str` or `bytes`; the format is detected (`{` means JSON)
-  unless `format="tsv"` or `"json"` is given. Bad arguments raise
-  `ValueError`.
+  `inspect(text)`, `codes()`, `vocabulary_size(text)`.
+- `text` may be `str`, `bytes`, or `bytearray`; the format is detected
+  (`{` means JSON) unless `format="tsv"` or `"json"` is given. Invalid
+  argument values raise `ValueError`; wrong argument types raise `TypeError`.
 
 Install directly from the repository root with `uv` or `pip` (uses
 [maturin](https://www.maturin.rs) via `pyproject.toml`), or sync the project

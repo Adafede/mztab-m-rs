@@ -21,7 +21,8 @@ inspect(text)$sml_rows
 
 `validate()` returns a data frame (`code`, `severity`, `layer`, `line`,
 `column`, `cell`, `location`, `summary`, `detail`, `spec`); `convert()`,
-`canonical()`, `inspect()`, `codes()` and `spec_commit()` complete it.
+`canonical()`, `inspect()`, `codes()`, `spec_commit()`, `spec_version()`,
+and `vocabulary_size()` complete it.
 
 Install from the repository with `R CMD INSTALL bindings/r` or from R with
 `devtools::install("bindings/r")` (needs a Rust toolchain, 1.100 or later;

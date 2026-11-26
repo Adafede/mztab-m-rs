@@ -1,19 +1,21 @@
 """Tests of the Python package (run with pytest, or `python -m unittest`)."""
 
 import pathlib
+import types
 import unittest
 
 import mztab_m
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-BASE = (ROOT / "crates/mztab-m/tests/golden/full.canonical.mztab").read_text()
-BASE_JSON = (ROOT / "crates/mztab-m/tests/golden/full.json").read_text()
+BASE = (ROOT / "crates/mztab-m/tests/golden/full.canonical.mztab").read_text(encoding="utf-8")
+BASE_JSON = (ROOT / "crates/mztab-m/tests/golden/full.json").read_text(encoding="utf-8")
 
 
 class Validate(unittest.TestCase):
     def test_the_base_document_is_valid(self):
         self.assertEqual(mztab_m.validate(BASE), [])
         self.assertEqual(mztab_m.validate(BASE.encode()), [], "bytes")
+        self.assertEqual(mztab_m.validate(bytearray(BASE.encode())), [], "bytearray")
         self.assertEqual(mztab_m.validate(BASE_JSON), [], "JSON")
 
     def test_findings_are_dicts(self):
@@ -33,13 +35,31 @@ class Validate(unittest.TestCase):
         self.assertEqual(mztab_m.validate(missing, layer="syntax"), [])
         quiet = mztab_m.validate(missing, severities={"MZT-T009": "off", "MZT-T011": "off"})
         self.assertFalse(any(f["code"] == "MZT-T009" for f in quiet))
+        proxy_quiet = mztab_m.validate(
+            missing,
+            severities=types.MappingProxyType({"MZT-T009": "off", "MZT-T011": "off"}),
+        )
+        self.assertFalse(any(f["code"] == "MZT-T009" for f in proxy_quiet))
         obo = "[Term]\nid: MS:1\nname: x\n"
         terms = mztab_m.validate(BASE, vocabularies=[obo])
         self.assertTrue(any(f["code"] == "MZT-X004" for f in terms))
-        for bad in [dict(layer="all"), dict(severities={"MZT-T009": "loud"}), dict(format="xml")]:
+        for bad in [
+            dict(layer="all"),
+            dict(severities={"MZT-T009": "loud"}),
+            dict(severities={"MZT-T009=off": "off"}),
+            dict(format="xml"),
+        ]:
             with self.assertRaises(ValueError):
                 mztab_m.validate(BASE, **bad)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
+            mztab_m.validate(BASE, vocabularies=obo)
+        with self.assertRaises(TypeError):
+            mztab_m.validate(BASE, vocabularies=b"[Term]\n")
+        with self.assertRaises(TypeError):
+            mztab_m.validate([77, 84, 68])
+        with self.assertRaises(UnicodeEncodeError):
+            mztab_m.validate("\ud800")
+        with self.assertRaises(TypeError):
             mztab_m.validate(3)
 
 

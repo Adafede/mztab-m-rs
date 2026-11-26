@@ -7,7 +7,7 @@
 parse_workspace_package <- function(root_lines) {
   header_re <- "^\\s*(\\[\\[?)([^\\]]+)(\\]\\]?)\\s*(#.*)?$"
   in_ws_pkg <- FALSE
-  vals <- character()
+  vals <- list()
 
   for (line in root_lines) {
     if (grepl(header_re, line, perl = TRUE)) {

@@ -1,11 +1,27 @@
 # The package's functions: defaults and data frames around the Rust routines.
 
 as_text <- function(text) {
-  if (is.raw(text)) text <- rawToChar(text)
-  if (!is.character(text) || length(text) != 1L) {
-    stop("`text` must be one character string (or a raw vector)")
+  if (is.raw(text)) {
+    return(text)
   }
-  text
+  if (!is.character(text) || length(text) != 1L || is.na(text)) {
+    stop("`text` must be one non-NA character string or a raw vector", call. = FALSE)
+  }
+  enc2utf8(text)
+}
+
+check_scalar_string <- function(x, arg) {
+  if (!is.character(x) || length(x) != 1L || is.na(x)) {
+    stop(sprintf("`%s` must be one non-NA character string", arg), call. = FALSE)
+  }
+  enc2utf8(x)
+}
+
+check_format <- function(format) {
+  if (is.null(format)) {
+    return(NULL)
+  }
+  check_scalar_string(format, "format")
 }
 
 #' Validate an mzTab-M document
@@ -23,9 +39,26 @@ as_text <- function(text) {
 #' @export
 validate <- function(text, vocabularies = character(), layer = "semantic",
                      severities = character(), format = NULL) {
-  settings <- if (length(severities)) paste0(names(severities), "=", severities) else character()
-  columns <- mztabm_validate(as_text(text), as.character(vocabularies), layer, settings,
-                             if (is.null(format)) "" else format)
+  if (!is.character(vocabularies) || anyNA(vocabularies)) {
+    stop("`vocabularies` must be a character vector without NA", call. = FALSE)
+  }
+  vocabularies <- enc2utf8(vocabularies)
+  layer <- check_scalar_string(layer, "layer")
+  if (!is.character(severities) || anyNA(severities)) {
+    stop("`severities` must be a named character vector without NA", call. = FALSE)
+  }
+  if (length(severities)) {
+    codes <- names(severities)
+    if (is.null(codes) || anyNA(codes) || any(!nzchar(codes))) {
+      stop("`severities` must be a named character vector with non-empty, non-NA names", call. = FALSE)
+    }
+    codes <- enc2utf8(codes)
+    levels <- enc2utf8(unname(severities))
+  } else {
+    codes <- character()
+    levels <- character()
+  }
+  columns <- mztabm_validate(as_text(text), vocabularies, layer, codes, levels, check_format(format))
   as.data.frame(columns, stringsAsFactors = FALSE)
 }
 
@@ -38,7 +71,11 @@ validate <- function(text, vocabularies = character(), layer = "semantic",
 #' @return The converted document, as one string.
 #' @export
 convert <- function(text, to, lossy = FALSE, format = NULL) {
-  mztabm_convert(as_text(text), to, lossy, if (is.null(format)) "" else format)
+  to <- check_scalar_string(to, "to")
+  if (!is.logical(lossy) || length(lossy) != 1L || is.na(lossy)) {
+    stop("`lossy` must be TRUE or FALSE", call. = FALSE)
+  }
+  mztabm_convert(as_text(text), to, lossy, check_format(format))
 }
 
 #' The canonical form of an mzTab-M document, in its own format
@@ -47,7 +84,7 @@ convert <- function(text, to, lossy = FALSE, format = NULL) {
 #' @return The canonical document, as one string.
 #' @export
 canonical <- function(text, format = NULL) {
-  mztabm_canonical(as_text(text), if (is.null(format)) "" else format)
+  mztabm_canonical(as_text(text), check_format(format))
 }
 
 #' Summarise an mzTab-M document
@@ -57,7 +94,7 @@ canonical <- function(text, format = NULL) {
 #'   and the reader's finding counts.
 #' @export
 inspect <- function(text, format = NULL) {
-  mztabm_inspect(as_text(text), if (is.null(format)) "" else format)
+  mztabm_inspect(as_text(text), check_format(format))
 }
 
 #' The finding codes
@@ -71,3 +108,18 @@ codes <- function() as.data.frame(mztabm_codes(), stringsAsFactors = FALSE)
 #' @return The commit hash, as one string.
 #' @export
 spec_commit <- function() mztabm_spec_commit()
+
+#' The pinned mzTab-M specification version
+#'
+#' @return The specification version, as one string.
+#' @export
+spec_version <- function() mztabm_spec_version()
+
+#' Count terms in an OBO 1.4 vocabulary
+#'
+#' @param text OBO 1.4 text as one non-NA string.
+#' @return The number of unique terms parsed from `text`.
+#' @export
+vocabulary_size <- function(text) {
+  mztabm_vocabulary_size(check_scalar_string(text, "text"))
+}

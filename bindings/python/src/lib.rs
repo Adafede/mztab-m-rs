@@ -2,14 +2,10 @@
 //! `mztab-m-api`. Everything is plain data on the Python side: findings are
 //! dicts, documents are strings.
 
-use std::collections::BTreeMap;
-
-use mztab_m_api::{
-    Error, Fact, Format, Layer, SPEC_COMMIT, SPEC_VERSION, Settings,
-};
-use pyo3::exceptions::PyValueError;
+use mztab_m_api::{Error, Fact, Format, Layer, SPEC_COMMIT, SPEC_VERSION, Settings};
+use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
-use pyo3::types::PyDict;
+use pyo3::types::{PyByteArray, PyBytes, PyDict, PyMapping, PyString};
 
 /// A Python `ValueError` for a bad argument or an unwritable document.
 #[expect(
@@ -20,13 +16,18 @@ fn error(e: Error) -> PyErr {
     PyValueError::new_err(e.to_string())
 }
 
-/// The bytes of a `str` or `bytes` argument.
+/// The bytes of a `str`, `bytes`, or `bytearray` argument.
 fn bytes(text: &Bound<'_, PyAny>) -> PyResult<Vec<u8>> {
-    if let Ok(s) = text.extract::<String>() {
-        return Ok(s.into_bytes());
+    if let Ok(s) = text.cast::<PyString>() {
+        return s.extract::<String>().map(String::into_bytes);
     }
-    text.extract::<Vec<u8>>()
-        .map_err(|_| PyValueError::new_err("expected str or bytes"))
+    if let Ok(b) = text.cast::<PyBytes>() {
+        return Ok(b.as_bytes().to_vec());
+    }
+    if let Ok(array) = text.cast::<PyByteArray>() {
+        return Ok(array.to_vec());
+    }
+    Err(PyTypeError::new_err("expected str, bytes, or bytearray"))
 }
 
 /// The format: given (`"tsv"` or `"json"`), or detected from the text.
@@ -46,17 +47,13 @@ fn format(given: Option<&str>, bytes: &[u8]) -> PyResult<Format> {
 /// `"structure"` or `"semantic"`); `severities` maps codes to `"error"`,
 /// `"warning"`, `"info"` or `"off"`.
 #[pyfunction]
-#[pyo3(signature = (text, *, vocabularies = Vec::new(), layer = "semantic", severities = BTreeMap::new(), format = None))]
-#[expect(
-    clippy::needless_pass_by_value,
-    reason = "PyO3 extracts arguments by value"
-)]
+#[pyo3(signature = (text, *, vocabularies = None, layer = "semantic", severities = None, format = None))]
 fn validate<'py>(
     py: Python<'py>,
     text: &Bound<'py, PyAny>,
-    vocabularies: Vec<String>,
+    vocabularies: Option<&Bound<'py, PyAny>>,
     layer: &str,
-    severities: BTreeMap<String, String>,
+    severities: Option<&Bound<'py, PyMapping>>,
     format: Option<&str>,
 ) -> PyResult<Vec<Bound<'py, PyDict>>> {
     let bytes = bytes(text)?;
@@ -65,10 +62,27 @@ fn validate<'py>(
         .parse::<Layer>()
         .map_err(|_| error(Error::Layer(layer.to_owned())))?;
     let mut settings = Settings::default().layer(parsed_layer);
-    for (code, level) in &severities {
-        settings = settings.set(&format!("{code}={level}")).map_err(error)?;
+    if let Some(map) = severities {
+        for item in map.items()?.iter() {
+            let (code, level) = item.extract::<(String, String)>()?;
+            settings = settings.set_code(&code, &level).map_err(error)?;
+        }
     }
-    let obo: Vec<&str> = vocabularies.iter().map(String::as_str).collect();
+    let obos: Vec<String> = match vocabularies {
+        None => Vec::new(),
+        Some(v) => {
+            if v.is_instance_of::<PyString>()
+                || v.is_instance_of::<PyBytes>()
+                || v.is_instance_of::<PyByteArray>()
+            {
+                return Err(PyTypeError::new_err(
+                    "`vocabularies` must be a sequence of OBO strings, not str or bytes",
+                ));
+            }
+            v.extract::<Vec<String>>()?
+        }
+    };
+    let obo: Vec<&str> = obos.iter().map(String::as_str).collect();
     let records = mztab_m_api::check(&bytes, format, &obo, &settings);
     records
         .iter()

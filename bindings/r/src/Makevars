@@ -16,7 +16,7 @@ PKG_LIBS = -L$(LIBDIR) -lmztabm $(SYS_LIBS)
 
 .PHONY: all C_clean clean FORCE
 
-all: C_clean
+all: $(SHLIB)
 
 $(SHLIB): $(STATLIB)
 

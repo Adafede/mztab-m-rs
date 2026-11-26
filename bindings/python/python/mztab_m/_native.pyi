@@ -23,18 +23,35 @@ class CodeInfo(TypedDict):
     summary: str
     spec: str
 
-Text = Union[str, bytes]
+class InspectResult(TypedDict):
+    version: Optional[str]
+    id: Optional[str]
+    title: Optional[str]
+    profile: Optional[str]
+    tables_profile: Optional[str]
+    ms_runs: int
+    assays: int
+    study_variables: int
+    samples: int
+    cvs: int
+    sml_rows: Optional[int]
+    smf_rows: Optional[int]
+    sme_rows: Optional[int]
+    reader_findings: int
+    reader_errors: int
+
+Text = Union[str, bytes, bytearray]
 
 def validate(
     text: Text,
     *,
-    vocabularies: Sequence[str] = ...,
+    vocabularies: Optional[Sequence[str]] = None,
     layer: str = "semantic",
-    severities: Mapping[str, str] = ...,
+    severities: Optional[Mapping[str, str]] = None,
     format: Optional[str] = None,
 ) -> list[Finding]: ...
 def convert(text: Text, to: str, *, lossy: bool = False, format: Optional[str] = None) -> str: ...
 def canonical(text: Text, *, format: Optional[str] = None) -> str: ...
-def inspect(text: Text, *, format: Optional[str] = None) -> dict[str, Union[str, int, None]]: ...
+def inspect(text: Text, *, format: Optional[str] = None) -> InspectResult: ...
 def codes() -> list[CodeInfo]: ...
 def vocabulary_size(text: str) -> int: ...

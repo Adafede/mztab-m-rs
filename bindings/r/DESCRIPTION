@@ -16,3 +16,4 @@ Config/rextendr/version: 0.4.0
 Config/build/bootstrap: TRUE
 Config/build/copy-method: link
 URL: https://github.com/Adafede/mztab-m-rs
+Config/roxygen2/version: 8.1.1

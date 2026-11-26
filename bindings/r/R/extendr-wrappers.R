@@ -8,8 +8,8 @@ unwrap <- function(outcome) {
   outcome$value
 }
 
-mztabm_validate <- function(text, vocabularies, layer, severities, format) {
-  unwrap(.Call(wrap__mztabm_validate, text, vocabularies, layer, severities, format))
+mztabm_validate <- function(text, vocabularies, layer, severity_codes, severity_levels, format) {
+  unwrap(.Call(wrap__mztabm_validate, text, vocabularies, layer, severity_codes, severity_levels, format))
 }
 mztabm_convert <- function(text, to, lossy, format) {
   unwrap(.Call(wrap__mztabm_convert, text, to, lossy, format))
@@ -18,3 +18,5 @@ mztabm_canonical <- function(text, format) unwrap(.Call(wrap__mztabm_canonical, 
 mztabm_inspect <- function(text, format) unwrap(.Call(wrap__mztabm_inspect, text, format))
 mztabm_codes <- function() .Call(wrap__mztabm_codes)
 mztabm_spec_commit <- function() .Call(wrap__mztabm_spec_commit)
+mztabm_spec_version <- function() .Call(wrap__mztabm_spec_version)
+mztabm_vocabulary_size <- function(text) unwrap(.Call(wrap__mztabm_vocabulary_size, text))
