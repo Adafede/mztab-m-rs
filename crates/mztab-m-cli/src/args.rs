@@ -218,18 +218,32 @@ impl Command {
     pub(crate) fn parse<'a>(
         kind: Kind,
         mut args: impl Iterator<Item = &'a str>,
-    ) -> Result<Self, Failure> {
+    ) -> Result<Option<Self>, Failure> {
         let mut raw = Raw::default();
         let allowed = kind.allowed_flags();
+        let mut end_of_options = false;
         while let Some(arg) = args.next() {
-            if arg.starts_with('-') && arg != "-" && !allowed.contains(&arg) {
-                return Err(Failure::Usage(format!(
-                    "`{}` does not take `{arg}`",
-                    kind.as_str()
-                )));
+            if !end_of_options {
+                if arg == "--" {
+                    end_of_options = true;
+                    continue;
+                }
+                if matches!(arg, "-h" | "--help") {
+                    return Ok(None);
+                }
+                if arg.starts_with('-') && arg != "-" && !allowed.contains(&arg) {
+                    return Err(Failure::Usage(format!(
+                        "`{}` does not take `{arg}`",
+                        kind.as_str()
+                    )));
+                }
+                raw.apply(arg, &mut args)?;
+            } else if raw.file.is_none() {
+                raw.file = Some(arg.to_owned());
+            } else {
+                return Err(Failure::Usage(format!("unexpected `{arg}`")));
             }
-            raw.apply(arg, &mut args)?;
         }
-        raw.finish(kind)
+        raw.finish(kind).map(Some)
     }
 }

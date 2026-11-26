@@ -88,13 +88,14 @@
 
   <div class="row">
     <label for="obo">Vocabularies (optional, OBO):</label>
-    <input id="obo" type="file" accept=".obo" multiple>
+    <input id="obo" type="file" accept=".obo" multiple disabled>
     <span id="status" role="status" aria-live="polite">Loading WebAssembly validator…</span>
   </div>
 
   <div class="row">
     <button id="to-json" type="button" disabled>Download as JSON</button>
     <button id="to-tsv" type="button" disabled>Download as TSV</button>
+    <label><input id="lossy" type="checkbox"> Lossy conversion</label>
   </div>
 
   <p id="summary" aria-live="polite"></p>
@@ -135,8 +136,19 @@
     if (content instanceof Node) td.append(content); else td.textContent = content;
   }
 
-  function show() {
-    const findings = JSON.parse(validate(text, obos));
+  function clearOutput() {
+    text = "";
+    name = "";
+    $("summary").textContent = "";
+    $("findings").replaceChildren();
+    document.querySelector(".table").hidden = true;
+    $("to-json").disabled = $("to-tsv").disabled = true;
+  }
+
+  function show(nextText = text, nextName = name) {
+    const findings = JSON.parse(validate(nextText, obos, nextName));
+    text = nextText;
+    name = nextName;
     const body = $("findings");
     body.replaceChildren();
     const count = (s) => findings.filter((f) => f.severity === s).length;
@@ -164,12 +176,11 @@
     try {
       const loaded = await file.text();
       if (id !== docLoadId) return;
-      name = file.name;
-      text = loaded;
-      show();
+      show(loaded, file.name);
       $("status").textContent = `Loaded ${name}.`;
     } catch (reason) {
       if (id !== docLoadId) return;
+      clearOutput();
       $("status").textContent = `Could not load ${file.name}: ${reason}`;
     }
   }
@@ -184,19 +195,18 @@
       }
       const loaded = await response.text();
       if (id !== docLoadId) return;
-      name = "example_study_variable_group.mztab";
-      text = loaded;
-      show();
+      show(loaded, "example_study_variable_group.mztab");
       $("status").textContent = "Loaded bundled example (example_study_variable_group.mztab).";
     } catch (reason) {
       if (id !== docLoadId) return;
+      clearOutput();
       $("status").textContent = `Could not load bundled example: ${reason}`;
     }
   }
 
   function download(to) {
     try {
-      const out = convert(text, to);
+      const out = convert(text, to, name, $("lossy").checked);
       const base = name.replace(/(.+)\.[^.]+$/, "$1");
       const mime = to === "json" ? "application/json" : "text/tab-separated-values";
       const url = URL.createObjectURL(new Blob([out], { type: mime }));
@@ -214,6 +224,7 @@
     await init();
     $("status").textContent = "Ready.";
     $("try-example").disabled = false;
+    $("obo").disabled = false;
     const drop = $("drop");
     drop.addEventListener("click", () => $("file").click());
     drop.addEventListener("keydown", (e) => {
@@ -244,7 +255,7 @@
         obos = loaded;
         const unit = files.length === 1 ? "file" : "files";
         $("status").textContent = `${files.length} vocabulary ${unit} loaded.`;
-        if (text) show();
+        if (name) show();
       } catch (reason) {
         if (id !== oboLoadId) return;
         $("status").textContent = `Could not load vocabulary files: ${reason}`;

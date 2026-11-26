@@ -56,6 +56,13 @@ fn reads_files_and_standard_input() {
         "on stderr"
     );
 
+    let version = mztab_m().arg("--version").output().expect("runs");
+    assert!(version.status.success(), "--version exits 0");
+    assert!(
+        String::from_utf8_lossy(&version.stdout).contains(mztab_m_api::SPEC_VERSION),
+        "--version prints spec version"
+    );
+
     let unwritable = mztab_m()
         .args(["convert", "--to", "json", "-o", "/nonexistent/dir/x.json"])
         .arg(&input)

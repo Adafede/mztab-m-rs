@@ -107,16 +107,23 @@ pub fn run(args: &[String], io: &mut dyn Io) -> u8 {
         }
         Some("--version" | "-V") => {
             io.out(&format!(
-                "mztab-m {} (mzTab-M spec {})\n",
+                "mztab-m {} (mzTab-M spec {} @ {})\n",
                 env!("CARGO_PKG_VERSION"),
+                mztab_m_api::SPEC_VERSION,
                 mztab_m_api::SPEC_COMMIT
             ));
             Ok(OK)
         }
         Some(name) => Kind::from_name(name)
             .ok_or_else(|| Failure::Usage(format!("unknown command `{name}`")))
-            .and_then(|kind| Command::parse(kind, args))
-            .and_then(|cmd| exec::execute(&cmd, io)),
+            .and_then(|kind| {
+                if let Some(cmd) = Command::parse(kind, args)? {
+                    exec::execute(&cmd, io)
+                } else {
+                    io.out(HELP);
+                    Ok(OK)
+                }
+            }),
     };
     match result {
         Ok(code) => code,

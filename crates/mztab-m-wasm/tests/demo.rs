@@ -11,13 +11,21 @@ const BASE_JSON: &str = include_str!("../../mztab-m/tests/golden/full.json");
 #[test]
 fn validates_tsv_and_json() {
     assert_eq!(
-        validate(BASE, Vec::new()),
+        validate(BASE, Vec::new(), None),
         "[]",
         "the base document is valid"
     );
-    assert_eq!(validate(BASE_JSON, Vec::new()), "[]", "and so is its JSON");
+    assert_eq!(
+        validate(BASE_JSON, Vec::new(), None),
+        "[]",
+        "and so is its JSON"
+    );
+    assert!(
+        validate("not-json", Vec::new(), Some("bad.json".to_owned())).contains("MZT-S014"),
+        "filename `.json` sniffs JSON even when invalid"
+    );
     let bad = BASE.replace("\t2.1.0-M\n", "\t2.1\n");
-    let findings = validate(&bad, Vec::new());
+    let findings = validate(&bad, Vec::new(), None);
     assert!(
         findings.starts_with("[{\"code\":\"MZT-S006\""),
         "{findings}"
@@ -25,7 +33,7 @@ fn validates_tsv_and_json() {
     assert!(!findings.contains("MZT-T028"), "reported once");
     let obo = "[Term]\nid: MS:1\nname: x\n";
     assert!(
-        validate(BASE, vec![obo.to_owned()]).contains("MZT-X004"),
+        validate(BASE, vec![obo.to_owned()], None).contains("MZT-X004"),
         "MS terms unknown to this vocabulary"
     );
 }
@@ -35,7 +43,7 @@ fn validates_multiple_vocabularies_separately() {
     let ms = "ontology: ms\n\n[Term]\nid: MS:1\nname: x\n";
     let uo = "ontology: uo\n\n[Term]\nid: UO:1\nname: y\n";
     let doc = "MTD\tmzTab-version\t2.1.0-M\nMTD\tcustom[1]\t[UO, UO:999, bad, ]\n";
-    let findings = validate(doc, vec![ms.to_owned(), uo.to_owned()]);
+    let findings = validate(doc, vec![ms.to_owned(), uo.to_owned()], None);
     assert!(
         findings.contains("MZT-X004") && findings.contains("UO:999"),
         "second vocabulary must keep its own ontology header: {findings}"
@@ -45,19 +53,27 @@ fn validates_multiple_vocabularies_separately() {
 #[test]
 fn converts_both_ways() {
     assert_eq!(
-        convert(BASE, "json").as_deref(),
+        convert(BASE, "json", None, false).as_deref(),
         Ok(BASE_JSON.trim_end()),
         "to JSON"
     );
-    assert_eq!(convert(BASE_JSON, "tsv").as_deref(), Ok(BASE), "to TSV");
-    assert!(convert(BASE, "xml").is_err(), "unknown format");
+    assert_eq!(
+        convert(BASE_JSON, "tsv", None, false).as_deref(),
+        Ok(BASE),
+        "to TSV"
+    );
     let unknown = BASE.replace("MTD\ttitle\t", "MTD\tx[0]\ty\nMTD\ttitle\t");
     assert!(
-        convert(&unknown, "json").is_err_and(|e| e.contains("no JSON form")),
-        "unwritable"
+        convert(&unknown, "json", None, false).is_err_and(|e| e.contains("no JSON form")),
+        "unwritable without lossy"
+    );
+    assert_eq!(
+        convert(&unknown, "json", None, true).as_deref(),
+        Ok(BASE_JSON.trim_end()),
+        "lossy conversion drops unknown keys"
     );
     assert!(
-        convert(BASE, "xml").is_err_and(|e| e.contains("unknown format")),
-        "unwritable"
+        convert(BASE, "xml", None, false).is_err_and(|e| e.contains("unknown format")),
+        "unknown target format"
     );
 }

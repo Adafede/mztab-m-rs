@@ -32,7 +32,8 @@ impl Format {
         let named = name
             .rsplit_once('.')
             .is_some_and(|(_, ext)| ext.eq_ignore_ascii_case("json"));
-        let first = bytes.iter().find(|b| !b.is_ascii_whitespace());
+        let rest = bytes.strip_prefix(b"\xEF\xBB\xBF").unwrap_or(bytes);
+        let first = rest.iter().find(|b| !b.is_ascii_whitespace());
         if named || first == Some(&b'{') {
             Self::Json
         } else {
@@ -76,7 +77,7 @@ impl fmt::Display for Error {
         match self {
             Self::Format(s) => write!(f, "unknown format `{s}` (tsv, json)"),
             Self::Layer(s) => write!(f, "unknown layer `{s}` (syntax, structure, semantic)"),
-            Self::Severity(s) => write!(f, "unknown severity `{s}` (error, warning, info)"),
+            Self::Severity(s) => write!(f, "unknown severity `{s}` (error, warning, info, off)"),
             Self::Code(s) => write!(f, "unknown code `{s}`"),
             Self::Setting(s) => write!(f, "expected CODE=LEVEL, not `{s}`"),
             Self::Write(e) => write!(f, "cannot write the file: {e}"),

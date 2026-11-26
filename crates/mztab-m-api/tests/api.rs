@@ -40,7 +40,7 @@ fn names_parse() {
         ),
         (
             Settings::default().set("MZT-T009=loud").map(|_| ()),
-            "unknown severity `loud` (error, warning, info)",
+            "unknown severity `loud` (error, warning, info, off)",
         ),
     ];
     for (result, message) in errors {
@@ -296,5 +296,42 @@ fn facade_exposes_codes_facts_json_and_obo_validation() {
         ),
         2,
         "vocabulary size"
+    );
+}
+
+#[test]
+fn bom_sniff_and_invalid_utf8_json_findings() {
+    assert_eq!(
+        Format::sniff("-", b"\xEF\xBB\xBF{}"),
+        Format::Json,
+        "UTF-8 BOM before JSON"
+    );
+    let bad = read(b"{\"a\":\"\xff\"}", Format::Json);
+    let first = bad.findings.iter().next().expect("Utf8 finding");
+    assert_eq!(first.code, Code::Utf8, "{:?}", bad.findings);
+    assert_eq!(
+        first.location,
+        mztab_m::Location::text(1, 7),
+        "column of first invalid UTF-8 byte"
+    );
+    let multiline = read(b"{\"a\":\n\"\xff\"}", Format::Json);
+    assert_eq!(
+        multiline
+            .findings
+            .iter()
+            .next()
+            .map(|f| (&f.code, &f.location)),
+        Some((&Code::Utf8, &mztab_m::Location::text(2, 2))),
+        "multiline UTF-8 column after newline"
+    );
+
+    let settings = Settings::default()
+        .set_code("MZT-X002", "off")
+        .expect("valid set_code");
+    assert_eq!(settings.config.severity_of(Code::CvUnused), None, "off");
+    assert_eq!(
+        Settings::default().set_code("MZT-X002=off", "off"),
+        Err(Error::Code("MZT-X002=off".to_owned())),
+        "set_code does not split on `=`"
     );
 }

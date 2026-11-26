@@ -13,6 +13,7 @@ const MS: &str = "data-version: 4.1.0\n\n[Term]\nid: MS:1001834\nname: LC-MS lab
 #[derive(Default)]
 struct Fake {
     files: BTreeMap<String, String>,
+    raw_files: BTreeMap<String, Vec<u8>>,
     written: BTreeMap<String, String>,
     out: String,
     err: String,
@@ -21,6 +22,9 @@ struct Fake {
 
 impl Io for Fake {
     fn read(&mut self, path: &str) -> Result<Vec<u8>, String> {
+        if let Some(bytes) = self.raw_files.get(path) {
+            return Ok(bytes.clone());
+        }
         self.files
             .get(path)
             .map(|t| t.clone().into_bytes())
@@ -420,4 +424,48 @@ fn flag_combinations_and_missing_values() {
     );
     assert_eq!(io.out, BASE);
     assert!(io.err.contains("dropped 1 unknown metadata lines"));
+}
+
+#[test]
+fn cli_handles_double_dash_subcommand_help_version_and_bad_cv_utf8() {
+    let mut io = fake();
+    assert_eq!(exec(&mut io, &["--version"]), OK, "version");
+    assert!(
+        io.out.contains(mztab_m_api::SPEC_VERSION),
+        "version includes spec version: {}",
+        io.out
+    );
+
+    for args in [
+        &["validate", "--help"][..],
+        &["fmt", "-h"],
+        &["convert", "--help"],
+        &["inspect", "-h"],
+    ] {
+        let mut io = fake();
+        assert_eq!(exec(&mut io, args), OK, "{args:?}");
+        assert!(io.out.contains("Usage:"), "{args:?}: {}", io.out);
+    }
+
+    let mut io = fake();
+    io.files.insert("-dash.mztab".into(), BASE.into());
+    assert_eq!(
+        exec(&mut io, &["validate", "--", "-dash.mztab"]),
+        OK,
+        "double-dash allows leading hyphen path"
+    );
+    assert_eq!(
+        exec(&mut io, &["validate", "--", "-dash.mztab", "extra"]),
+        USAGE,
+        "unexpected arg after double-dash"
+    );
+
+    let mut io = fake();
+    io.raw_files.insert("bad.obo".into(), b"\xff".to_vec());
+    assert_eq!(
+        exec(&mut io, &["validate", "--cv", "bad.obo", "base.mztab"]),
+        FAILED,
+        "invalid UTF-8 OBO file fails loudly"
+    );
+    assert!(io.err.contains("not valid UTF-8"), "{}", io.err);
 }

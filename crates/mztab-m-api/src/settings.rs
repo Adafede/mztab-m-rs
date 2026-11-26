@@ -33,6 +33,25 @@ impl Settings {
         self
     }
 
+    /// With finding `id` overridden to `level` (`error`, `warning`, `info` or
+    /// `off`, not reported).
+    ///
+    /// # Errors
+    ///
+    /// If `id` names no code or `level` is not a valid severity.
+    pub fn set_code(mut self, id: &str, level: &str) -> Result<Self, Error> {
+        let code: Code = id.parse().map_err(|_| Error::Code(id.to_owned()))?;
+        self.config = if level == "off" {
+            self.config.without(code)
+        } else {
+            let parsed = level
+                .parse::<Severity>()
+                .map_err(|_| Error::Severity(level.to_owned()))?;
+            self.config.with_severity(code, parsed)
+        };
+        Ok(self)
+    }
+
     /// With `CODE=LEVEL` applied: LEVEL is `error`, `warning`, `info` or
     /// `off` (not reported).
     ///
@@ -48,19 +67,10 @@ impl Settings {
     /// # Errors
     ///
     /// If `setting` is not of that form, or names no code.
-    pub fn set(mut self, setting: &str) -> Result<Self, Error> {
+    pub fn set(self, setting: &str) -> Result<Self, Error> {
         let (id, level) = setting
             .split_once('=')
             .ok_or_else(|| Error::Setting(setting.to_owned()))?;
-        let code: Code = id.parse().map_err(|_| Error::Code(id.to_owned()))?;
-        self.config = if level == "off" {
-            self.config.without(code)
-        } else {
-            let parsed = level
-                .parse::<Severity>()
-                .map_err(|_| Error::Severity(level.to_owned()))?;
-            self.config.with_severity(code, parsed)
-        };
-        Ok(self)
+        self.set_code(id, level)
     }
 }

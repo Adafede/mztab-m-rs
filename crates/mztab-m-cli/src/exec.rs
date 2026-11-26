@@ -50,7 +50,9 @@ fn run_validate(
         let bytes = io
             .read(path)
             .map_err(|e| Failure::Failed(format!("cannot read `{path}`: {e}")))?;
-        texts.push(String::from_utf8_lossy(&bytes).into_owned());
+        let text = String::from_utf8(bytes)
+            .map_err(|_| Failure::Failed(format!("cannot read `{path}`: not valid UTF-8")))?;
+        texts.push(text);
     }
     let obo: Vec<&str> = texts.iter().map(String::as_str).collect();
     let findings = mztab_m_api::validate(parsed, &opts.settings, &obo);

@@ -4,7 +4,9 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use mztab_m::validate;
-use mztab_m::{Code, Findings, IntoOwned as _, MzTab, Parsed, Stripped, json};
+use mztab_m::{
+    Code, Detail, Finding, Findings, IntoOwned as _, Location, MzTab, Parsed, Stripped, json,
+};
 use mztab_m_obo::Ontology;
 
 use super::report::records;
@@ -15,7 +17,31 @@ use super::{Error, Format, Layer, Record, Settings, findings_json};
 pub fn read(bytes: &[u8], format: Format) -> Parsed<'static> {
     match format {
         Format::Tsv => mztab_m::parse_bytes(bytes).into_owned(),
-        Format::Json => json::parse(&String::from_utf8_lossy(bytes)),
+        Format::Json => match core::str::from_utf8(bytes) {
+            Ok(text) => json::parse(text),
+            Err(error) => {
+                let lossy = String::from_utf8_lossy(bytes);
+                let mut parsed = json::parse(&lossy);
+                let valid = bytes.get(..error.valid_up_to()).unwrap_or_default();
+                let text = core::str::from_utf8(valid).unwrap_or_default();
+                let line = text.matches('\n').count().saturating_add(1);
+                let start = text.rfind('\n').map_or(0, |n| n + 1);
+                let column = text
+                    .get(start..)
+                    .map_or(0, |s| s.chars().count())
+                    .saturating_add(1);
+                let to_u32 = |x: usize| u32::try_from(x).unwrap_or(u32::MAX);
+                let mut findings = Findings::new();
+                findings.push(Finding::new(
+                    Code::Utf8,
+                    Location::text(to_u32(line), to_u32(column)),
+                    Detail::None,
+                ));
+                findings.extend(parsed.findings.into_vec());
+                parsed.findings = findings;
+                parsed
+            }
+        },
     }
 }
 
