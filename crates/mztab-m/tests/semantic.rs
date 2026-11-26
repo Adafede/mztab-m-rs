@@ -255,3 +255,22 @@ fn lookups_combine() {
     assert!(!empty.covers("MS"), "empty array");
     assert_eq!(NoTerms.version("MS"), None, "no version");
 }
+
+#[test]
+fn parameter_study_variables_are_semantically_checked() {
+    let text = BASE
+        .replace(
+            "MTD\tstudy_variable_group[1]-datatype\txsd:string",
+            "MTD\tstudy_variable_group[1]-datatype\tParameter",
+        )
+        .replace(
+            "MTD\tstudy_variable[1]\tControl",
+            "MTD\tstudy_variable[1]\t[MS, MS:9999999, missing, ]",
+        );
+    let model = parse(&text).mztab;
+    let findings = validate::semantic(&model, &Config::default(), &Mini);
+    assert!(
+        findings.iter().any(|f| f.code == Code::UnknownTerm),
+        "Parameter study_variable should be checked against TermLookup: {findings:?}"
+    );
+}

@@ -40,10 +40,10 @@ struct RuleUse<'a> {
 
 /// Evaluates all CV-mapping rules against `uses` in canonical rule order,
 /// indexing `uses` by `Target` once to avoid scanning empty targets.
-pub(super) fn check_all(uses: &[Use<'_, '_>], terms: &dyn TermLookup, report: &mut Report<'_, '_>) {
+pub(super) fn check_all(uses: &[Use<'_>], terms: &dyn TermLookup, report: &mut Report<'_, '_>) {
     let mut by_target: BTreeMap<Target, Vec<RuleUse<'_>>> = BTreeMap::new();
     for u in uses {
-        if let (Some((target, scope)), Param::Cv { accession, .. }) = (u.slot, u.param) {
+        if let (Some((target, scope)), Param::Cv { accession, .. }) = (u.slot, u.param.as_ref()) {
             by_target.entry(target).or_default().push(RuleUse {
                 site: u.site,
                 scope,

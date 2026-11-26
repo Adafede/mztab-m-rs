@@ -1,8 +1,21 @@
 //! Format predicates shared across structural and semantic validators.
 
 use crate::param::Param;
-use crate::value::decimal::Decimal;
+use crate::value::decimal::{Decimal, DecimalKind};
 use crate::vocab::field::Datatype;
+
+fn two_digits(a: u8, b: u8) -> Option<u32> {
+    (a.is_ascii_digit() && b.is_ascii_digit())
+        .then(|| u32::from(a - b'0') * 10 + u32::from(b - b'0'))
+}
+
+fn digits(s: &str) -> bool {
+    !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit())
+}
+
+fn signed_digits(s: &str) -> bool {
+    digits(s.strip_prefix(['-', '+']).unwrap_or(s))
+}
 
 /// Whether `text` matches `^[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{3}[0-9X]$`.
 pub(super) fn is_orcid(text: &str) -> bool {
@@ -13,6 +26,18 @@ pub(super) fn is_orcid(text: &str) -> bool {
             18 => b.is_ascii_digit() || b == b'X',
             _ => b.is_ascii_digit(),
         })
+}
+
+fn is_uri_chars(rest: &str) -> bool {
+    let bytes = rest.as_bytes();
+    let chars_ok = bytes.iter().enumerate().all(|(i, &b)| match b {
+        b'%' => bytes
+            .get(i + 1..i + 3)
+            .is_some_and(|h| h.iter().all(u8::is_ascii_hexdigit)),
+        // Unreserved, sub-delims and the delimiters of the URI syntax.
+        b => b.is_ascii_alphanumeric() || b"-._~!$&'()*+,;=:@/?#[]".contains(&b),
+    });
+    chars_ok && rest.matches('#').count() <= 1
 }
 
 /// Whether `text` is an RFC 3986 URI: a scheme, `:`, then only characters
@@ -28,15 +53,7 @@ pub(super) fn is_uri(text: &str) -> bool {
         && scheme
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'+' | b'-' | b'.'));
-    let bytes = rest.as_bytes();
-    let chars_ok = bytes.iter().enumerate().all(|(i, &b)| match b {
-        b'%' => bytes
-            .get(i + 1..i + 3)
-            .is_some_and(|h| h.iter().all(u8::is_ascii_hexdigit)),
-        // Unreserved, sub-delims and the delimiters of the URI syntax.
-        b => b.is_ascii_alphanumeric() || b"-._~!$&'()*+,;=:@/?#[]".contains(&b),
-    });
-    scheme_ok && chars_ok && rest.matches('#').count() <= 1
+    scheme_ok && is_uri_chars(rest)
 }
 
 /// Whether `text` looks like an e-mail address: `local@domain`, with a dot
@@ -54,50 +71,65 @@ pub(super) fn is_email(text: &str) -> bool {
         && !domain.ends_with('.')
 }
 
-/// Whether `text` is an ISO 8601 date `YYYY-MM-DD`.
+/// Whether `text` is a valid ISO 8601 calendar date `YYYY-MM-DD`.
 pub(super) fn is_date(text: &str) -> bool {
-    let b = text.as_bytes();
-    b.len() == 10
-        && b.iter().enumerate().all(|(i, &c)| {
-            if i == 4 || i == 7 {
-                c == b'-'
-            } else {
-                c.is_ascii_digit()
-            }
-        })
+    let [y1, y2, y3, y4, b'-', m1, m2, b'-', d1, d2] = *text.as_bytes() else {
+        return false;
+    };
+    let (Some(yh), Some(yl), Some(m), Some(d)) = (
+        two_digits(y1, y2),
+        two_digits(y3, y4),
+        two_digits(m1, m2),
+        two_digits(d1, d2),
+    ) else {
+        return false;
+    };
+    let year = yh * 100 + yl;
+    let leap = (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
+    let max_day = match m {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 if leap => 29,
+        2 => 28,
+        _ => return false,
+    };
+    (1..=max_day).contains(&d)
 }
 
-/// Whether `text` is `hh:mm:ss`, optionally with fractional seconds and a
-/// zone (`Z` or `±hh:mm`).
+/// Whether `text` is `hh:mm:ss` (`00:00:00`–`23:59:59` or `24:00:00`),
+/// optionally with fractional seconds and a timezone (`Z` or `±hh:mm` in
+/// `±00:00`–`±14:00`).
 pub(super) fn is_time(text: &str) -> bool {
-    let b = text.as_bytes();
-    let Some(rest) = b.get(8..) else { return false };
-    let clock = b.iter().take(8).enumerate().all(|(i, &c)| {
-        if i == 2 || i == 5 {
-            c == b':'
-        } else {
-            c.is_ascii_digit()
-        }
-    });
-    let rest = match rest.first() {
+    let [h1, h2, b':', m1, m2, b':', s1, s2, rest @ ..] = text.as_bytes() else {
+        return false;
+    };
+    let (Some(h), Some(m), Some(s)) = (
+        two_digits(*h1, *h2),
+        two_digits(*m1, *m2),
+        two_digits(*s1, *s2),
+    ) else {
+        return false;
+    };
+    let (frac_nonzero, rest) = match rest.first() {
         Some(b'.') => {
-            let digits = rest
-                .iter()
-                .skip(1)
-                .take_while(|c| c.is_ascii_digit())
-                .count();
-            if digits == 0 {
+            let frac = rest.get(1..).unwrap_or_default();
+            let count = frac.iter().take_while(|c| c.is_ascii_digit()).count();
+            if count == 0 {
                 return false;
             }
-            rest.get(1 + digits..).unwrap_or_default()
+            let nonzero = frac
+                .get(..count)
+                .is_some_and(|d| d.iter().any(|&c| c != b'0'));
+            (nonzero, frac.get(count..).unwrap_or_default())
         }
-        _ => rest,
+        _ => (false, rest),
     };
+    let clock = (h < 24 && m < 60 && s < 60) || (h == 24 && m == 0 && s == 0 && !frac_nonzero);
     let zone = match rest {
         [] | [b'Z'] => true,
-        [sign, h1, h2, b':', m1, m2] => {
-            matches!(sign, b'+' | b'-') && [h1, h2, m1, m2].iter().all(|c| c.is_ascii_digit())
-        }
+        [b'+' | b'-', zh1, zh2, b':', zm1, zm2] => two_digits(*zh1, *zh2).is_some_and(|zh| {
+            two_digits(*zm1, *zm2).is_some_and(|zm| (zh < 14 && zm < 60) || (zh == 14 && zm == 0))
+        }),
         _ => false,
     };
     clock && zone
@@ -106,9 +138,10 @@ pub(super) fn is_time(text: &str) -> bool {
 /// Whether a study-variable value matches its group's datatype.
 pub(super) fn matches_datatype(datatype: Datatype, value: &str) -> bool {
     match datatype {
-        Datatype::String | Datatype::AnyUri => true,
-        Datatype::Integer => value.parse::<i128>().is_ok() && !value.starts_with('+'),
-        Datatype::Decimal => Decimal::parse(value).is_ok_and(|d| d.kind().is_conforming()),
+        Datatype::String => true,
+        Datatype::AnyUri => !value.is_empty() && is_uri_chars(value),
+        Datatype::Integer => signed_digits(value),
+        Datatype::Decimal => Decimal::parse(value).is_ok_and(|d| d.kind() == DecimalKind::Decimal),
         Datatype::Boolean => matches!(value, "true" | "false"),
         Datatype::Date => is_date(value),
         Datatype::Time => is_time(value),
@@ -153,38 +186,48 @@ pub(super) fn is_adduct(text: &str) -> bool {
     charge == "+" || charge == "-"
 }
 
+#[derive(Clone, Copy)]
+enum NativeValue {
+    IdRef,
+    NonNegativeInt,
+    PositiveInt,
+}
+
 /// The keys of the native spectrum id of each `id_format` term in spec
-/// table 1, and whether each value is a non-negative integer (`false`: an
-/// id, `xsd:IDREF`).
-const NATIVE_IDS: &[(&str, &[(&str, bool)])] = &[
+/// table 1, and their expected XML Schema value type.
+const NATIVE_IDS: &[(&str, &[(&str, NativeValue)])] = &[
     (
         "MS:1000768",
         &[
-            ("controllerType", true),
-            ("controllerNumber", true),
-            ("scan", true),
+            ("controllerType", NativeValue::NonNegativeInt),
+            ("controllerNumber", NativeValue::PositiveInt),
+            ("scan", NativeValue::PositiveInt),
         ],
     ),
     (
         "MS:1000769",
-        &[("function", true), ("process", true), ("scan", true)],
+        &[
+            ("function", NativeValue::PositiveInt),
+            ("process", NativeValue::NonNegativeInt),
+            ("scan", NativeValue::NonNegativeInt),
+        ],
     ),
     (
         "MS:1000770",
         &[
-            ("sample", true),
-            ("period", true),
-            ("cycle", true),
-            ("experiment", true),
+            ("sample", NativeValue::NonNegativeInt),
+            ("period", NativeValue::NonNegativeInt),
+            ("cycle", NativeValue::NonNegativeInt),
+            ("experiment", NativeValue::NonNegativeInt),
         ],
     ),
-    ("MS:1000771", &[("scan", true)]),
-    ("MS:1000772", &[("scan", true)]),
-    ("MS:1000773", &[("file", false)]),
-    ("MS:1000774", &[("index", true)]),
-    ("MS:1000775", &[("file", false)]),
-    ("MS:1000776", &[("scan", true)]),
-    ("MS:1000777", &[("spectrum", true)]),
+    ("MS:1000771", &[("scan", NativeValue::NonNegativeInt)]),
+    ("MS:1000772", &[("scan", NativeValue::NonNegativeInt)]),
+    ("MS:1000773", &[("file", NativeValue::IdRef)]),
+    ("MS:1000774", &[("index", NativeValue::NonNegativeInt)]),
+    ("MS:1000775", &[("file", NativeValue::IdRef)]),
+    ("MS:1000776", &[("scan", NativeValue::NonNegativeInt)]),
+    ("MS:1000777", &[("spectrum", NativeValue::NonNegativeInt)]),
 ];
 
 /// Whether `reference` has the form spec table 1 gives for the `id_format`
@@ -194,10 +237,17 @@ const NATIVE_IDS: &[(&str, &[(&str, bool)])] = &[
 pub(super) fn native_id_ok(accession: &str, reference: &str) -> Option<bool> {
     let (_, keys) = NATIVE_IDS.iter().find(|(a, _)| *a == accession)?;
     let mut parts = reference.split(' ');
-    let matched = keys.iter().all(|(key, number)| {
+    let matched = keys.iter().all(|(key, kind)| {
         parts.next().is_some_and(|part| {
             part.split_once('=').is_some_and(|(k, v)| {
-                k == *key && !v.is_empty() && (!*number || v.bytes().all(|b| b.is_ascii_digit()))
+                k == *key
+                    && match kind {
+                        NativeValue::IdRef => !v.is_empty(),
+                        NativeValue::NonNegativeInt => digits(v),
+                        NativeValue::PositiveInt => {
+                            digits(v) && v.bytes().any(|b| (b'1'..=b'9').contains(&b))
+                        }
+                    }
             })
         })
     });
@@ -207,17 +257,23 @@ pub(super) fn native_id_ok(accession: &str, reference: &str) -> Option<bool> {
 /// Whether `value` is a lexical value of XML Schema type `kind` (by local
 /// name); `None` for a type not checked.
 pub(super) fn xsd_matches(kind: &str, value: &str) -> Option<bool> {
-    let digits = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit());
-    let signed = |s: &str| digits(s.strip_prefix(['-', '+']).unwrap_or(s));
     Some(match kind {
-        "int" | "integer" | "long" | "short" => signed(value),
-        "nonNegativeInteger" | "unsignedInt" => digits(value.strip_prefix('+').unwrap_or(value)),
+        "short" => value.parse::<i16>().is_ok(),
+        "int" => value.parse::<i32>().is_ok(),
+        "long" => value.parse::<i64>().is_ok(),
+        "unsignedInt" => value.parse::<u32>().is_ok(),
+        "integer" => signed_digits(value),
+        "nonNegativeInteger" => digits(value.strip_prefix('+').unwrap_or(value)),
         "positiveInteger" => {
             digits(value.strip_prefix('+').unwrap_or(value))
                 && value.bytes().any(|b| (b'1'..=b'9').contains(&b))
         }
-        "float" | "double" | "decimal" => {
-            matches!(value, "NaN" | "INF" | "-INF") || value.parse::<f64>().is_ok()
+        "decimal" => Decimal::parse(value).is_ok_and(|d| d.kind() == DecimalKind::Decimal),
+        "float" | "double" => {
+            matches!(value, "NaN" | "INF" | "-INF" | "+INF")
+                || Decimal::parse(value).is_ok_and(|d| {
+                    matches!(d.kind(), DecimalKind::Decimal | DecimalKind::Scientific)
+                })
         }
         "boolean" => matches!(value, "true" | "false" | "1" | "0"),
         // `string`, `anyURI`, dates and the rest: not checked.
@@ -247,7 +303,21 @@ mod tests {
             assert!(!is_orcid(bad), "{bad}");
         }
         assert!(
-            is_date("2025-03-14") && !is_date("2025-3-14") && !is_date("2025/03/14"),
+            is_date("2025-03-14")
+                && is_date("2024-02-29")
+                && is_date("2000-02-29")
+                && is_date("2025-04-30")
+                && is_date("2025-01-31")
+                && !is_date("2025-02-29")
+                && !is_date("1900-02-29")
+                && !is_date("2025-00-10")
+                && !is_date("2025-13-01")
+                && !is_date("2025-01-00")
+                && !is_date("2025-04-31")
+                && !is_date("2025-01-32")
+                && !is_date("2025-3-14")
+                && !is_date("2025-ab-14")
+                && !is_date("2025/03/14"),
             "dates"
         );
         for ok in [
@@ -255,6 +325,12 @@ mod tests {
             "09:45:30.250Z",
             "09:45:30+02:00",
             "09:45:30-02:00",
+            "23:59:59",
+            "24:00:00",
+            "24:00:00.0",
+            "12:00:00+14:00",
+            "12:00:00-14:00",
+            "12:00:00+13:59",
         ] {
             assert!(is_time(ok), "{ok}");
         }
@@ -263,14 +339,44 @@ mod tests {
             "09:45:30.",
             "09:45:30+0200",
             "09-45-30",
+            "09:ab:30",
             "09:45:30Y",
             "09:45:30*02:00",
+            "24:00:00.1",
+            "24:01:00",
+            "24:00:01",
+            "25:00:00",
+            "23:60:00",
+            "23:00:60",
+            "12:00:00+14:01",
+            "12:00:00+15:00",
+            "12:00:00+13:60",
         ] {
             assert!(!is_time(bad), "{bad}");
         }
         assert_eq!(native_id_ok("MS:1000776", "scan=1"), Some(true));
         assert_eq!(native_id_ok("MS:1000776", "scan=1 extra=2"), Some(false));
         assert_eq!(native_id_ok("MS:1001530", "anything"), None);
+        assert_eq!(
+            native_id_ok("MS:1000768", "controllerType=0 controllerNumber=1 scan=1"),
+            Some(true)
+        );
+        assert_eq!(
+            native_id_ok("MS:1000768", "controllerType=0 controllerNumber=0 scan=1"),
+            Some(false)
+        );
+        assert_eq!(
+            native_id_ok("MS:1000768", "controllerType=0 controllerNumber=1 scan=0"),
+            Some(false)
+        );
+        assert_eq!(
+            native_id_ok("MS:1000769", "function=1 process=0 scan=0"),
+            Some(true)
+        );
+        assert_eq!(
+            native_id_ok("MS:1000769", "function=0 process=0 scan=0"),
+            Some(false)
+        );
     }
 
     #[test]
@@ -278,10 +384,21 @@ mod tests {
         let cases = [
             (Datatype::String, "anything", true),
             (Datatype::AnyUri, "x", true),
+            (Datatype::AnyUri, "https://example.org/a%20b#c", true),
+            (Datatype::AnyUri, "not a uri", false),
+            (Datatype::AnyUri, "a%zz", false),
+            (Datatype::AnyUri, "", false),
             (Datatype::Integer, "-12", true),
-            (Datatype::Integer, "+12", false),
+            (Datatype::Integer, "+12", true),
+            (
+                Datatype::Integer,
+                "1234567890123456789012345678901234567890",
+                true,
+            ),
+            (Datatype::Integer, "+", false),
             (Datatype::Integer, "1.0", false),
             (Datatype::Decimal, "1.5", true),
+            (Datatype::Decimal, "NaN", false),
             (Datatype::Decimal, "1e5", false),
             (Datatype::Boolean, "true", true),
             (Datatype::Boolean, "TRUE", false),
@@ -325,13 +442,26 @@ mod tests {
     fn xml_schema_types() {
         let cases = [
             ("int", "-3", Some(true)),
+            ("int", "99999999999999", Some(false)),
+            ("short", "32767", Some(true)),
+            ("short", "32768", Some(false)),
+            ("long", "-9223372036854775808", Some(true)),
+            ("unsignedInt", "4294967295", Some(true)),
+            ("unsignedInt", "-1", Some(false)),
             ("integer", "x", Some(false)),
+            ("integer", "999999999999999999999999999999", Some(true)),
             ("nonNegativeInteger", "+0", Some(true)),
             ("nonNegativeInteger", "-1", Some(false)),
             ("positiveInteger", "0", Some(false)),
             ("positiveInteger", "07", Some(true)),
             ("double", "1.5e3", Some(true)),
+            ("double", "inf", Some(false)),
+            ("double", "Infinity", Some(false)),
             ("float", "INF", Some(true)),
+            ("decimal", "1.5", Some(true)),
+            ("decimal", "1.5e3", Some(false)),
+            ("decimal", "NaN", Some(false)),
+            ("decimal", "INF", Some(false)),
             ("decimal", "one", Some(false)),
             ("boolean", "1", Some(true)),
             ("boolean", "yes", Some(false)),

@@ -1,9 +1,11 @@
 //! Collecting CV parameter sites and `opt_*_cv_*` column headers.
 
-use alloc::collections::BTreeMap;
+use alloc::borrow::Cow;
+use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::vec::Vec;
 
 use crate::cv::Target;
+use crate::id::StudyVariableId;
 use crate::meta::key::MtdKey;
 use crate::meta::subkey::{
     DatabaseKey, InstrumentKey, MsRunKey, SampleKey, SoftwareKey, StudyVariableGroupKey,
@@ -16,13 +18,14 @@ use crate::param::Param;
 use crate::validate::report::Site;
 use crate::validate::tables::position;
 use crate::value::cell::Cell;
+use crate::vocab::field::Datatype;
 use crate::vocab::section::TableSection;
 
 /// One CV parameter in the model, where it is, and the rule field it
 /// fills (with its scope: an element or row).
-pub(super) struct Use<'r, 'a> {
+pub(super) struct Use<'r> {
     pub(super) site: Site,
-    pub(super) param: &'r Param<'a>,
+    pub(super) param: Cow<'r, Param<'r>>,
     pub(super) slot: Option<(Target, u32)>,
 }
 
@@ -33,36 +36,61 @@ pub(super) struct ColumnTerm<'r> {
 }
 
 /// The CV parameters of the metadata and the tables.
-pub(super) fn collect<'r, 'a>(mztab: &'r MzTab<'a>) -> Vec<Use<'r, 'a>> {
+pub(super) fn collect<'r>(mztab: &'r MzTab<'_>) -> Vec<Use<'r>> {
     let mut out = Vec::new();
     collect_metadata(mztab, &mut out);
     collect_tables(mztab, &mut out);
     out
 }
 
-fn collect_metadata<'r, 'a>(mztab: &'r MzTab<'a>, out: &mut Vec<Use<'r, 'a>>) {
+fn collect_metadata<'r>(mztab: &'r MzTab<'_>, out: &mut Vec<Use<'r>>) {
+    let param_svs: BTreeSet<StudyVariableId> = mztab
+        .metadata
+        .study_variable_group
+        .values()
+        .filter(|g| g.datatype.as_ref().and_then(Cell::value) == Some(&Datatype::Parameter))
+        .flat_map(|g| {
+            g.study_variable_refs
+                .iter()
+                .filter_map(Cell::value)
+                .flatten()
+                .filter_map(|c| c.value().copied())
+        })
+        .collect();
     let mut nth: BTreeMap<MtdKey, usize> = BTreeMap::new();
     for (key, value) in mztab.metadata.entries() {
         let slot = slot(key);
         match value {
             ValueRef::Param(Cell::Value(param)) => out.push(Use {
                 site: Site::Value(key),
-                param,
+                param: Cow::Borrowed(param),
                 slot,
             }),
             ValueRef::ParamList(Cell::Value(list)) => {
                 out.extend(list.iter().filter_map(Cell::value).map(|param| Use {
                     site: Site::Value(key),
-                    param,
+                    param: Cow::Borrowed(param),
                     slot,
                 }));
+            }
+            ValueRef::Text(Cell::Value(text)) => {
+                if let MtdKey::StudyVariable(id, StudyVariableKey::Name) = key
+                    && param_svs.contains(&id)
+                    && let Ok(param) = Param::parse(text.as_str())
+                {
+                    out.push(Use {
+                        site: Site::Value(key),
+                        param: Cow::Owned(param),
+                        slot: None,
+                    });
+                }
             }
             ValueRef::ColUnit(cell) => {
                 let n = nth.entry(key).or_default();
                 if let Cell::Value(unit) = cell {
                     out.push(Use {
                         site: Site::Nth(key, *n),
-                        param: &unit.param,
+                        param: Cow::Borrowed(&unit.param),
                         slot,
                     });
                 }
@@ -73,7 +101,7 @@ fn collect_metadata<'r, 'a>(mztab: &'r MzTab<'a>, out: &mut Vec<Use<'r, 'a>>) {
     }
 }
 
-fn collect_tables<'r, 'a>(mztab: &'r MzTab<'a>, out: &mut Vec<Use<'r, 'a>>) {
+fn collect_tables<'r>(mztab: &'r MzTab<'_>, out: &mut Vec<Use<'r>>) {
     if let Some(table) = &mztab.sml {
         let at = position(&table.header, &SmlColumn::BestIdConfidenceMeasure);
         for (i, row) in table.rows.iter().enumerate() {
@@ -91,7 +119,7 @@ fn collect_tables<'r, 'a>(mztab: &'r MzTab<'a>, out: &mut Vec<Use<'r, 'a>>) {
             if let Cell::Value(param) = &row.isotopomer {
                 out.push(Use {
                     site: Site::Cell(TableSection::Smf, i, at),
-                    param,
+                    param: Cow::Borrowed(param),
                     slot: None,
                 });
             }
@@ -120,9 +148,9 @@ fn collect_tables<'r, 'a>(mztab: &'r MzTab<'a>, out: &mut Vec<Use<'r, 'a>>) {
     }
 }
 
-fn cell_use<'r, 'a>(
-    out: &mut Vec<Use<'r, 'a>>,
-    cell: &'r Cell<'a, Param<'a>>,
+fn cell_use<'r>(
+    out: &mut Vec<Use<'r>>,
+    cell: &'r Cell<'r, Param<'r>>,
     (section, row, at): (TableSection, usize, usize),
     target: Target,
 ) {
@@ -130,7 +158,7 @@ fn cell_use<'r, 'a>(
         let scope = u32::try_from(row).unwrap_or(u32::MAX);
         out.push(Use {
             site: Site::Cell(section, row, at),
-            param,
+            param: Cow::Borrowed(param),
             slot: Some((target, scope)),
         });
     }

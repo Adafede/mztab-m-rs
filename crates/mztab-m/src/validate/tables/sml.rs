@@ -74,7 +74,7 @@ impl SmlCols {
     }
 }
 
-struct SmlCtx<'a> {
+struct SmlCtx {
     cols: SmlCols,
     positions: Positions,
     smf_ids: BTreeSet<SmfId>,
@@ -82,7 +82,6 @@ struct SmlCtx<'a> {
     default_scheme: bool,
     profile: Option<Profile>,
     rules: RuleSet,
-    _marker: core::marker::PhantomData<&'a ()>,
 }
 
 pub(super) fn sml_rows(mztab: &MzTab<'_>, rules: RuleSet, report: &mut Report<'_, '_>) {
@@ -113,7 +112,6 @@ pub(super) fn sml_rows(mztab: &MzTab<'_>, rules: RuleSet, report: &mut Report<'_
         default_scheme,
         profile: mztab.inferred_profile().ok(),
         rules,
-        _marker: core::marker::PhantomData,
     };
     let header_len = table.header.columns.len();
     for (i, row) in table.rows.iter().enumerate() {
@@ -127,7 +125,7 @@ pub(super) fn sml_rows(mztab: &MzTab<'_>, rules: RuleSet, report: &mut Report<'_
     }
 }
 
-fn check_row(row: &SmlRow<'_>, ctx: &SmlCtx<'_>, r: &mut Rows<'_, '_, '_>) {
+fn check_row(row: &SmlRow<'_>, ctx: &SmlCtx, r: &mut Rows<'_, '_, '_>) {
     let c = &ctx.cols;
     r.not_null(&row.sml_id, c.sml_id, Severity::Error);
     // DECISIONS D-012: nullable in practice, `recommended` in the schema.
@@ -153,16 +151,15 @@ fn check_row(row: &SmlRow<'_>, ctx: &SmlCtx<'_>, r: &mut Rows<'_, '_, '_>) {
     check_reliability_and_refs(row, ctx, r);
 }
 
-fn check_masses_and_conf(row: &SmlRow<'_>, ctx: &SmlCtx<'_>, r: &mut Rows<'_, '_, '_>) {
+fn check_masses_and_conf(row: &SmlRow<'_>, ctx: &SmlCtx, r: &mut Rows<'_, '_, '_>) {
     let c = &ctx.cols;
     let masses = &row.theoretical_neutral_mass;
-    let forbidden = masses.value().is_some_and(|items| {
+    let bad_item = masses.value().is_some_and(|items| {
         items
             .iter()
-            .any(|item| item.value().is_some_and(|d| !d.kind().is_conforming()))
+            .any(|i| i.invalid().is_some() || i.value().is_some_and(|d| !d.kind().is_conforming()))
     });
-    r.valid_list(masses, c.theoretical_neutral_mass);
-    if forbidden && masses.invalid().is_none() {
+    if masses.invalid().is_some() || bad_item {
         r.add(Code::InvalidValue, c.theoretical_neutral_mass, Detail::None);
     }
     r.valid(&row.reliability, c.reliability);
@@ -178,7 +175,7 @@ fn check_masses_and_conf(row: &SmlRow<'_>, ctx: &SmlCtx<'_>, r: &mut Rows<'_, '_
     }
 }
 
-fn check_reliability_and_refs(row: &SmlRow<'_>, ctx: &SmlCtx<'_>, r: &mut Rows<'_, '_, '_>) {
+fn check_reliability_and_refs(row: &SmlRow<'_>, ctx: &SmlCtx, r: &mut Rows<'_, '_, '_>) {
     let c = &ctx.cols;
     // DECISIONS D-015: a null reliability is a warning; a value outside
     // 1-4 is an error only under the default scheme.

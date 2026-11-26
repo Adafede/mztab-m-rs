@@ -177,6 +177,8 @@ fn generate(xml: &str) -> String {
          use crate::diag::severity::Requirement;\n\n\
          pub(super) const RULES: &[Rule] = &[\n",
     );
+    let mut used_overrides = Vec::new();
+    let mut used_extra = Vec::new();
     for chunk in xml.split("<CvMappingRule ").skip(1) {
         let (tag, body) = chunk.split_once('>').expect("rule start tag");
         let body = body.split_once("</CvMappingRule>").expect("rule end").0;
@@ -188,13 +190,58 @@ fn generate(xml: &str) -> String {
             &[("MUST", "Must"), ("SHOULD", "Should"), ("MAY", "May")],
             &attr(tag, "requirementLevel"),
         );
-        let logic = pick(
+        let mut logic = pick(
             &[("AND", "And"), ("OR", "Or"), ("XOR", "Xor")],
             &attr(tag, "cvTermsCombinationLogic"),
         );
-        let terms: Vec<&str> = body.split("<CvTerm ").skip(1).collect();
+        let mut rule_terms = Vec::new();
+        let mut seen = Vec::new();
+        for raw_term in body.split("<CvTerm ").skip(1) {
+            let term = raw_term.split_once('>').expect("term tag end").0;
+            let accession = attr(term, "termAccession");
+            // The same term listed for two vocabularies (sample_processing)
+            // is one term here: `cvIdentifierRef` is not checked (D-068).
+            if seen.contains(&accession) {
+                continue;
+            }
+            let override_match = USE_TERM.contains(&(id.as_str(), accession.as_str()));
+            if override_match && !used_overrides.contains(&(id.clone(), accession.clone())) {
+                used_overrides.push((id.clone(), accession.clone()));
+            }
+            let use_term = flag(&attr(term, "useTerm")) || override_match;
+            rule_terms.push((
+                accession.clone(),
+                attr(term, "termName"),
+                use_term,
+                flag(&attr(term, "allowChildren")),
+                flag(&attr(term, "isRepeatable")),
+            ));
+            seen.push(accession);
+        }
+        let mut added_extra = false;
+        for &(rule, accession, name, use_term, children) in
+            EXTRA_TERMS.iter().filter(|(rule, ..)| *rule == id)
+        {
+            if !used_extra.contains(&(rule, accession)) {
+                used_extra.push((rule, accession));
+            }
+            if !seen.iter().any(|s| s == accession) {
+                rule_terms.push((
+                    accession.to_owned(),
+                    name.to_owned(),
+                    use_term,
+                    children,
+                    false,
+                ));
+                seen.push(accession.to_owned());
+                added_extra = true;
+            }
+        }
+        if added_extra && logic == "And" {
+            logic = "Or";
+        }
         assert!(
-            logic != "And" || terms.len() == 1,
+            logic != "And" || rule_terms.len() == 1,
             "{id}: an AND rule with several terms is not supported"
         );
         writeln!(
@@ -204,39 +251,22 @@ fn generate(xml: &str) -> String {
              terms: &["
         )
         .expect("writing to a String");
-        let mut seen = Vec::new();
-        for term in terms {
-            let accession = attr(term, "termAccession");
-            // The same term listed for two vocabularies (sample_processing)
-            // is one term here: `cvIdentifierRef` is not checked (D-068).
-            if seen.contains(&accession) {
-                continue;
-            }
-            let use_term = flag(&attr(term, "useTerm"))
-                || USE_TERM.contains(&(id.as_str(), accession.as_str()));
+        for (accession, name, use_term, allow_children, repeatable) in rule_terms {
             writeln!(
                 out,
-                "            RuleTerm {{ accession: \"{accession}\", name: \"{}\", use_term: {use_term}, \
-                 allow_children: {}, repeatable: {} }},",
-                attr(term, "termName"),
-                flag(&attr(term, "allowChildren")),
-                flag(&attr(term, "isRepeatable")),
-            )
-            .expect("writing to a String");
-            seen.push(accession);
-        }
-        for (_, accession, name, use_term, children) in
-            EXTRA_TERMS.iter().filter(|(rule, ..)| *rule == id)
-        {
-            writeln!(
-                out,
-                "            RuleTerm {{ accession: \"{accession}\", name: \"{name}\", use_term: {use_term}, \
-                 allow_children: {children}, repeatable: false }},"
+                "            RuleTerm {{ accession: {accession:?}, name: {name:?}, use_term: {use_term}, \
+                 allow_children: {allow_children}, repeatable: {repeatable} }},",
             )
             .expect("writing to a String");
         }
         out.push_str("        ],\n    },\n");
     }
+    assert_eq!(used_overrides.len(), USE_TERM.len(), "all USE_TERM applied");
+    assert_eq!(
+        used_extra.len(),
+        EXTRA_TERMS.len(),
+        "all EXTRA_TERMS applied"
+    );
     out.push_str("];\n");
     out
 }
@@ -279,6 +309,36 @@ fn corrections_apply() {
         ms_level.terms.iter().all(|t| t.use_term),
         "MS:1000511 itself is allowed"
     );
+    let id_format = mztab_m::cv::rules()
+        .iter()
+        .find(|r| r.id == "msrun_id_format_may")
+        .expect("rule");
+    assert_eq!(
+        id_format.logic,
+        mztab_m::cv::Logic::Or,
+        "multi-term alternative rule must not be Logic::And"
+    );
+    assert!(
+        id_format.terms.iter().any(|t| t.accession == "MS:1001530"),
+        "mzML unique identifier added"
+    );
+    for (rule_id, accession) in [
+        ("identification_method_must", "MS:1000531"),
+        ("small_molecule_quantification_unit_must", "MS:1001805"),
+        (
+            "small_molecule_feature_quantification_unit_must",
+            "MS:1001805",
+        ),
+    ] {
+        let rule = mztab_m::cv::rules()
+            .iter()
+            .find(|r| r.id == rule_id)
+            .expect("rule");
+        assert!(
+            rule.terms.iter().any(|t| t.accession == accession),
+            "{rule_id} contains {accession}"
+        );
+    }
     assert!(flag("yes"), "yes");
     assert_eq!(strip_comments("a<!-- b -->c<!-- d"), "ac", "comments");
 }

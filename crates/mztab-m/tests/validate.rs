@@ -429,3 +429,28 @@ fn synthetic_mtd_table_lines_are_ignored_in_location_index() {
         "non-table layout sections do not map to table lines"
     );
 }
+
+#[test]
+fn theoretical_neutral_mass_and_missing_ambiguity_col() {
+    // Mixed invalid + scientific item in SML theoretical_neutral_mass emits one InvalidValue.
+    let mixed = BASE.replace("180.0634|null", "bad|1e5");
+    let model = parse(&mixed).mztab;
+    let findings = validate::structure(&model, &Config::default());
+    let t028_on_mass = findings
+        .iter()
+        .filter(|f| f.code == Code::InvalidValue && f.location.to_string().contains("cell 10"))
+        .count();
+    assert_eq!(t028_on_mass, 1, "one InvalidValue per cell: {findings:?}");
+
+    // Missing SME_ID_REF_ambiguity_code column does not emit AmbiguityCode past the header.
+    let no_amb = BASE
+        .replace("\tSME_ID_REF_ambiguity_code\t", "\t")
+        .replace("SMF\t1\t1|2\t1\t", "SMF\t1\t1|2\t")
+        .replace("SMF\t2\tnull\tnull\t", "SMF\t2\tnull\t");
+    let model = parse(&no_amb).mztab;
+    let findings = validate::structure(&model, &Config::default());
+    assert!(
+        !findings.iter().any(|f| f.code == Code::AmbiguityCode),
+        "missing ambiguity column should not emit AmbiguityCode: {findings:?}"
+    );
+}

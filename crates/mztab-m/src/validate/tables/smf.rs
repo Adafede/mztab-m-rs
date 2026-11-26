@@ -145,7 +145,9 @@ fn check_row(row: &SmfRow<'_>, ctx: &SmfCtx, r: &mut Rows<'_, '_, '_>) {
         }
     }
     let several = ref_count > 1;
-    if several == row.sme_id_ref_ambiguity_code.is_null() {
+    if c.sme_id_ref_ambiguity_code < r.header_len
+        && several == row.sme_id_ref_ambiguity_code.is_null()
+    {
         r.add(
             Code::AmbiguityCode,
             c.sme_id_ref_ambiguity_code,

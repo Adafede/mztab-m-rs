@@ -21,7 +21,7 @@ pub(super) fn check(mztab: &MzTab<'_>, terms: &dyn TermLookup, report: &mut Repo
             name,
             value,
             ..
-        } = u.param
+        } = u.param.as_ref()
         {
             if accession.prefix().is_none() {
                 report.add(

@@ -19,7 +19,7 @@ pub(super) const RULES: &[Rule] = &[
         id: "msrun_id_format_may",
         target: Target::MsRunIdFormat,
         requirement: Requirement::May,
-        logic: Logic::And,
+        logic: Logic::Or,
         terms: &[
             RuleTerm { accession: "MS:1000767", name: "native spectrum identifier format", use_term: false, allow_children: true, repeatable: false },
             RuleTerm { accession: "MS:1001530", name: "mzML unique identifier", use_term: true, allow_children: false, repeatable: false },

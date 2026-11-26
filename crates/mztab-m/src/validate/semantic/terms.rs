@@ -30,7 +30,7 @@ pub(super) fn term(accession: &str, name: Option<&str>, rule: Option<&'static st
 /// `X001` (once per undeclared label, at its first use) and `X002`.
 pub(super) fn declarations(
     mztab: &MzTab<'_>,
-    uses: &[Use<'_, '_>],
+    uses: &[Use<'_>],
     columns: &[ColumnTerm<'_>],
     report: &mut Report<'_, '_>,
 ) {
@@ -41,7 +41,7 @@ pub(super) fn declarations(
         .filter_map(|(id, cv)| Some((id, cv.label.as_ref()?.value()?.as_str())))
         .collect();
     let mut labels = BTreeSet::new();
-    let param_labels = uses.iter().filter_map(|u| match u.param {
+    let param_labels = uses.iter().filter_map(|u| match u.param.as_ref() {
         Param::Cv { label, .. } => Some((label.as_str(), u.site)),
         Param::User { .. } => None,
     });

@@ -98,6 +98,9 @@ impl TermLookup for Ontology<'_> {
     /// Follows `is_a` and `part_of` upwards; each term is visited once, so
     /// cycles end.
     fn is_descendant(&self, accession: &str, ancestor: &str) -> bool {
+        if accession == ancestor {
+            return false;
+        }
         let mut seen = BTreeSet::new();
         let mut stack: Vec<&[&str]> = self
             .terms

@@ -21,6 +21,7 @@ pub(super) struct Entry<'a> {
 }
 
 pub(super) fn parse_ontology(text: &str) -> Ontology<'_> {
+    let text = text.strip_prefix('\u{FEFF}').unwrap_or(text);
     let mut ontology = Ontology::default();
     let mut stanza: Option<(Option<&str>, Entry<'_>)> = None;
     let mut in_header = true;
@@ -50,8 +51,8 @@ pub(super) fn parse_ontology(text: &str) -> Ontology<'_> {
 
 fn parse_header_tag<'a>(ontology: &mut Ontology<'a>, tag: &str, value: &'a str) {
     match tag {
-        "data-version" => ontology.data_version = Some(value),
-        "ontology" => ontology.namespace = Some(value),
+        "data-version" => ontology.data_version = Some(target(value)),
+        "ontology" => ontology.namespace = Some(target(value)),
         _ => {}
     }
 }
@@ -65,7 +66,7 @@ fn parse_term_tag<'a>(id: &mut Option<&'a str>, entry: &mut Entry<'a>, tag: &str
                 entry.synonyms.push(synonym);
             }
         }
-        "is_obsolete" => entry.obsolete = value == "true",
+        "is_obsolete" => entry.obsolete = target(value) == "true",
         "xref" => {
             if let Some(kind) = value_type(value) {
                 entry.value_type = Some(kind);
@@ -102,8 +103,25 @@ fn close<'a>(ontology: &mut Ontology<'a>, stanza: Option<(Option<&'a str>, Entry
 /// The text of an exact synonym: `"CID" EXACT []` gives `CID`.
 fn exact_synonym(value: &str) -> Option<&str> {
     let rest = value.strip_prefix('"')?;
-    let (text, scope) = rest.split_once('"')?;
-    scope.trim_start().starts_with("EXACT").then_some(text)
+    let mut escaped = false;
+    let mut close = None;
+    for (i, b) in rest.bytes().enumerate() {
+        if escaped {
+            escaped = false;
+        } else if b == b'\\' {
+            escaped = true;
+        } else if b == b'"' {
+            close = Some(i);
+            break;
+        }
+    }
+    let close = close?;
+    let text = rest.get(..close)?;
+    let scope = rest.get(close + 1..)?.trim_start();
+    let after = scope.strip_prefix("EXACT")?;
+    let boundary =
+        after.is_empty() || after.starts_with(|c: char| c.is_ascii_whitespace() || c == '[');
+    boundary.then_some(text)
 }
 
 /// The local name in `value-type:xsd\:int "…"` (`int`): the older PSI-MS

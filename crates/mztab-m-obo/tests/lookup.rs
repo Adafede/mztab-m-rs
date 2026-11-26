@@ -25,8 +25,17 @@ is_a: MS:1000031 ! instrument model\r
 [Term]\r
 id: MS:1001911\r
 name: Q Exactive\r
-relationship: part_of MS:1000483 {source=\"x\"} ! Thermo\r
+is_a: MS:1000483 {source=\"x\"} ! Thermo\r
 relationship: has_units UO:0000221 ! dalton\r
+\r
+[Term]\r
+id: MS:9000010\r
+name: mass spectrometer component\r
+\r
+[Term]\r
+id: MS:9000011\r
+name: quadrupole rod\r
+relationship: part_of MS:9000010 ! component\r
 \r
 [Term]\r
 id: MS:1000001\r
@@ -60,7 +69,11 @@ is_a: MS:9000001\r
 #[test]
 fn parses_terms_and_header() {
     let ms = Ontology::parse(MS);
-    assert_eq!(ms.len(), 6, "five unique ids with a name, one loop pair");
+    assert_eq!(
+        ms.len(),
+        8,
+        "four real terms, two synthetic part_of, one loop pair"
+    );
     assert!(!ms.is_empty(), "not empty");
     assert_eq!(ms.data_version(), Some("4.1.195"), "header");
     assert_eq!(ms.version("MS"), Some("4.1.195"), "version of MS");
@@ -116,8 +129,9 @@ fn ancestors_follow_is_a_and_part_of() {
     assert!(ms.is_descendant("MS:1000483", "MS:1000031"), "is_a");
     assert!(
         ms.is_descendant("MS:1001911", "MS:1000031"),
-        "part_of then is_a"
+        "transitive is_a"
     );
+    assert!(ms.is_descendant("MS:9000011", "MS:9000010"), "part_of");
     assert!(
         !ms.is_descendant("MS:1001911", "UO:0000221"),
         "other relationships are not followed"
@@ -132,8 +146,31 @@ fn ancestors_follow_is_a_and_part_of() {
         "a cycle ends"
     );
     assert!(
-        ms.is_descendant("MS:9000001", "MS:9000001"),
-        "via the cycle"
+        !ms.is_descendant("MS:9000001", "MS:9000001"),
+        "strict descendants only, even in a cycle"
+    );
+}
+
+#[test]
+fn handles_bom_inline_comments_and_escaped_synonym_quotes() {
+    let obo = "\u{FEFF}format-version: 1.2\n\
+               data-version: 2026-01-01 ! release\n\
+               ontology: ms ! comment\n\n\
+               [Term]\n\
+               id: MS:1\n\
+               name: quoted\n\
+               is_obsolete: true ! replaced\n\
+               synonym: \"a \\\"b\\\" c\" EXACT []\n\
+               synonym: \"not exact\" EXACTISH []\n";
+    let parsed = Ontology::parse(obo);
+    assert!(parsed.covers("MS"), "BOM stripped before header");
+    assert_eq!(parsed.version("MS"), Some("2026-01-01"), "comment stripped");
+    let t = parsed.term("MS:1").expect("term");
+    assert!(t.obsolete, "inline comment stripped on is_obsolete");
+    assert_eq!(
+        t.synonyms,
+        &[r#"a \"b\" c"#],
+        "escaped quotes and scope boundary"
     );
 }
 
