@@ -4,7 +4,7 @@ use alloc::format;
 use alloc::string::ToString as _;
 use alloc::vec::Vec;
 
-use super::emit::{colunit_text, text};
+use super::emit::{colunit_text, parse_positive_int, text};
 use super::{Tsv, items, mtd, shape_error, unknown_keys};
 use crate::diag::code::Code;
 use crate::diag::finding::Detail;
@@ -36,7 +36,9 @@ pub(super) fn metadata_lines(node: &Node<'_>, at: &Path, tsv: &mut Tsv) {
             }
             Item::Element(element) => element_lines(element, value, &here, tsv),
             Item::Indexed(name) => {
-                let ids = indexed_lines(name, value, &here, tsv);
+                let mut ids = indexed_lines(name, value, &here, tsv);
+                ids.sort_unstable();
+                ids.dedup();
                 tsv.ids.insert(name, ids);
             }
             Item::Colunit(key) => colunit_lines(key, value, &here, tsv),
@@ -66,8 +68,7 @@ fn item_id(item: &Node<'_>, position: u32, at: &Path, tsv: &mut Tsv) -> u32 {
         .filter(|v| !matches!(v, Value::Null))
     {
         if let Value::Number(n) = value
-            && let Ok(id) = n.parse::<u32>()
-            && id > 0
+            && let Some(id) = parse_positive_int(n)
         {
             return id;
         }
@@ -104,6 +105,8 @@ fn element_lines(element: &Element, node: &Node<'_>, at: &Path, tsv: &mut Tsv) {
         }
         unknown_keys(members, &known, &here, tsv);
     }
+    ids.sort_unstable();
+    ids.dedup();
     tsv.ids.insert(element.tsv, ids);
 }
 
@@ -129,7 +132,7 @@ fn element_props(
             Shape::Strings => {
                 for (n, item, place) in items(value, &there, tsv) {
                     if let Some(text) = text(item, Shape::Text, &place, tsv) {
-                        mtd(tsv, format!("{key}[{}]", n + 1), text, &place);
+                        mtd(tsv, format!("{key}[{}]", n.saturating_add(1)), text, &place);
                     }
                 }
             }
@@ -148,7 +151,7 @@ fn indexed_lines(key: &str, node: &Node<'_>, at: &Path, tsv: &mut Tsv) -> Vec<u3
     for (position, item, here) in items(node, at, tsv) {
         let id = match &item.value {
             Value::Object(_) => item_id(item, position, &here, tsv),
-            _ => position + 1,
+            _ => position.saturating_add(1),
         };
         // A `null` item only pads the array (D-071): no key.
         if let Some(text) = text(item, Shape::Param, &here, tsv) {

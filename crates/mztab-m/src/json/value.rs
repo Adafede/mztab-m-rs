@@ -17,11 +17,10 @@ pub(crate) enum Value<'a> {
     Object(Vec<(Cow<'a, str>, Node<'a>)>),
 }
 
-/// A value and the byte offset where it starts.
+/// A parsed JSON value with object member lookup.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Node<'a> {
     pub(crate) value: Value<'a>,
-    pub(crate) at: usize,
 }
 
 impl Node<'_> {

@@ -1,6 +1,5 @@
 //! JSON table arrays → TSV headers and rows.
 
-use alloc::borrow::Cow;
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::format;
 use alloc::string::{String, ToString as _};
@@ -51,8 +50,12 @@ enum Column {
 }
 
 pub(super) fn table_lines(table: &Table, node: &Node<'_>, at: &Path, tsv: &mut Tsv) {
+    if !matches!(node.value, Value::Array(_)) {
+        tsv.report(Code::JsonShape, at, Detail::Expected("an array"));
+        return;
+    }
     let rows = items(node, at, tsv);
-    let Some((_, first, first_at)) = rows.first() else {
+    if rows.is_empty() {
         // No rows, so no keys to take columns from: the full header of the
         // table, with one abundance column per metadata element (D-071).
         let names = standard_header(table, |element| {
@@ -62,12 +65,17 @@ pub(super) fn table_lines(table: &Table, node: &Node<'_>, at: &Path, tsv: &mut T
         header.extend(names.into_iter().map(|name| (name, at.clone())));
         tsv.line(&header);
         return;
-    };
-    let Value::Object(members) = &first.value else {
-        tsv.report(Code::JsonShape, first_at, Detail::Expected("an object"));
+    }
+    if !rows
+        .iter()
+        .any(|(_, row, _)| matches!(row.value, Value::Object(_)))
+    {
+        for (_, _, here) in &rows {
+            tsv.report(Code::JsonShape, here, Detail::Expected("an object"));
+        }
         return;
-    };
-    let columns = infer_columns(table, members, first_at, tsv);
+    }
+    let columns = infer_columns(table, &rows, tsv);
     let mut header: Vec<(String, Path)> = Vec::from([(table.header.to_string(), at.clone())]);
     header.extend(columns.iter().map(|(name, _)| (name.clone(), at.clone())));
     tsv.line(&header);
@@ -76,40 +84,60 @@ pub(super) fn table_lines(table: &Table, node: &Node<'_>, at: &Path, tsv: &mut T
     }
 }
 
-struct ArrayCol<'a> {
+struct ArrayCol {
     index: usize,
     element: &'static str,
     prefix: &'static str,
-    key: &'a str,
 }
 
 fn infer_columns(
     table: &Table,
-    members: &[(Cow<'_, str>, Node<'_>)],
-    first_at: &Path,
-    tsv: &mut Tsv,
+    rows: &[(u32, &Node<'_>, Path)],
+    tsv: &Tsv,
 ) -> Vec<(String, Column)> {
+    let mut max_len = alloc::vec![0usize; table.arrays.len()];
+    for (_, row, _) in rows {
+        let Value::Object(members) = &row.value else {
+            continue;
+        };
+        for (key, value) in members {
+            if let Some(Key::Array(index, ..)) = row_key(table, key)
+                && let Value::Array(items) = &value.value
+                && let Some(slot) = max_len.get_mut(index)
+            {
+                *slot = (*slot).max(items.len());
+            }
+        }
+    }
+
     let mut columns: Vec<(String, Column)> = Vec::new();
     let mut seen = BTreeSet::new();
-    for (key, value) in members {
-        if !seen.insert(key.as_ref()) {
+    let mut seen_opts = BTreeSet::new();
+    for (_, row, _) in rows {
+        let Value::Object(members) = &row.value else {
             continue;
-        }
-        match row_key(table, key) {
-            Some(Key::Stable(tsv_name, json_key, col)) => {
-                columns.push((tsv_name.to_string(), Column::Stable(json_key, col)));
+        };
+        for (key, value) in members {
+            match row_key(table, key) {
+                Some(Key::Stable(tsv_name, json_key, col)) => {
+                    if seen.insert(key.to_string()) {
+                        columns.push((tsv_name.to_string(), Column::Stable(json_key, col)));
+                    }
+                }
+                Some(Key::Array(index, element, prefix)) => {
+                    if matches!(value.value, Value::Array(_)) && seen.insert(key.to_string()) {
+                        let array = ArrayCol {
+                            index,
+                            element,
+                            prefix,
+                        };
+                        let len = max_len.get(index).copied().unwrap_or(0);
+                        push_array_columns(&mut columns, &array, len, tsv);
+                    }
+                }
+                Some(Key::Opt) => push_opt_columns(&mut columns, &mut seen_opts, value),
+                Some(Key::Ignored) | None => {}
             }
-            Some(Key::Array(index, element, prefix)) => {
-                let array = ArrayCol {
-                    index,
-                    element,
-                    prefix,
-                    key,
-                };
-                push_array_columns(&mut columns, &array, value, first_at, tsv);
-            }
-            Some(Key::Opt) => push_opt_columns(&mut columns, value),
-            Some(Key::Ignored) | None => {}
         }
     }
     columns
@@ -117,24 +145,11 @@ fn infer_columns(
 
 fn push_array_columns(
     columns: &mut Vec<(String, Column)>,
-    array: &ArrayCol<'_>,
-    value: &Node<'_>,
-    first_at: &Path,
-    tsv: &mut Tsv,
+    array: &ArrayCol,
+    len: usize,
+    tsv: &Tsv,
 ) {
-    let len = match &value.value {
-        Value::Array(items) => items.len(),
-        _ => 0,
-    };
     let ids = tsv.ids.get(array.element).cloned().unwrap_or_default();
-    if ids.len() != len {
-        let here = first_at.clone().key(array.key.to_string());
-        tsv.report(
-            Code::JsonShape,
-            &here,
-            Detail::Expected("one value per metadata element"),
-        );
-    }
     for p in 0..len {
         let id = ids
             .get(p)
@@ -147,14 +162,17 @@ fn push_array_columns(
     }
 }
 
-fn push_opt_columns(columns: &mut Vec<(String, Column)>, value: &Node<'_>) {
+fn push_opt_columns(
+    columns: &mut Vec<(String, Column)>,
+    names: &mut BTreeSet<String>,
+    value: &Node<'_>,
+) {
     let Value::Array(opts) = &value.value else {
         return;
     };
-    // A repeated identifier is one column (its first value).
-    let mut names = BTreeSet::new();
     for opt in opts {
         if let Some(name) = opt_name(opt)
+            && !name.contains(['\t', '\n', '\r'])
             && names.insert(name.clone())
         {
             columns.push((format!("opt_{name}"), Column::Opt(name)));
@@ -179,12 +197,17 @@ fn emit_row(
         if by_key.contains_key(k) {
             let at = here.clone().key(key.to_string());
             tsv.report(Code::JsonShape, &at, Detail::Expected("a member only once"));
-        } else {
-            by_key.insert(k, value);
-            if row_key(table, k).is_none() {
+            continue;
+        }
+        by_key.insert(k, value);
+        match row_key(table, k) {
+            None => {
                 let at = here.clone().key(key.to_string());
                 tsv.report(Code::JsonUnknownKey, &at, Detail::None);
             }
+            Some(Key::Array(_, element, _)) => validate_array_field(value, k, element, here, tsv),
+            Some(Key::Opt) => validate_opt_field(value, here, tsv),
+            _ => {}
         }
     }
     let mut cells = Vec::from([(table.row.to_string(), here.clone())]);
@@ -192,6 +215,69 @@ fn emit_row(
         cells.push(row_cell(table, column, &by_key, here, tsv));
     }
     tsv.line(&cells);
+}
+
+fn validate_array_field(
+    value: &Node<'_>,
+    key: &str,
+    element: &'static str,
+    row_at: &Path,
+    tsv: &mut Tsv,
+) {
+    match &value.value {
+        Value::Null => {}
+        Value::Array(items) => {
+            let expected = tsv.ids.get(element).map_or(0, Vec::len);
+            if items.len() != expected {
+                let at = row_at.clone().key(key.to_string());
+                tsv.report(
+                    Code::JsonShape,
+                    &at,
+                    Detail::Expected("one value per metadata element"),
+                );
+            }
+        }
+        _ => {
+            let at = row_at.clone().key(key.to_string());
+            tsv.report(Code::JsonShape, &at, Detail::Expected("an array"));
+        }
+    }
+}
+
+fn validate_opt_field(value: &Node<'_>, row_at: &Path, tsv: &mut Tsv) {
+    match &value.value {
+        Value::Null => {}
+        Value::Array(opts) => {
+            let opt_root = row_at.clone().key("opt");
+            for (n, opt) in opts.iter().enumerate() {
+                let opt_at = opt_root.clone().index(u32::try_from(n).unwrap_or(u32::MAX));
+                if !matches!(opt.value, Value::Object(_)) {
+                    tsv.report(Code::JsonShape, &opt_at, Detail::Expected("an opt entry"));
+                    continue;
+                }
+                match opt.get("identifier").map(|v| &v.value) {
+                    Some(Value::String(s)) => {
+                        if s.contains(['\t', '\n', '\r']) {
+                            tsv.report(
+                                Code::JsonText,
+                                &opt_at.clone().key("identifier"),
+                                Detail::None,
+                            );
+                        }
+                    }
+                    _ => tsv.report(
+                        Code::JsonShape,
+                        &opt_at.clone().key("identifier"),
+                        Detail::Expected("a string"),
+                    ),
+                }
+            }
+        }
+        _ => {
+            let at = row_at.clone().key("opt");
+            tsv.report(Code::JsonShape, &at, Detail::Expected("an array"));
+        }
+    }
 }
 
 fn opt_name(opt: &Node<'_>) -> Option<String> {

@@ -24,9 +24,10 @@ use emit::JsonWriter;
 /// # Errors
 ///
 /// [`WriteError::Fmt`] if `out` fails; [`WriteError::Unwritable`] if the
-/// model cannot be written as TSV, or holds what JSCH has no place for:
-/// unknown metadata keys, unknown columns, or abundance columns that do
-/// not match the metadata's assays and study variables one to one.
+/// model cannot be written as TSV, or holds what JSCH cannot encode:
+/// metadata indices too far apart to pad, unknown metadata keys, unknown or
+/// repeated columns, non-standard empty tables, row length mismatches, or
+/// abundance columns not matching metadata elements one to one.
 pub(super) fn write(mztab: &MzTab<'_>, out: &mut dyn fmt::Write) -> Result<(), WriteError> {
     let mut tsv = String::new();
     crate::write::write_canonical(mztab, &mut tsv)?;
@@ -80,11 +81,11 @@ pub(super) const fn unwritable(line: u32, reason: &'static str) -> WriteError {
     WriteError::Unwritable { line, reason }
 }
 
-/// Splits `name[n]rest` into its parts.
+/// Splits `name[n]rest` into its parts for canonical 1-based `n`.
 pub(super) fn split_key(key: &str) -> Option<(&str, u32, &str)> {
     let (name, rest) = key.split_once('[')?;
     let (n, rest) = rest.split_once(']')?;
-    Some((name, n.parse().ok()?, rest))
+    Some((name, crate::id::parse_index(n)?, rest))
 }
 
 /// The lines of the canonical TSV, by section.

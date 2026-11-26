@@ -69,7 +69,7 @@ impl<'a> JsonWriter<'a> {
             return self.str(text);
         }
         match shape {
-            Shape::Text | Shape::Indexed | Shape::Strings => self.str(text),
+            Shape::Text | Shape::TextOrParam | Shape::Indexed | Shape::Strings => self.str(text),
             Shape::Param => self.try_param(text),
             Shape::Params => self.try_params(text),
             Shape::Ref(element) => match parse_ref(text, element) {
@@ -103,8 +103,15 @@ impl<'a> JsonWriter<'a> {
             Col::Text => self.str(text),
             // Only plain numbers: the JSON reader writes exponents out, so a
             // number in another form stays a string (its TSV text).
-            Col::Number | Col::Integer => {
+            Col::Number => {
                 if is_number(text) && !text.contains(['e', 'E']) {
+                    self.raw(text)
+                } else {
+                    self.str(text)
+                }
+            }
+            Col::Integer => {
+                if is_number(text) && !text.contains(['.', 'e', 'E']) && text != "-0" {
                     self.raw(text)
                 } else {
                     self.str(text)
@@ -112,10 +119,10 @@ impl<'a> JsonWriter<'a> {
             }
             Col::Param => self.try_param(text),
             Col::Texts | Col::Numbers | Col::Integers => {
-                let item_col = if col == Col::Texts {
-                    Col::Text
-                } else {
-                    Col::Number
+                let item_col = match col {
+                    Col::Texts => Col::Text,
+                    Col::Numbers => Col::Number,
+                    _ => Col::Integer,
                 };
                 self.char('[')?;
                 for (i, item) in text.split('|').enumerate() {

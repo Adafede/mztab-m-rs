@@ -9,6 +9,8 @@ pub(super) use super::schema_tables::{Col, SNAKE_DIALECT, TABLES, Table, standar
 pub(super) enum Shape {
     /// A string.
     Text,
+    /// A string or a `Parameter` object (`StudyVariable.name`).
+    TextOrParam,
     /// A `Parameter` object.
     Param,
     /// An array of `Parameter` objects: a `|`-separated parameter list.
@@ -53,7 +55,7 @@ pub(super) enum Item {
     Colunit(&'static str),
 }
 
-use Shape::{Indexed, Param, Params, Publication, Ref, Refs, Strings, Text};
+use Shape::{Indexed, Param, Params, Publication, Ref, Refs, Strings, Text, TextOrParam};
 
 pub(super) const METADATA: &[Item] = &[
     Item::Field("mzTab-version", "mzTab-version", Text),
@@ -188,7 +190,7 @@ pub(super) const METADATA: &[Item] = &[
     Item::Element(Element {
         json: "study_variable",
         tsv: "study_variable",
-        value: Some(("name", Text)),
+        value: Some(("name", TextOrParam)),
         props: &[
             ("assay_refs", "assay_refs", Refs("assay")),
             ("ms_run_refs", "ms_run_refs", Refs("ms_run")),

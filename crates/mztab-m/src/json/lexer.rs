@@ -63,7 +63,6 @@ impl<'a> Parser<'a> {
 
     fn value(&mut self, depth: usize) -> Result<Node<'a>, SyntaxError> {
         self.space();
-        let at = self.at;
         let value = match self.peek() {
             None => return Err(self.error("expected a value")),
             Some(b'n') => self.literal("null", Value::Null)?,
@@ -80,7 +79,7 @@ impl<'a> Parser<'a> {
                 Value::Number(rest.get(..len).unwrap_or_default())
             }
         };
-        Ok(Node { value, at })
+        Ok(Node { value })
     }
 
     fn array(&mut self, depth: usize) -> Result<Value<'a>, SyntaxError> {

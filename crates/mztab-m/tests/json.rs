@@ -918,3 +918,346 @@ fn malformed_params_and_spectra_refs_fall_back_to_json_strings() {
     let back = json::parse(&text);
     assert_eq!(back.mztab, model, "round-trips via fallback string");
 }
+
+#[test]
+fn json_union_columns_and_row_validation() {
+    let union = json::parse(
+        r#"{"metadata": {"assay": [{"id": 1, "name": "a"}]},
+            "smallMoleculeSummary": [
+                {"sml_id": 1, "abundance_assay": null, "opt": null},
+                {"sml_id": 2, "chemical_name": ["Caffeine"], "abundance_assay": [42.0],
+                 "opt": [{"identifier": "global_tag", "value": "x"}]}
+            ],
+            "smallMoleculeFeature": [3, {"smf_id": 1}],
+            "smallMoleculeEvidence": [3, 4]}"#,
+    );
+    assert_eq!(
+        codes(&union.findings),
+        [Code::JsonShape, Code::JsonShape, Code::JsonShape],
+        "expected three non-object row findings: {:?}",
+        union.findings
+    );
+    let sml_cols = names(&union.mztab, "SMH");
+    assert!(
+        sml_cols.contains(&"chemical_name".to_owned())
+            && sml_cols.contains(&"abundance_assay[1]".to_owned())
+            && sml_cols.contains(&"opt_global_tag".to_owned()),
+        "union columns missing: {sml_cols:?}"
+    );
+    let sml = union.mztab.sml.as_ref().expect("SML");
+    assert_eq!(sml.rows.len(), 2, "both SML rows kept");
+    assert!(
+        sml.rows
+            .get(1)
+            .is_some_and(|r| r.chemical_name.value().is_some()),
+        "row 1 chemical_name kept"
+    );
+    let smf = union.mztab.smf.as_ref().expect("SMF");
+    assert_eq!(smf.rows.len(), 1, "object row after non-object row kept");
+
+    let row_checks = json::parse(
+        r#"{"metadata": {"assay": [{"id": 1, "name": "a"}]},
+            "smallMoleculeFeature": [
+                {"smf_id": 1, "abundance_assay": [1.0],
+                 "opt": [{"identifier": "a\nb", "value": "1"}, {"identifier": "global_ok", "value": "ok"}]},
+                {"smf_id": 2, "abundance_assay": [1.0, 2.0], "opt": 5},
+                {"smf_id": 3, "abundance_assay": "bad", "opt": [123, {"identifier": 1, "value": "v"}]}
+            ]}"#,
+    );
+    let check_locs: Vec<(Code, String)> = row_checks
+        .findings
+        .iter()
+        .map(|f| (f.code, f.location.to_string()))
+        .collect();
+    for (code, path) in [
+        (Code::JsonText, "/smallMoleculeFeature/0/opt/0/identifier"),
+        (Code::JsonShape, "/smallMoleculeFeature/1/abundance_assay"),
+        (Code::JsonShape, "/smallMoleculeFeature/1/opt"),
+        (Code::JsonShape, "/smallMoleculeFeature/2/abundance_assay"),
+        (Code::JsonShape, "/smallMoleculeFeature/2/opt/0"),
+        (Code::JsonShape, "/smallMoleculeFeature/2/opt/1/identifier"),
+    ] {
+        assert!(
+            check_locs
+                .iter()
+                .any(|(c, l)| *c == code && l == &pointer(path).to_string()),
+            "missing ({code}, {path}) in {check_locs:#?}"
+        );
+    }
+    let cols = names(&row_checks.mztab, "SFH");
+    assert!(
+        cols.contains(&"opt_global_ok".to_owned()) && !cols.iter().any(|c| c.contains('\n')),
+        "header kept without bad opt column: {cols:?}"
+    );
+
+    let bad_colunit =
+        json::parse(r#"{"metadata": {"colunit-small_molecule": [{"column_name": "c"}]}}"#);
+    assert!(
+        bad_colunit.findings.iter().any(|f| {
+            f.code == Code::JsonShape
+                && f.location == pointer("/metadata/colunit-small_molecule/0/param")
+        }),
+        "missing colunit param: {:?}",
+        bad_colunit.findings
+    );
+}
+
+#[test]
+fn json_numeric_coercion_and_integer_serialization() {
+    for col in [
+        "abundance_assay[0]",
+        "abundance_assay[01]",
+        "abundance_assay[+1]",
+    ] {
+        let bad_tsv = format!("SMH\tSML_ID\t{col}\nSML\t1\t1.0\n");
+        let mut bad_col = parse(&bad_tsv).mztab;
+        bad_col.layout = SourceLayout::default();
+        assert!(
+            matches!(
+                json::to_string(&bad_col),
+                Err(mztab_m::WriteError::Unwritable { .. })
+            ),
+            "non-canonical index {col} must be refused"
+        );
+    }
+
+    let nums = json::parse(
+        r#"{"metadata": {"ms_run": [{"id": 1.0, "location": "file:///a"}],
+                         "sample": [{"id": 1e0, "name": "s"}],
+                         "assay": [{"id": 1.50e1, "name": "a", "sample_ref": 1.0, "ms_run_ref": [1.0]}]},
+            "smallMoleculeFeature": [{"smf_id": 1e1, "charge": -0, "exp_mass_to_charge": 0e10000, "retention_time_in_seconds": -0e9999999}],
+            "smallMoleculeEvidence": [{"sme_id": 1.0, "spectra_ref": [{"ms_run": 1e0, "reference": "index=1"}]}]}"#,
+    );
+    assert!(
+        nums.findings.is_empty(),
+        "numeric coercion findings: {:?}",
+        nums.findings
+    );
+    let smf_row = nums
+        .mztab
+        .smf
+        .as_ref()
+        .and_then(|t| t.rows.first())
+        .expect("SMF row");
+    assert_eq!(
+        smf_row.smf_id.value().map(ToString::to_string).as_deref(),
+        Some("10")
+    );
+    assert_eq!(smf_row.charge.value().copied(), Some(0));
+    assert_eq!(
+        smf_row
+            .exp_mass_to_charge
+            .value()
+            .map(mztab_m::Decimal::as_str),
+        Some("0")
+    );
+    assert_eq!(
+        smf_row
+            .retention_time_in_seconds
+            .value()
+            .map(mztab_m::Decimal::as_str),
+        Some("-0")
+    );
+    let big_digits = format!(
+        r#"{{"smallMoleculeFeature":[{{"smf_id":1,"exp_mass_to_charge":0.{}1e1100}}]}}"#,
+        "0".repeat(1200)
+    );
+    let big = json::parse(&big_digits);
+    let big_val = big
+        .mztab
+        .smf
+        .as_ref()
+        .and_then(|t| t.rows.first())
+        .and_then(|r| r.exp_mass_to_charge.value())
+        .map(|d| d.as_str().to_owned());
+    assert_eq!(
+        big_val.as_deref(),
+        Some(format!("0.{}1", "0".repeat(100)).as_str()),
+        "no padding needed inside digits"
+    );
+
+    let bad_ints = json::parse(
+        r#"{"metadata": {"assay": [{"id": 1.5, "name": "a", "sample_ref": 1.5, "ms_run_ref": [1.5]}]},
+            "smallMoleculeFeature": [{"smf_id": 1.5, "charge": 1e2000}],
+            "smallMoleculeEvidence": [{"sme_id": 1, "spectra_ref": [{"ms_run": 1.5, "reference": "index=1"}]}]}"#,
+    );
+    assert!(
+        bad_ints
+            .findings
+            .iter()
+            .any(|f| f.code == Code::JsonShape && f.location == pointer("/metadata/assay/0/id")),
+        "fractional id must fail: {:?}",
+        bad_ints.findings
+    );
+}
+
+#[test]
+fn json_integer_round_trip_escapes_non_integers() {
+    let mut non_int = parse(
+        "SMH\tSML_ID\nSML\t1\n\n\
+         SFH\tSMF_ID\tSME_ID_REFS\tcharge\n\
+         SMF\t1\t1.5\t1.0\n\
+         SMF\t2\t1\t1e2\n",
+    )
+    .mztab;
+    non_int.layout = SourceLayout::default();
+    let non_int_json = json::to_string(&non_int).expect("writable");
+    assert!(
+        non_int_json.contains(r#""sme_id_refs":["1.5"]"#)
+            && non_int_json.contains(r#""charge":"1.0""#)
+            && non_int_json.contains(r#""charge":"1e2""#),
+        "non-integer invalid integers must serialize as JSON strings: {non_int_json}"
+    );
+    assert_eq!(json::parse(&non_int_json).mztab, non_int, "round-trips");
+
+    if let Some(smf) = non_int.smf.as_mut()
+        && let Some(row) = smf.rows.get_mut(1)
+    {
+        row.charge = mztab_m::Cell::Invalid(mztab_m::Raw::new("-0"));
+    }
+    let neg_zero_json = json::to_string(&non_int).expect("writable");
+    assert!(
+        neg_zero_json.contains(r#""charge":"-0""#),
+        "-0 invalid integer must serialize as JSON string: {neg_zero_json}"
+    );
+}
+
+#[test]
+fn json_metadata_lists_comments_and_ids() {
+    let empty_meta = json::parse(
+        r#"{"metadata": {"ms_run": [{"id": 1, "location": "file:///a"}],
+                         "assay": [{"id": 1, "ms_run_ref": []}],
+                         "publication": [{"id": 1, "publication_items": []}],
+                         "protocol": [{"id": 1, "parameters": []}]},
+            "smallMoleculeSummary": [{"sml_id": 1, "database_identifier": []}]}"#,
+    );
+    assert!(empty_meta.findings.is_empty(), "{:?}", empty_meta.findings);
+    let empty_tsv = mztab_m::to_string(&empty_meta.mztab).expect("writable");
+    assert!(
+        !empty_tsv.contains("MTD\tassay[1]-ms_run_ref")
+            && !empty_tsv.contains("MTD\tpublication[1]")
+            && !empty_tsv.contains("MTD\tprotocol[1]-parameters"),
+        "empty metadata arrays omitted: {empty_tsv}"
+    );
+    assert!(
+        empty_meta
+            .mztab
+            .sml
+            .as_ref()
+            .and_then(|t| t.rows.first())
+            .is_some_and(|r| r.database_identifier.is_null()),
+        "table [] still becomes Cell::Null"
+    );
+
+    let list_bad = json::parse(
+        r#"{"metadata": {"publication": [{"id": 1, "publication_items": [{"type": "doi", "accession": "1|2"}]}],
+                         "protocol": [{"id": 1, "parameters": ["null"]}]},
+            "smallMoleculeSummary": [{"sml_id": 1, "database_identifier": ["a|b"], "chemical_formula": ["null"]}],
+            "smallMoleculeEvidence": [{"sme_id": 1, "spectra_ref": [{"ms_run": 1, "reference": "x|y"}]}]}"#,
+    );
+    let list_text_locs: Vec<String> = list_bad
+        .findings
+        .iter()
+        .filter(|f| f.code == Code::JsonText)
+        .map(|f| f.location.to_string())
+        .collect();
+    for p in [
+        "/metadata/publication/0/publication_items/0",
+        "/metadata/protocol/0/parameters/0",
+        "/smallMoleculeSummary/0/database_identifier/0",
+        "/smallMoleculeSummary/0/chemical_formula/0",
+        "/smallMoleculeEvidence/0/spectra_ref/0",
+    ] {
+        assert!(
+            list_text_locs.contains(&pointer(p).to_string()),
+            "missing JsonText at {p} in {list_text_locs:?}"
+        );
+    }
+
+    let sv_param = json::parse(
+        r#"{"metadata": {"study_variable": [{"id": 1, "name": {"cv_label": "NCIT", "cv_accession": "NCIT:C20197", "name": "Male"}},
+                                            {"id": 2, "name": true}]}}"#,
+    );
+    assert_eq!(
+        codes(&sv_param.findings),
+        [Code::JsonShape],
+        "{:?}",
+        sv_param.findings
+    );
+    let sv_name = sv_param
+        .mztab
+        .metadata
+        .study_variable
+        .iter()
+        .next()
+        .and_then(|(_, sv)| sv.name.as_ref())
+        .and_then(|c| c.value().map(|t| t.as_str().to_owned()));
+    assert_eq!(sv_name.as_deref(), Some("[NCIT, NCIT:C20197, Male, ]"));
+
+    let num_fields = json::parse(
+        r#"{"metadata": {"quantification_method": {"cv_label": 1, "cv_accession": "MS:1", "name": "x"},
+                         "small_molecule-quantification_unit": {"name": 1}}}"#,
+    );
+    let num_shapes: Vec<String> = num_fields
+        .findings
+        .iter()
+        .filter(|f| f.code == Code::JsonShape)
+        .map(|f| f.location.to_string())
+        .collect();
+    assert!(
+        num_shapes.contains(&pointer("/metadata/quantification_method").to_string())
+            && num_shapes
+                .contains(&pointer("/metadata/small_molecule-quantification_unit").to_string()),
+        "{num_shapes:?}"
+    );
+}
+
+#[test]
+fn json_comments_and_sorted_ids() {
+    let bad_comments = json::parse(
+        r#"{"comment": [123, true, {"prefix": "BAD", "msg": "x", "line_number": 0, "extra": 1}]}"#,
+    );
+    assert!(
+        bad_comments.mztab.layout.lines.is_empty(),
+        "malformed comments must not become COM lines"
+    );
+    assert!(
+        bad_comments
+            .findings
+            .iter()
+            .any(|f| f.code == Code::JsonShape && f.location == pointer("/comment/0")),
+        "{:?}",
+        bad_comments.findings
+    );
+    assert!(
+        bad_comments
+            .findings
+            .iter()
+            .any(|f| f.code == Code::JsonUnknownKey && f.location == pointer("/comment/2/extra")),
+        "{:?}",
+        bad_comments.findings
+    );
+    let non_array_comment = json::parse(r#"{"comment": 5}"#);
+    assert_eq!(
+        codes(&non_array_comment.findings),
+        [Code::JsonShape],
+        "non-array comment"
+    );
+    let snake_with_comment = json::parse(r#"{"comment": [123], "small_molecule_summary": []}"#);
+    assert_eq!(
+        codes(&snake_with_comment.findings),
+        [Code::JsonDialect],
+        "comments() must not run after SNAKE_DIALECT"
+    );
+
+    let sorted_ids = json::parse(
+        r#"{"metadata": {"assay": [{"id": 2, "name": "b"}, {"id": 1, "name": "a"}, {"id": 2, "name": "dup"}]},
+            "smallMoleculeFeature": [{"smf_id": 1, "abundance_assay": [10.0, 20.0]}]}"#,
+    );
+    let sfh = names(&sorted_ids.mztab, "SFH");
+    assert_eq!(
+        sfh,
+        ["SMF_ID", "abundance_assay[1]", "abundance_assay[2]"],
+        "ids sorted & deduped: {sfh:?}"
+    );
+}

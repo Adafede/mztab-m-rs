@@ -45,8 +45,11 @@ pub(super) fn parse(input: &str) -> Parsed<'static> {
         }
     };
     let mut tsv = Tsv::default();
-    transcode(&root, &mut tsv);
-    let layout = comments(&root, &mut tsv);
+    let layout = if transcode(&root, &mut tsv) {
+        comments(&root, &mut tsv)
+    } else {
+        crate::model::layout::SourceLayout::default()
+    };
     let parsed = crate::read::builder::parse(&tsv.text);
     let mut mztab = parsed.mztab.into_owned();
     mztab.layout = layout;
@@ -71,6 +74,34 @@ fn comments(root: &Node<'_>, tsv: &mut Tsv) -> crate::model::layout::SourceLayou
     };
     let at = Path::new().key("comment");
     for (_, item, here) in items(node, &at, tsv) {
+        let Value::Object(members) = &item.value else {
+            tsv.report(Code::JsonShape, &here, Detail::Expected("a comment"));
+            continue;
+        };
+        unknown_keys(members, &["prefix", "msg", "line_number"], &here, tsv);
+        let valid_prefix = match item.get("prefix").filter(|n| !n.is_null()) {
+            Some(prefix) if !matches!(&prefix.value, Value::String(s) if s == "COM") => {
+                tsv.report(
+                    Code::JsonShape,
+                    &here.clone().key("prefix"),
+                    Detail::Expected("`COM`"),
+                );
+                false
+            }
+            _ => true,
+        };
+        let valid_line = match item.get("line_number").filter(|n| !n.is_null()) {
+            Some(line) if !matches!(&line.value, Value::Number(n) if emit::parse_positive_int(n).is_some()) =>
+            {
+                tsv.report(
+                    Code::JsonShape,
+                    &here.clone().key("line_number"),
+                    Detail::Expected("a positive integer"),
+                );
+                false
+            }
+            _ => true,
+        };
         let msg = match item.get("msg").map(|n| &n.value) {
             Some(Value::String(s)) => s.to_string(),
             Some(Value::Null) | None => String::new(),
@@ -81,6 +112,9 @@ fn comments(root: &Node<'_>, tsv: &mut Tsv) -> crate::model::layout::SourceLayou
         };
         if msg.contains(['\n', '\r']) {
             tsv.report(Code::JsonText, &here, Detail::None);
+            continue;
+        }
+        if !valid_prefix || !valid_line {
             continue;
         }
         layout.lines.push(SourceLine {
@@ -175,11 +209,11 @@ impl Tsv {
     }
 }
 
-fn transcode(root: &Node<'_>, tsv: &mut Tsv) {
+fn transcode(root: &Node<'_>, tsv: &mut Tsv) -> bool {
     let top = Path::new();
     let Value::Object(members) = &root.value else {
         tsv.report(Code::JsonShape, &top, Detail::Expected("an object"));
-        return;
+        return false;
     };
     if members
         .iter()
@@ -190,7 +224,7 @@ fn transcode(root: &Node<'_>, tsv: &mut Tsv) {
             &top,
             Detail::Label(Cow::Borrowed("snake_case keys (MetaboScape)")),
         );
-        return;
+        return false;
     }
     let known: Vec<&str> = ["metadata", "comment"]
         .into_iter()
@@ -205,6 +239,7 @@ fn transcode(root: &Node<'_>, tsv: &mut Tsv) {
             table::table_lines(table, rows, &Path::new().key(table.json), tsv);
         }
     }
+    true
 }
 
 /// Reports members not in `known`, and repeated members (the first one is read).
