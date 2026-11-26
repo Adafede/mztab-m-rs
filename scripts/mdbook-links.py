@@ -12,7 +12,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Map normalized repo-root paths to (book_page, default_fragment).
 SITE_PAGES = {
-    "STATUS.md": ("introduction.md", "#status"),
+    "STATUS.md": ("status.md", ""),
     "DECISIONS.md": ("decisions.md", ""),
     "docs/DESIGN.md": ("design.md", ""),
     "docs/BENCHMARKS.md": ("benchmarks.md", ""),
@@ -32,6 +32,7 @@ CHAPTER_BASE_DIRS = {
 
 SITE_LOCAL = {
     "introduction.md",
+    "status.md",
     "install.md",
     "quickstart.md",
     "library.md",

@@ -131,17 +131,19 @@ task_bindings() {
         mkdir -p target/rlib "$rtar"
         rm -rf "$PWD/target/rstage" "$rtar"/mztabm_*.tar.gz
         mkdir -p "$rstage"
-        Rscript bindings/r/bootstrap.R
-        COPYFILE_DISABLE=1 tar \
-            --exclude='./src/rust/target' \
-            --exclude='./src/*.o' \
-            --exclude='./src/*.so' \
-            --exclude='./src/*.dll' \
-            -cf - -C bindings/r . | tar -xf - -C "$rstage"
-        (cd "$rtar" && R CMD build --no-build-vignettes --no-manual "$rstage")
-        CARGO_TARGET_DIR="$PWD/bindings/r/src/rust/target" \
-            R CMD INSTALL --no-docs --library=target/rlib "$rtar"/mztabm_*.tar.gz
-        rm -rf "$PWD/target/rstage" bindings/r/src/rust/crates
+        (
+            trap 'rm -rf "$PWD/target/rstage" "$PWD/bindings/r/src/rust/crates"' EXIT
+            Rscript bindings/r/bootstrap.R
+            COPYFILE_DISABLE=1 tar \
+                --exclude='./src/rust/target' \
+                --exclude='./src/*.o' \
+                --exclude='./src/*.so' \
+                --exclude='./src/*.dll' \
+                -cf - -C bindings/r . | tar -xf - -C "$rstage"
+            (cd "$rtar" && R CMD build --no-build-vignettes --no-manual "$rstage")
+            CARGO_TARGET_DIR="$PWD/bindings/r/src/rust/target" \
+                R CMD INSTALL --no-docs --library=target/rlib "$rtar"/mztabm_*.tar.gz
+        )
         R_LIBS=target/rlib Rscript -e 'library(testthat); library(mztabm); test_dir("bindings/r/tests/testthat", stop_on_failure = TRUE)'
     fi
 }

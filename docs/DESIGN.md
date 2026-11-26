@@ -55,12 +55,12 @@ Layer 0: Domain Core (no_std + alloc, zero external dependencies, zero I/O)
 |---|---|---|
 | `mztab-m` | Pure mzTab-M domain model, lossless TSV/JSON codecs, and three-layer validator | Curated flat re-exports at crate root + `cv`, `validate`, `json` submodules; internal helpers `pub(crate)` |
 | `mztab-m-obo` | Zero-copy OBO 1.4 text parser implementing `mztab_m::cv::TermLookup` | `Ontology` struct + `TermLookup` impl |
-| `mztab-m-api` | Stateless application operations shared by CLI, WASM, and bindings (not published; D-074) | `read`, `validate`, `write`, `convert`, `facts`, `facts_json`, `codes`, `vocabulary_size`, `Format`, `Layer`, `Settings`, `Record`, `CodeRecord`, `Fact`, `Error` |
+| `mztab-m-api` | Stateless application operations shared by CLI, WASM, and bindings (internal crate published as dependency of `mztab-m-cli`; D-076) | `read`, `check`, `validate`, `validate_json`, `write`, `convert`, `facts`, `facts_json`, `codes`, `findings_json`, `vocabulary_size`, `Format`, `Layer`, `Settings`, `Record`, `CodeRecord`, `Fact`, `Error`, plus re-exports (`Findings`, `Parsed`, `SPEC_COMMIT`, `SPEC_VERSION`, `Severity`, `Stripped`) |
 | `mztab-m-cli` | CLI parsing (`Command`, `Action`), `Io` abstraction, and `std` process entrypoint | `run`, `Io`, exit codes (`OK`, `FINDINGS`, `USAGE`, `FAILED`) |
 | `mztab-m-wasm` | `wasm-bindgen` entrypoints for the browser validator demo (not published) | `validate`, `convert` |
 | `benches/` | Criterion throughput and `dhat` heap benchmarks (not published) | — |
-| `bindings/python` | PyO3 native module exposing `mztab-m-api` to Python (outside workspace) | `validate`, `convert`, `canonical`, `inspect`, `codes`, `vocabulary_size` |
-| `bindings/r` | `extendr` native bindings exposing `mztab-m-api` to R (outside workspace) | `mztabm_*` R wrappers |
+| `bindings/python` | PyO3 native module exposing `mztab-m-api` to Python (outside workspace) | `validate`, `convert`, `canonical`, `inspect`, `codes`, `vocabulary_size`, `SPEC_COMMIT`, `SPEC_VERSION`, `__version__` |
+| `bindings/r` | `extendr` native bindings exposing `mztab-m-api` to R (outside workspace) | `validate`, `convert`, `canonical`, `inspect`, `codes`, `spec_commit`, `spec_version`, `vocabulary_size` |
 | `fuzz/` | `cargo-fuzz` targets (outside workspace) | — |
 
 ### Internal DAG of `mztab-m`
@@ -115,9 +115,9 @@ tiers:
 Canonical vocabulary enforced across code, CLI help, docs, and bindings:
 
 - **Finding / `Finding`:** A diagnostic produced by reading or validating a
-  document, carrying a `Code`, `Severity`, `Layer`, `Location`, and `Detail`.
-  Unrecoverable output constraints during serialization instead return `Error`
-  (`WriteError`).
+  document, carrying a `Code` (which determines its `Layer`), `Severity`,
+  `Location`, and `Detail`. Unrecoverable output constraints during
+  serialization instead return `Error` (`WriteError`).
 - **`Code`:** Stable identifier (`MZT-S…` syntax, `MZT-T…` structure, `MZT-X…`
   semantic) carrying its RFC 2119 requirement level, spec anchor, and oracle
   codes.
@@ -125,8 +125,9 @@ Canonical vocabulary enforced across code, CLI help, docs, and bindings:
   between `mztab-m` and `mztab-m-api`.
 - **`Severity`:** Diagnostic level (`Info`, `Warning`, `Error`).
 - **`Format`:** Document wire encoding (`Tsv`, `Json`).
-- **`Profile`:** Document study mode (`Summary`, `Complete`, plus tolerated
-  `2.0` legacy tokens mapped internally).
+- **`Profile`:** Document table-presence profile (`M`, `M+S`, `M+F`, `M+F+E`,
+  `M+S+F+E`, plus tolerated `M+S+F`; prohibited `M+E` and `M+S+E` live in
+  `ProhibitedProfile`).
 - **`Section` vs `TableSection`:** `Section` spans all four mzTab-M sections
   (`Mtd`, `Sml`, `Smf`, `Sme`). Internal `TableSection` narrows table-only code
   paths to `{Sml, Smf, Sme}`, making metadata invalid by construction.
@@ -135,8 +136,11 @@ Canonical vocabulary enforced across code, CLI help, docs, and bindings:
 - **Parsing convention:** Owned/`Copy` enums and keys (`Version`, `Profile`,
   `AmbiguityCode`, `Datatype`, `MtdKey`, `Severity`, `Layer`, `Code`, `Format`)
   implement `core::str::FromStr`. Zero-copy borrowed parsers (`mztab_m::parse`,
-  `mztab_m::json::parse`, `Ontology::parse`, `Param::parse`,
-  `Accession::parse`) expose `parse(&str)` functions or associated methods.
+  `Ontology::parse`, `Param::parse`, `Decimal::parse`, `ColUnit::parse`,
+  `SpectraRef::parse`, `PublicationItem::parse`) expose `parse(&str)`
+  functions or associated methods; `mztab_m::json::parse` also exposes
+  `parse(&str)` and returns an owned `Parsed<'static>` because JSON strings
+  unescape.
 
 ## The model
 
@@ -194,7 +198,7 @@ Three independent layers, each callable on its own (`validate::syntax`,
    nullability/value rules. The rule set follows `mzTab-version` (D-064,
    D-065).
 3. **Semantic** checks controlled vocabularies: declared vs used CVs,
-   accession syntax, term existence/renames/obsolescence, and the 32
+   accession syntax, term existence/renames/obsolescence, and the 31
    CV-mapping rules generated from the pinned spec mapping file (verified by a
    test against drift and prose overrides D-067, D-068).
 
@@ -217,14 +221,14 @@ JSON routes **through TSV text** in both directions (D-071):
   text so invalid values survive the round trip.
 - Unsupported constructs (unknown keys, unknown columns, ragged rows, and
   the MetaboScape snake_case dialect) are refused.
-- 10 corpus files round-trip unchanged through JSON, 2 differ only in column
-  order, and 9 are refused with reasons (`tests/golden/json-corpus.txt`).
+- 9 corpus files round-trip unchanged through JSON, 2 differ only in column
+  order, and 10 are refused with reasons (`tests/golden/json-corpus.txt`).
 
 ## Error strategy & concurrency
 
-- `mztab-m` and `mztab-m-api` are zero-dependency `no_std`, implementing
-  `core::fmt::Display` and `core::error::Error` directly without proc-macro
-  crates.
+- `mztab-m` (zero dependencies) and `mztab-m-api` (zero external dependencies)
+  are `no_std`, implementing `core::fmt::Display` and `core::error::Error`
+  directly without proc-macro crates.
 - Readers collect `Finding`s instead of aborting on malformed input;
   serialization constraints return `WriteError` / `mztab_m_api::Error`.
 - `mztab-m-cli` maps usage errors (`USAGE`, exit `2`) and I/O or write failures
@@ -243,7 +247,7 @@ JSON routes **through TSV text** in both directions (D-071):
 - **Property tests (`proptest`):** Chunked stream equivalence, read-then-write
   fidelity, and parameter/key grammars.
 - **Fuzzing (`cargo-fuzz`):** `parse_bytes`, `stream_vs_whole`, `roundtrip`,
-  and `json` (D-071).
+  `json`, `validate`, and `obo` (D-071).
 - **Mutation testing & coverage:** Zero surviving mutants in `mutants-diff`,
   and 100% line coverage enforced in CI (`mk.local`).
 - **WASM:** `mztab-m`, `mztab-m-obo`, `mztab-m-api`, and `mztab-m-wasm`

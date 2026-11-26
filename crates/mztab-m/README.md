@@ -11,8 +11,8 @@ severities may change; the rules follow a draft of the specification. See
   specification. It also reads and validates **2.0.0-M**.
 - `#![no_std]` + `alloc`, **zero dependencies**, no `unsafe`. Builds and
   tests on `wasm32-unknown-unknown`.
-- **Pure.** No I/O, no global state: you supply the bytes, and the
-  vocabularies if you want them.
+- **Pure.** No I/O, no global state: caller supplies input bytes and
+  vocabularies.
 - **Never fails, never panics on input.** A malformed document still
   gives a model plus findings, each with a stable code, a severity, a
   location and a link to the spec section that states its rule.
@@ -99,7 +99,7 @@ is [`mztab-m-cli`](https://github.com/Adafede/mztab-m-rs/tree/main/crates/mztab-
 
 | Feature | Default | What it adds |
 |---|---|---|
-| `json` | off | `json::parse`, `json::write`, `json::write_findings` |
+| `json` | off | `json::parse`, `json::to_string`, `json::write`, `json::write_string`, `json::write_findings` |
 
 ## Where the rules come from
 

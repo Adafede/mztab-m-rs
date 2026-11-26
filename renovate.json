@@ -9,6 +9,18 @@
     "custom.regex"
   ],
   "minimumReleaseAge": "7 days",
+  "packageRules": [
+    {
+      "description": "wasm-bindgen-cli in mk.local stays in lockstep with crates/mztab-m-wasm/Cargo.toml (=0.2.130) via Dependabot",
+      "matchFileNames": [
+        "mk.local"
+      ],
+      "matchPackageNames": [
+        "wasm-bindgen-cli"
+      ],
+      "enabled": false
+    }
+  ],
   "customManagers": [
     {
       "description": "Cargo tools pinned in mk.versions and mk.local (crate@version)",

@@ -6,7 +6,7 @@
 
 Read, write, validate, format, and convert
 [mzTab-M](https://github.com/HUPO-PSI/mzTab-M) metabolomics files in pure,
-`no_std` Rust, on the command line, in Python/R, or directly in your browser.
+`no_std` Rust, on the command line, in Python/R, or in WebAssembly.
 
 **[Documentation](https://adafede.github.io/mztab-m-rs/)** ·
 **[Live Browser Demo](https://adafede.github.io/mztab-m-rs/demo/)** ·
@@ -19,9 +19,9 @@ Read, write, validate, format, and convert
 > crates.io, and several spec interpretations in [DECISIONS.md](DECISIONS.md)
 > await community review. See [STATUS.md](STATUS.md) for what is verified today.
 
-## 30-second quickstart
+## Quickstart
 
-Requires Rust (the pinned toolchain installs via `rust-toolchain.toml` if you use `rustup`):
+Requires Rust (the pinned toolchain installs via `rust-toolchain.toml` under `rustup`):
 
 ```sh
 git clone --recurse-submodules https://github.com/Adafede/mztab-m-rs
@@ -41,13 +41,12 @@ warning[MZT-X001] line 110, column 17, cell 3: CV label is not declared: `MIRIAM
 0 errors, 11 warnings, 2 infos
 ```
 
-Prefer zero install? Try the
-**[Live Browser Demo](https://adafede.github.io/mztab-m-rs/demo/)** —
-validation runs locally in WebAssembly so files never leave your computer.
+The **[Live Browser Demo](https://adafede.github.io/mztab-m-rs/demo/)** runs
+client-side in WebAssembly without uploading files.
 
-## What you can do
+## Commands
 
-| Command | What it does | Example |
+| Command | Summary | Example |
 |---|---|---|
 | `validate` | Check syntax, structure, profiles, and OBO terms; exit `1` on errors (configurable with `--fail-on`) | `mztab-m validate --cv psi-ms.obo study.mztab` |
 | `fmt` | Emit canonical TSV/JSON or check formatting (`--check`) | `mztab-m fmt --check study.mztab` |
@@ -60,11 +59,11 @@ Exit codes: `0` ok, `1` findings at or above `--fail-on` (default: `error`) or
 local OBO files such as `psi-ms.obo` from
 [HUPO-PSI/psi-ms-CV](https://github.com/HUPO-PSI/psi-ms-CV) via `--cv`.
 
-## Why mztab-m-rs
+## Design goals
 
 The Java reference implementation is
 [jmzTab-m](https://github.com/lifs-tools/jmzTab-m). `mztab-m-rs` provides a
-tiny, dependency-free core that embeds anywhere while keeping files lossless:
+dependency-free core for lossless parsing and validation:
 
 - **Full-document diagnostics:** never stops at the first error; returns a typed
   model plus every finding with a stable code, location, and spec link.

@@ -757,10 +757,10 @@ place in `validate/` to change if you decide otherwise.
 - **Comments** are not carried: the writer writes `"comment": null` and
   the reader ignores `comment` members (they are presentation, D-061).
 - **Corpus agreement** (`tests/golden/json-corpus.txt`): of the 21 TSV
-  files, 10 read back from JSON as the same model; the two LipidCompass
+  files, 9 read back from JSON as the same model; the two LipidCompass
   files as the same up to column order (they interleave
   `abundance_study_variable[n]` and `abundance_variation_study_variable[n]`,
-  which JSON groups); 9 are refused (unknown keys such as
+  which JSON groups); 10 are refused (unknown keys such as
   `instrument[1]-analyzer` without its index, unknown columns, rows with
   an extra trailing cell). The jmzTab-m JSON example (Progenesis) reads
   with no findings and is a fixed point of write-then-read.

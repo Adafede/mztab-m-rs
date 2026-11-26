@@ -1,13 +1,13 @@
 # Install
 
 Nothing is published to crates.io, PyPI, or CRAN yet. All targets build cleanly
-from source, or you can try the validator directly in the
-[Live Browser Demo](demo/index.html) without installing anything.
+from source, and the [Live Browser Demo](demo/index.html) runs validation in the
+browser without installation.
 
 ## Command-line tool (`mztab-m`)
 
-You need Rust (the pinned toolchain `1.100.0` installs automatically through
-`rust-toolchain.toml` if you use `rustup`).
+Requires Rust (the pinned toolchain `1.100.0` installs automatically through
+`rust-toolchain.toml` under `rustup`).
 
 ```sh
 git clone --recurse-submodules https://github.com/Adafede/mztab-m-rs

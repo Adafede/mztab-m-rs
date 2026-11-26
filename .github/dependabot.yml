@@ -1,10 +1,14 @@
-# Dependabot: Cargo dependencies and GitHub Actions digests.
-# Renovate (renovate.json) only handles what Dependabot cannot: mk.versions,
-# the rust-toolchain.toml pin and cargo-binstall. No ecosystem is covered twice.
+# Dependabot: Cargo dependencies (workspace and standalone crates), Python uv lockfile, and GitHub Actions digests.
+# Renovate (renovate.json) handles tool pins in mk.versions / mk.local,
+# the rust-toolchain.toml pin, and cargo-binstall. No ecosystem is covered twice.
 version: 2
 updates:
   - package-ecosystem: "cargo"
-    directory: "/"
+    directories:
+      - "/"
+      - "/bindings/python"
+      - "/bindings/r/src/rust"
+      - "/fuzz"
     schedule:
       interval: "weekly"
     cooldown:

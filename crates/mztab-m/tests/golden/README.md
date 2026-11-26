@@ -1,6 +1,6 @@
 # Golden files
 
-Expected outputs the tests compare against. Most are generated; rewrite them
+Expected outputs the tests compare against. All are generated; rewrite them
 with `BLESS=1` after an intended change and review the diff.
 
 | File | Written by | Regenerate |

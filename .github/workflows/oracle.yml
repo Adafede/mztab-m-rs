@@ -69,4 +69,8 @@ jobs:
           if-no-files-found: error
 
       - name: Fail if the committed outputs are stale
-        run: git diff --exit-code --stat -- crates/mztab-m/tests/oracle/
+        run: |
+          if [ -n "$(git status --porcelain -- crates/mztab-m/tests/oracle/)" ]; then
+            git status --short -- crates/mztab-m/tests/oracle/
+            exit 1
+          fi

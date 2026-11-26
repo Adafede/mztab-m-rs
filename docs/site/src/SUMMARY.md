@@ -1,6 +1,7 @@
 # Summary
 
-- [Introduction & Status](introduction.md)
+- [Introduction](introduction.md)
+- [Status](status.md)
 - [Install](install.md)
 - [Quickstart (CLI)](quickstart.md)
 - [Using the Library (Rust)](library.md)

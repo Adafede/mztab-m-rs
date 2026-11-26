@@ -7,7 +7,7 @@ for semantic validation with
 [`mztab-m`](https://github.com/Adafede/mztab-m-rs/tree/main/crates/mztab-m).
 
 - `#![no_std]` + `alloc`, no dependencies besides `mztab-m`, no `unsafe`.
-- Pure: parses text you supply; never downloads anything.
+- Pure: parses caller-supplied text; never downloads anything.
 - Zero-copy: an `Ontology` borrows the text it was parsed from.
 
 ## Quickstart

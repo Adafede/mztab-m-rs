@@ -24,9 +24,11 @@ read-only and the network is filtered, do this instead.
    source target/env.sh
    ```
 
-   `./mk setup` installs every tool, including tombi and shellcheck, into
-   `$CARGO_HOME/bin`. `target/tools/bin` is only a place for tools you add
-   by hand; it may not exist.
+   `./mk setup` installs pinned tools under `$MK_TOOLS_DIR` (defaults to
+   `$CARGO_HOME/mk-tools/<tool>/<ver>/bin`), and `./mk` prepends each tool's
+   directory to `PATH` automatically via `refresh_tool_path`.
+   `target/tools/bin` is only a place for tools added by hand; it may not
+   exist.
 3. If another checkout of this repository already has these tools in its
    `target/`, putting that checkout's two directories on `PATH` instead is
    the quickest way; `./mk tools` checks the versions either way.

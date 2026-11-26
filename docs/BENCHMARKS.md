@@ -7,8 +7,9 @@ library loses.
 
 - **Machine:** Apple M1 Pro laptop (8 cores), 16 GB, macOS 27.2.1, with
   other work running. One run each; criterion's median is reported.
-- **Toolchain:** rustc 1.100.0, release profile (`cargo bench`), no LTO, no
-  `target-cpu`.
+- **Toolchain:** rustc 1.100.0, release profile (`cargo bench`) without LTO
+  or `target-cpu` at the time of measurement (`Cargo.toml` `[profile.release]`
+  now sets `lto = "thin"` and `codegen-units = 1`, awaiting re-measurement).
 - **Code:** the commit after `8b5439c` (M7) that adds `benches/`.
 - **Run them:**
   - `cargo bench -p mztab-m-bench --bench throughput` (criterion 0.5);
