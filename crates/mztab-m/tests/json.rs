@@ -171,15 +171,21 @@ fn valid_json_edge_cases_read() {
 #[test]
 fn exponents_are_written_out() {
     let cases = [
-        ("1.5e3", "1500"),
-        ("-1.5E-2", "-0.015"),
-        ("12e0", "12"),
-        ("0.5e1", "5"),
-        ("1e+2", "100"),
-        ("123.456e1", "1234.56"),
-        ("5e-1", "0.5"),
-        ("1e2000", "1e2000"),
-        ("1e99999999999999999999", "1e99999999999999999999"),
+        ("1.5e3", "1500".to_owned()),
+        ("-1.5E-2", "-0.015".to_owned()),
+        ("12e0", "12".to_owned()),
+        ("0.5e1", "5".to_owned()),
+        ("1e+2", "100".to_owned()),
+        ("123.456e1", "1234.56".to_owned()),
+        ("5e-1", "0.5".to_owned()),
+        ("1e1000", format!("1{}", "0".repeat(1000))),
+        ("1e-1001", format!("0.{}1", "0".repeat(1000))),
+        ("1e-1002", "1e-1002".to_owned()),
+        ("1e2000", "1e2000".to_owned()),
+        (
+            "1e99999999999999999999",
+            "1e99999999999999999999".to_owned(),
+        ),
     ];
     for (lexeme, plain) in cases {
         let input = format!(
@@ -201,8 +207,15 @@ fn exponents_are_written_out() {
                     .invalid()
                     .map(|r| r.as_str().to_owned())
             });
-        assert_eq!(written.as_deref(), Some(plain), "{lexeme}");
+        assert_eq!(written.as_deref(), Some(plain.as_str()), "{lexeme}");
     }
+    let empty_param_val =
+        json::parse(r#"{"metadata":{"quantification_method":{"name":"x","value":""}}}"#);
+    assert!(
+        empty_param_val.findings.is_empty(),
+        "empty parameter value normalizes to None: {:?}",
+        empty_param_val.findings
+    );
 }
 
 #[test]
@@ -1246,26 +1259,42 @@ fn json_metadata_lists_comments_and_ids() {
 #[test]
 fn json_comments_and_sorted_ids() {
     let bad_comments = json::parse(
-        r#"{"comment": [123, true, {"prefix": "BAD", "msg": "x", "line_number": 0, "extra": 1}]}"#,
+        r#"{"comment": [
+            123,
+            true,
+            {"prefix": "BAD", "msg": "x", "line_number": 0, "extra": 1},
+            {"prefix": "BAD", "msg": "bad prefix only", "line_number": 1},
+            {"prefix": "COM", "msg": "bad line only", "line_number": 0},
+            {"prefix": null, "msg": "null optional fields", "line_number": null}
+        ]}"#,
     );
-    assert!(
-        bad_comments.mztab.layout.lines.is_empty(),
-        "malformed comments must not become COM lines"
+    assert_eq!(
+        bad_comments.mztab.layout.lines.len(),
+        1,
+        "only the valid comment with null optional fields becomes a COM line"
     );
-    assert!(
-        bad_comments
-            .findings
-            .iter()
-            .any(|f| f.code == Code::JsonShape && f.location == pointer("/comment/0")),
-        "{:?}",
-        bad_comments.findings
-    );
-    assert!(
-        bad_comments
-            .findings
-            .iter()
-            .any(|f| f.code == Code::JsonUnknownKey && f.location == pointer("/comment/2/extra")),
-        "{:?}",
+    for (code, path) in [
+        (Code::JsonShape, "/comment/0"),
+        (Code::JsonShape, "/comment/1"),
+        (Code::JsonShape, "/comment/2/prefix"),
+        (Code::JsonShape, "/comment/2/line_number"),
+        (Code::JsonUnknownKey, "/comment/2/extra"),
+        (Code::JsonShape, "/comment/3/prefix"),
+        (Code::JsonShape, "/comment/4/line_number"),
+    ] {
+        assert!(
+            bad_comments
+                .findings
+                .iter()
+                .any(|f| f.code == code && f.location == pointer(path)),
+            "{code:?} at {path} in {:?}",
+            bad_comments.findings
+        );
+    }
+    assert_eq!(
+        bad_comments.findings.len(),
+        7,
+        "exact finding count: {:?}",
         bad_comments.findings
     );
     let non_array_comment = json::parse(r#"{"comment": 5}"#);

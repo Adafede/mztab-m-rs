@@ -303,7 +303,7 @@ impl Spec {
         });
         let sv_lines = (1..=sv_count).flat_map(move |v| {
             let refs: Vec<String> = (1..=assays)
-                .filter(|a| ((a - 1) % sv_count) + 1 == v)
+                .filter(|a| if v == 1 { !a.is_multiple_of(2) } else { a.is_multiple_of(2) })
                 .map(|a| format!("assay[{a}]"))
                 .collect();
             [
@@ -400,7 +400,7 @@ impl Spec {
         for a in 1..=assays {
             let value = ab_rng.abundance();
             write!(line, "\t{value:.4}").unwrap_or_default();
-            let group = ((a - 1) % sv_count) as usize;
+            let group = usize::from(a.is_multiple_of(2));
             if let Some(stat) = sv_stats.get_mut(group) {
                 stat.push(value);
             }
