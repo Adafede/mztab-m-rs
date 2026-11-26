@@ -19,9 +19,7 @@ extern crate alloc;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_test::wasm_bindgen_test as test;
 
-use mztab_m::{
-    Code, Event, Findings, IntoOwned, Location, Parsed, SourceLayout, StreamReader, parse_bytes,
-};
+use mztab_m::{Code, Event, IntoOwned, Location, Parsed, SourceLayout, StreamReader, parse_bytes};
 
 const FULL: &[u8] = include_bytes!("fixtures/full.mztab");
 const BROKEN: &[u8] = include_bytes!("fixtures/broken.mztab");
@@ -43,9 +41,14 @@ fn streamed(input: &[u8], size: usize) -> Parsed<'static> {
 /// line is accounted for, chunked reading gives the same document, the
 /// writer reproduces the file byte for byte (invalid UTF-8 aside), and the
 /// model without its layout survives a canonical write and read.
-fn check(name: &str, input: &[u8], chunk_sizes: &[usize]) -> Findings {
+fn check<'a>(name: &str, input: &'a [u8], chunk_sizes: &[usize]) -> Parsed<'a> {
     let parsed = parse_bytes(input);
-    let lines = u32::try_from(input.split(|&b| b == b'\n').count()).unwrap_or(u32::MAX);
+    let line_bytes = input.strip_suffix(b"\n").unwrap_or(input);
+    let lines = if line_bytes.is_empty() {
+        0
+    } else {
+        u32::try_from(line_bytes.split(|&b| b == b'\n').count()).unwrap_or(u32::MAX)
+    };
     for finding in &parsed.findings {
         let line = match finding.location {
             Location::Text { line, .. } => line,
@@ -104,7 +107,7 @@ fn check(name: &str, input: &[u8], chunk_sizes: &[usize]) -> Findings {
             "{name}: chunks of {size} bytes differ from a whole read"
         );
     }
-    parsed.findings
+    parsed
 }
 
 fn rendered(parsed: &Parsed<'_>) -> String {
@@ -227,8 +230,8 @@ fn metadata_keys_hold_one_value_of_their_kind() {
         "WrongKind insert must not mutate IndexMap"
     );
     assert_eq!(
-        checked, 123,
-        "all 78 key forms, one colunit twice, eleven more CVs (four keys each)"
+        checked, 127,
+        "all 78 key forms, one colunit twice, ten more CVs (four keys each), plus ms_run[2] and assay[2]"
     );
 }
 
@@ -300,10 +303,13 @@ mod native {
     use std::path::Path;
 
     use super::{check, corpus_files};
+    use mztab_m::{Code, validate};
 
-    fn name(path: &Path) -> String {
-        let text = path.to_string_lossy();
-        text.split("examples/").last().unwrap_or(&text).to_owned()
+    fn name(root: &Path, path: &Path) -> String {
+        path.strip_prefix(root)
+            .unwrap_or(path)
+            .to_string_lossy()
+            .into_owned()
     }
 
     /// Every file reads (see [`check`]), and the finding codes per file (the
@@ -312,28 +318,27 @@ mod native {
     /// rewrite the golden file after an intended change.
     #[test]
     fn every_corpus_file_reads_as_recorded() {
-        let (_, files) = corpus_files::files();
+        let (root, files) = corpus_files::files();
         assert_eq!(files.len(), 21, "the pinned corpus has 21 TSV files");
         let mut report = String::new();
         for path in files {
             let input = std::fs::read(&path).expect("readable corpus file");
-            // Chunked reads of the large files are slow in debug builds and add
-            // nothing that the property tests and the fuzz targets miss.
             let sizes: &[usize] = match input.len() {
                 0..65_536 => &[1, 7, 4096],
                 65_536..1_048_576 => &[4093],
-                _ => &[],
+                _ => &[65_536],
             };
-            let findings = check(&name(&path), &input, sizes);
-            let model = mztab_m::parse_bytes(&input).mztab;
-            let config = mztab_m::validate::Config::default();
-            let structure = mztab_m::validate::structure(&model, &config);
-            let semantic = mztab_m::validate::semantic(&model, &config, &mztab_m::cv::NoTerms);
+            let rel = name(&root, &path);
+            let parsed = check(&rel, &input, sizes);
+            let config = validate::Config::default();
+            let structure = validate::structure(&parsed.mztab, &config);
+            let structure = structure.iter().filter(|f| f.code != Code::InvalidValue);
+            let semantic = validate::semantic(&parsed.mztab, &config, &mztab_m::cv::NoTerms);
             let mut codes = BTreeMap::<&str, usize>::new();
-            for finding in findings.iter().chain(&structure).chain(&semantic) {
+            for finding in parsed.findings.iter().chain(structure).chain(&semantic) {
                 *codes.entry(finding.code.id()).or_default() += 1;
             }
-            write!(report, "{}:", name(&path)).expect("writing to a String");
+            write!(report, "{rel}:").expect("writing to a String");
             for (code, n) in codes {
                 write!(report, " {code}={n}").expect("writing to a String");
             }

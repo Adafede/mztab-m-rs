@@ -17,8 +17,14 @@ const EXAMPLES: &str = concat!(
 
 /// The inputs: name and text.
 fn inputs() -> Vec<(&'static str, String)> {
-    let read =
-        |path: &str| std::fs::read_to_string(format!("{EXAMPLES}/{path}")).unwrap_or_default();
+    let read = |path: &str| {
+        let full_path = format!("{EXAMPLES}/{path}");
+        #[expect(
+            clippy::expect_used,
+            reason = "benchmark setup: missing corpus file means submodule is uninitialized"
+        )]
+        std::fs::read_to_string(&full_path).expect("readable corpus file (init git submodules)")
+    };
     let synthetic = Spec {
         assays: 1000,
         rows: 4800,
@@ -65,7 +71,7 @@ fn stages(c: &mut Criterion) {
             b.iter(|| {
                 let mut reader = StreamReader::new();
                 let mut events = 0_usize;
-                for chunk in bytes.chunks(65_536) {
+                for chunk in black_box(bytes).chunks(65_536) {
                     reader.push(chunk, &mut |_| events += 1);
                 }
                 reader.finish(&mut |_| events += 1);
@@ -76,19 +82,23 @@ fn stages(c: &mut Criterion) {
         group.bench_function("write", |b| {
             b.iter(|| mztab_m::to_string(black_box(&parsed.mztab)));
         });
-        let config = Config::default();
-        group.bench_function("structure", |b| {
-            b.iter(|| validate::structure(black_box(&parsed.mztab), &config));
-        });
-        group.bench_function("semantic", |b| {
-            b.iter(|| validate::semantic(black_box(&parsed.mztab), &config, &NoTerms));
-        });
         let mut canonical = parsed.mztab.clone();
         canonical.layout = mztab_m::SourceLayout::default();
+        group.bench_function("write_canonical", |b| {
+            b.iter(|| mztab_m::to_string(black_box(&canonical)));
+        });
+        let config = Config::default();
+        group.bench_function("structure", |b| {
+            b.iter(|| validate::structure(black_box(&parsed.mztab), black_box(&config)));
+        });
+        group.bench_function("semantic", |b| {
+            b.iter(|| validate::semantic(black_box(&parsed.mztab), black_box(&config), &NoTerms));
+        });
         if let Ok(json_text) = json::to_string(&canonical) {
             group.bench_function("json_write", |b| {
                 b.iter(|| json::to_string(black_box(&canonical)));
             });
+            group.throughput(Throughput::Bytes(json_text.len() as u64));
             group.bench_with_input(
                 BenchmarkId::new("json_parse", json_text.len()),
                 &json_text,

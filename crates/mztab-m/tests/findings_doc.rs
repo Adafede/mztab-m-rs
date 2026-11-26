@@ -50,6 +50,8 @@ fn parse_code_docs(source: &str) -> BTreeMap<&str, String> {
         {
             docs.insert(id, current.join(" "));
             current.clear();
+        } else if line.is_empty() || !line.starts_with('#') {
+            current.clear();
         }
     }
 
@@ -100,6 +102,13 @@ const fn layer_heading(layer: Layer) -> (&'static str, &'static str) {
 
 fn generate() -> Result<String, String> {
     let docs = parse_code_docs(DIAG_RS);
+    if docs.len() != Code::ALL.len() {
+        return Err(format!(
+            "parsed {} doc entries in src/diag/code.rs, expected {}",
+            docs.len(),
+            Code::ALL.len()
+        ));
+    }
     let mut out = String::new();
 
     out.push_str(

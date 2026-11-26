@@ -22,6 +22,7 @@ fn root() -> PathBuf {
 }
 
 /// One row of `expected-disagreements.tsv`.
+#[derive(Debug)]
 struct Expected {
     file: String,
     code: String,
@@ -100,6 +101,7 @@ fn every_reference_names_a_decision() {
 #[ignore = "no committed jmzTab-m outputs in tests/oracle/ yet; run .github/workflows/oracle.yml"]
 fn disagreements_with_jmztab_are_explained() {
     let expected = expected();
+    let mut used = vec![false; expected.len()];
     let dir = root().join("tests/oracle");
     let mut outputs: Vec<PathBuf> = std::fs::read_dir(&dir)
         .expect("tests/oracle")
@@ -147,35 +149,55 @@ fn disagreements_with_jmztab_are_explained() {
             let matched = ours
                 .iter()
                 .any(|(codes, l)| codes.contains(&code) && (line == -1 || *l == line));
-            if !matched
-                && !expected
+            if !matched {
+                if let Some(pos) = expected
                     .iter()
-                    .any(|e| e.covers(&name, code, line, "jmztab-only"))
-            {
-                unexplained.push(format!("{name}\t{code}\t{line}\tjmztab-only"));
+                    .position(|e| e.covers(&name, code, line, "jmztab-only"))
+                {
+                    if let Some(flag) = used.get_mut(pos) {
+                        *flag = true;
+                    }
+                } else {
+                    unexplained.push(format!("{name}\t{code}\t{line}\tjmztab-only"));
+                }
             }
         }
         for (codes, line) in &ours {
             let matched = theirs
                 .iter()
                 .any(|(c, l)| codes.contains(c) && (*l == -1 || l == line));
-            let code = codes.first().copied().unwrap_or_default();
-            if !matched
-                && !expected.iter().any(|e| {
+            if !matched {
+                if let Some(pos) = expected.iter().position(|e| {
                     codes
                         .iter()
                         .any(|&c| e.covers(&name, c, *line, "ours-only"))
-                })
-            {
-                unexplained.push(format!("{name}\t{code}\t{line}\tours-only"));
+                }) {
+                    if let Some(flag) = used.get_mut(pos) {
+                        *flag = true;
+                    }
+                } else {
+                    let joined: Vec<String> = codes.iter().map(ToString::to_string).collect();
+                    unexplained.push(format!("{name}\t{}\t{line}\tours-only", joined.join("|")));
+                }
             }
         }
     }
+    unexplained.sort();
     unexplained.dedup();
     assert!(
         unexplained.is_empty(),
         "{} unexplained disagreements; add rows to expected-disagreements.tsv:\n{}",
         unexplained.len(),
         unexplained.join("\n")
+    );
+    let unused: Vec<&Expected> = expected
+        .iter()
+        .zip(&used)
+        .filter_map(|(entry, was_used)| (!was_used).then_some(entry))
+        .collect();
+    assert!(
+        unused.is_empty(),
+        "{} unused expected-disagreements rows: {unused:?}",
+        unused.len()
     );
 }

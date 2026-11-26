@@ -68,7 +68,9 @@ fn jmztab_output_reads_and_is_a_fixed_point() {
     assert!(again.findings.is_empty(), "{:?}", again.findings);
     assert_eq!(again.mztab, model, "fixed point");
     let tsv = mztab_m::to_string(&model).expect("writable");
-    assert_eq!(parse(&tsv).mztab.sml, model.sml, "TSV agrees");
+    let mut from_tsv = parse(&tsv).mztab;
+    from_tsv.layout = SourceLayout::default();
+    assert_eq!(from_tsv, model, "TSV agrees across full model");
 }
 
 #[test]
@@ -131,6 +133,8 @@ fn valid_json_edge_cases_read() {
         " {\"metadata\" : null , \"comment\":[]} ",
         "{\"metadata\":{\"title\":\"\\\"q\\\" \\\\ \\/ \\b\\f \\u00e9 \\ud83d\\ude00\"}}",
         "{\"metadata\":{\"title\":-0.5e-3}}",
+    ];
+    let rejected_shapes = [
         "{\"metadata\":{\"title\":true}}",
         "{\"metadata\":{\"title\":false}}",
         "[]",
@@ -155,18 +159,13 @@ fn valid_json_edge_cases_read() {
         .title
         .and_then(|t| t.value().map(|t| t.as_str().to_owned()));
     assert_eq!(title.as_deref(), Some("-0.0005"), "plain number");
-    for input in &accepted[4..6] {
+    for input in rejected_shapes {
         assert_eq!(
             codes(&json::parse(input).findings),
             [Code::JsonShape],
             "{input}"
         );
     }
-    assert_eq!(
-        codes(&json::parse(accepted[6]).findings),
-        [Code::JsonShape],
-        "not an object"
-    );
 }
 
 #[test]
@@ -283,6 +282,7 @@ fn shapes_and_unknown_members_are_reported_at_their_pointer() {
     expect(Code::JsonShape, "/smallMoleculeEvidence/0/spectra_ref/1");
     // The TSV reader's findings, relocated.
     expect(Code::NumberSyntax, "/smallMoleculeFeature/0/charge");
+    assert_eq!(found.len(), 27, "exact finding count: {found:#?}");
     let model = &parsed.mztab;
     let run = model.metadata.ms_run.iter().next().map(|(_, r)| r);
     assert!(
@@ -446,9 +446,14 @@ mod corpus {
                     }
                 }
                 Some(_) | None => {
-                    out.entry(line.to_owned()).or_default();
+                    out.entry(String::from("<meta>"))
+                        .or_default()
+                        .push(line.to_owned());
                 }
             }
+        }
+        if let Some(meta) = out.get_mut("<meta>") {
+            meta.sort();
         }
         out
     }
@@ -465,11 +470,22 @@ mod corpus {
             let outcome = match json::to_string(&model) {
                 Err(e) => format!("refused: {e}"),
                 Ok(text) => {
-                    let back = json::parse(&text).mztab;
+                    let parsed_back = json::parse(&text);
+                    assert!(
+                        !parsed_back.findings.iter().any(|f| matches!(
+                            f.code,
+                            crate::Code::JsonSyntax | crate::Code::JsonText
+                        )),
+                        "{name}: serialized JSON triggered findings: {:?}",
+                        parsed_back.findings
+                    );
+                    let back = parsed_back.mztab;
                     let tsv = |m| mztab_m::to_string(m).expect("writable");
                     if back == model {
                         "same model".to_owned()
-                    } else if by_column(&tsv(&back)) == by_column(&tsv(&model)) {
+                    } else if back.metadata == model.metadata
+                        && by_column(&tsv(&back)) == by_column(&tsv(&model))
+                    {
                         "same up to column order".to_owned()
                     } else {
                         "DIFFERENT".to_owned()
@@ -599,6 +615,21 @@ fn lenient_forms_read() {
     assert!(
         parsed.findings.iter().any(|f| f.code == Code::JsonText),
         "line feed in a string"
+    );
+    assert!(
+        parsed
+            .findings
+            .iter()
+            .any(|f| f.code == Code::JsonShape
+                && f.location == pointer("/smallMoleculeSummary/1/opt")),
+        "invalid opt container"
+    );
+    assert!(
+        parsed.findings.iter().any(|f| {
+            f.code == Code::JsonShape
+                && f.location == pointer("/smallMoleculeFeature/0/opt/0/identifier")
+        }),
+        "non-string opt identifier"
     );
 }
 
@@ -841,7 +872,7 @@ fn comments_travel() {
     let model = parse(&source).mztab;
     let text = json::to_string(&model).expect("writable");
     assert!(
-        text.ends_with(r#""comment":[{"prefix":"COM","msg":"first","line_number":1},{"prefix":"COM","msg":"last","line_number":137}]}"#),
+        text.ends_with(r#""comment":[{"prefix":"COM","msg":"first","line_number":1},{"prefix":"COM","msg":"last","line_number":141}]}"#),
         "{}",
         text.get(text.len().saturating_sub(160)..).unwrap_or_default()
     );

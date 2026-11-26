@@ -125,6 +125,27 @@ fn table_semantic_findings_point_at_their_cell() {
             13,
         ),
         (
+            "SME\t2\t",
+            "[CHEBI, CHEBI:51088, trimethylsilyl group, 3]",
+            "[MS, MS:1000130, positive scan, ]",
+            Code::CvRule,
+            10,
+        ),
+        (
+            "SME\t1\t",
+            "[MS, MS:1001477, SpectraST, ]",
+            "[MS, MS:1000130, positive scan, ]",
+            Code::CvRule,
+            16,
+        ),
+        (
+            "SME\t1\t",
+            "[MS, MS:1000511, ms level, 2]",
+            "[MS, MS:1000130, positive scan, ]",
+            Code::CvRule,
+            17,
+        ),
+        (
             "SMF\t1\t",
             "[, , monoisotopic, ]",
             "[MS, MS:9999999, nothing, ]",
@@ -188,7 +209,7 @@ fn column_headers_use_declared_cvs() {
     let text = BASE
         .replace(
             "MTD\tcv[1]-label\tMS\n",
-            "MTD\tcv[1]-label\tMS\nMTD\tcv[13]-label\tFOO\n",
+            "MTD\tcv[1]-label\tMS\nMTD\tcv[12]-label\tFOO\n",
         )
         .replace(
             "\topt_global_note\n",
@@ -218,6 +239,29 @@ fn column_headers_use_declared_cvs() {
 /// References, slices and arrays of lookups answer as their parts do.
 #[test]
 fn lookups_combine() {
+    struct OverrideMs;
+    impl TermLookup for OverrideMs {
+        fn covers(&self, prefix: &str) -> bool {
+            prefix == "MS"
+        }
+
+        fn term(&self, accession: &str) -> Option<Term<'_>> {
+            (accession == "MS:1000130").then_some(Term {
+                name: "overridden scan",
+                obsolete: false,
+                value_type: None,
+                synonyms: &[],
+            })
+        }
+
+        fn is_descendant(&self, accession: &str, ancestor: &str) -> bool {
+            accession == "MS:1000130" && ancestor == "MS:1000531"
+        }
+
+        fn version(&self, prefix: &str) -> Option<&str> {
+            (prefix == "MS").then_some("9.9.9")
+        }
+    }
     let by_ref: &dyn TermLookup = &&Mini;
     let array = [&NoTerms as &dyn TermLookup, &Mini];
     let slice: &[&dyn TermLookup] = &array;
@@ -254,6 +298,22 @@ fn lookups_combine() {
     }
     assert!(!empty.covers("MS"), "empty array");
     assert_eq!(NoTerms.version("MS"), None, "no version");
+
+    let stacked: [&dyn TermLookup; 2] = [&OverrideMs, &Mini];
+    assert_eq!(stacked.version("MS"), Some("9.9.9"), "first version wins");
+    assert_eq!(
+        stacked.term("MS:1000130").map(|t| t.name),
+        Some("overridden scan"),
+        "first term wins"
+    );
+    assert!(
+        stacked.is_descendant("MS:1000130", "MS:1000531"),
+        "first hierarchy wins"
+    );
+    assert!(
+        stacked.term("MS:1001477").is_none(),
+        "uncovered accession in first covering lookup does not fall through"
+    );
 }
 
 #[test]

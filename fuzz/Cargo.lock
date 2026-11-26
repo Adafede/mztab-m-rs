@@ -79,6 +79,14 @@ version = "0.0.0"
 dependencies = [
  "libfuzzer-sys",
  "mztab-m",
+ "mztab-m-obo",
+]
+
+[[package]]
+name = "mztab-m-obo"
+version = "0.1.0"
+dependencies = [
+ "mztab-m",
 ]
 
 [[package]]

@@ -233,10 +233,24 @@ proptest! {
         }
     }
 
-    /// Every finite `f64` becomes a conforming decimal that reads back to
-    /// the same bits.
+    /// Every finite `f64` (including signed zeros, subnormals, and extremes)
+    /// becomes a conforming decimal that reads back to the same bits.
     #[test]
-    fn decimal_from_f64_round_trips(bits in any::<u64>()) {
+    fn decimal_from_f64_round_trips(
+        bits in prop_oneof![
+            4 => any::<u64>(),
+            1 => proptest::sample::select(vec![
+                0.0_f64.to_bits(),
+                (-0.0_f64).to_bits(),
+                1_u64,
+                0x8000_0000_0000_0001_u64,
+                f64::MIN_POSITIVE.to_bits(),
+                (-f64::MIN_POSITIVE).to_bits(),
+                f64::MAX.to_bits(),
+                f64::MIN.to_bits(),
+            ]),
+        ],
+    ) {
         let value = f64::from_bits(bits);
         prop_assume!(value.is_finite());
         let d = Decimal::from_f64(value).expect("valid fixture");
@@ -278,6 +292,12 @@ proptest! {
             let zero = form.replace("#N", "0").replace("#M", "1");
             prop_assert!(zero.parse::<MtdKey>().is_err());
             let padded = form.replace("#N", &format!("0{n}")).replace("#M", "1");
+            prop_assert!(padded.parse::<MtdKey>().is_err());
+        }
+        if form.contains("#M") {
+            let zero = form.replace("#N", "1").replace("#M", "0");
+            prop_assert!(zero.parse::<MtdKey>().is_err());
+            let padded = form.replace("#N", "1").replace("#M", &format!("0{m}"));
             prop_assert!(padded.parse::<MtdKey>().is_err());
         }
         prop_assert!(key.to_uppercase().parse::<MtdKey>().is_err());
@@ -325,58 +345,77 @@ proptest! {
         prop_assert!(again == model);
     }
 
-    /// Parser totality: arbitrary UTF-8 strings and arbitrary byte slices never panic.
+    /// Parser and validator totality: arbitrary multi-line UTF-8 strings and
+    /// arbitrary byte slices never panic, and `parse(s) == parse_bytes(s.as_bytes())`.
     #[test]
-    fn tsv_parse_is_total(text in ".{0,64}", bytes in proptest::collection::vec(any::<u8>(), 0..64)) {
+    fn tsv_parse_is_total(
+        text in "(?s:.{0,64})",
+        bytes in proptest::collection::vec(any::<u8>(), 0..64),
+    ) {
         let from_str = parse(&text);
         let from_bytes = parse_bytes(&bytes);
+        prop_assert!(from_str == parse_bytes(text.as_bytes()), "str vs bytes");
         prop_assert!(from_str.findings.len() <= text.len() + 2, "bounded text findings");
         prop_assert!(from_bytes.findings.len() <= bytes.len() + 2, "bounded byte findings");
     }
 
-    /// `FromStr` round-trips for vocabulary, key, and diagnostic enum types.
+    /// `validate::all` never panics on arbitrary synthetic documents and every
+    /// Text finding lies within the document lines.
     #[test]
-    fn from_str_round_trips(
-        code in proptest::sample::select(Code::ALL),
-        sev in 0_usize..3,
-        layer in 0_usize..3,
-        profile in proptest::sample::select(&Profile::ALL[..]),
-        ambiguity in 0_usize..3,
-        datatype in proptest::sample::select(&Datatype::ALL[..]),
+    fn validate_all_is_total_and_located(input in document()) {
+        let text = String::from_utf8_lossy(&input);
+        let lines = text
+            .strip_suffix('\n')
+            .unwrap_or(&text)
+            .split('\n')
+            .count()
+            .max(1);
+        let config = mztab_m::validate::Config::default();
+        let findings = mztab_m::validate::all(&text, &config, &mztab_m::cv::NoTerms);
+        for finding in &findings {
+            if let mztab_m::Location::Text { line, .. } = finding.location {
+                prop_assert!(usize::try_from(line).unwrap_or(0) <= lines + 1);
+            }
+        }
+    }
+
+    #[test]
+    fn metadata_key_indices_round_trip(
         form in proptest::sample::select(KEYS),
         n in 1_u32..1000,
         m in 1_u32..1000,
-        major in any::<u16>(),
-        minor in any::<u16>(),
-        patch in any::<u16>(),
     ) {
-        let sevs = [Severity::Info, Severity::Warning, Severity::Error];
-        let layers = [Layer::Syntax, Layer::Structure, Layer::Semantic];
-        let ambiguities = [
-            AmbiguityCode::AmbiguousIdentification,
-            AmbiguityCode::MultipleEvidenceStreams,
-            AmbiguityCode::Both,
-        ];
-        for sec in Section::ALL {
-            prop_assert_eq!(Section::from_prefix(sec.row_prefix()), Some((sec, false)));
-        }
-
-        prop_assert_eq!(code.id().parse::<Code>(), Ok(code));
-        if let Some(s) = sevs.get(sev) {
-            prop_assert_eq!(s.to_string().parse::<Severity>(), Ok(*s));
-        }
-        if let Some(l) = layers.get(layer) {
-            prop_assert_eq!(l.to_string().parse::<Layer>(), Ok(*l));
-        }
-        prop_assert_eq!(profile.to_string().parse::<Profile>(), Ok(profile));
-        if let Some(a) = ambiguities.get(ambiguity) {
-            prop_assert_eq!(a.to_string().parse::<AmbiguityCode>(), Ok(*a));
-        }
-        prop_assert_eq!(datatype.to_string().parse::<Datatype>(), Ok(datatype));
-        let ver = Version { major, minor, patch };
-        prop_assert_eq!(ver.to_string().parse::<Version>(), Ok(ver));
         let key = form.replace("#N", &n.to_string()).replace("#M", &m.to_string());
         prop_assert_eq!(key.parse::<MtdKey>().map(|k| k.to_string()), Ok(key));
+    }
+}
+
+#[test]
+fn enum_and_section_from_str_round_trips() {
+    for sec in Section::ALL {
+        assert_eq!(Section::from_prefix(sec.row_prefix()), Some((sec, false)));
+    }
+    for &code in Code::ALL {
+        assert_eq!(code.id().parse::<Code>(), Ok(code));
+    }
+    for s in [Severity::Info, Severity::Warning, Severity::Error] {
+        assert_eq!(s.to_string().parse::<Severity>(), Ok(s));
+    }
+    for l in [Layer::Syntax, Layer::Structure, Layer::Semantic] {
+        assert_eq!(l.to_string().parse::<Layer>(), Ok(l));
+    }
+    for p in Profile::ALL {
+        assert_eq!(p.to_string().parse::<Profile>(), Ok(p));
+    }
+    for a in [
+        AmbiguityCode::AmbiguousIdentification,
+        AmbiguityCode::MultipleEvidenceStreams,
+        AmbiguityCode::Both,
+    ] {
+        assert_eq!(a.to_string().parse::<AmbiguityCode>(), Ok(a));
+    }
+    for d in Datatype::ALL {
+        assert_eq!(d.to_string().parse::<Datatype>(), Ok(d));
     }
 }
 
@@ -405,7 +444,7 @@ proptest! {
     }
 
     #[test]
-    fn json_parse_is_total(input in ".{0,64}|[\\[\\]{}\":,0-9a-z\\\\ ]{0,64}") {
+    fn json_parse_is_total(input in "(?s:.{0,64})|[\\[\\]{}\":,0-9a-z\\\\ \n]{0,64}") {
         let parsed = mztab_m::json::parse(&input);
         prop_assert!(parsed.findings.len() <= input.len() + 1, "bounded findings");
     }

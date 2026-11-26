@@ -186,7 +186,7 @@ fn more_model_paths() {
     );
     assert_eq!(
         at(Code::DanglingReference).as_deref(),
-        Some("sml.header[18]"),
+        Some("sml.header[19]"),
         "column"
     );
     assert_eq!(
@@ -269,9 +269,14 @@ fn every_column_kind_is_checked_in_any_table() {
     }
     let findings = validate::structure(&model, &Config::default());
     let codes: Vec<Code> = findings.iter().map(|f| f.code).collect();
-    assert!(
-        codes.contains(&Code::DanglingReference),
-        "measure 9 is not defined: {codes:?}"
+    assert_eq!(
+        codes,
+        [
+            Code::ColumnOrder,
+            Code::OptColumnPosition,
+            Code::DanglingReference,
+        ],
+        "pushed columns trigger order, opt position, and dangling id_confidence_measure[9]: {codes:?}"
     );
 }
 
@@ -344,7 +349,7 @@ fn table_findings_on_read_models_point_at_text() {
             let l = if l.starts_with("SMF\t2\t") {
                 l.replacen("203.0526", "null", 1)
             } else if l.starts_with("SME\t2\t") {
-                l.replacen("203.0526\t-1\t", "203.0526\tnull\t", 1)
+                l.replacen("181.0709\t1\t181.0707", "181.0709\tnull\t181.0707", 1)
             } else {
                 l.to_owned()
             };
@@ -368,14 +373,14 @@ fn table_findings_on_read_models_point_at_text() {
     };
     assert_eq!(
         at(Code::DanglingReference),
-        [Location::text(129, 223).with_cell(14)],
+        [Location::text(133, 242).with_cell(15)],
         "SMF header column"
     );
     assert_eq!(
         at(Code::NullValue),
         [
-            Location::text(131, 27).with_cell(7),
-            Location::text(135, 90).with_cell(13),
+            Location::text(135, 27).with_cell(7),
+            Location::text(139, 106).with_cell(13),
         ],
         "SMF and SME cells"
     );

@@ -79,7 +79,7 @@ impl Doc {
             .0
             .iter()
             .position(|l| l.starts_with(before_prefix))
-            .unwrap_or(0);
+            .expect("prefix present");
         self.0.insert(at, line.to_owned());
         self
     }
@@ -121,7 +121,7 @@ impl Doc {
             .iter()
             .enumerate()
             .filter(|(_, l)| l.starts_with(&format!("{prefix}\t")))
-            .nth(row - 1)
+            .nth(row.checked_sub(1).expect("1-based row"))
             .map(|(i, _)| i)
             .expect("row");
         let mut cells: Vec<String> = self.0[at].split('\t').map(String::from).collect();
@@ -325,16 +325,11 @@ fn cases() -> Vec<(Code, Vec<u8>)> {
         ),
         (
             Code::OptColumnPosition,
-            d().add_column(sme, "rank", "1")
-                .drop_column(sme, "rank")
+            d().drop_column(sme, "rank")
                 .add_column(sme, "rank", "1")
                 .bytes(),
         ),
         (Code::NullValue, d().cell(sme, 1, "rank", "null").bytes()),
-        (
-            Code::InvalidValue,
-            d().cell(smf, 1, "exp_mass_to_charge", "abc").bytes(),
-        ),
         (
             Code::ReliabilityMissing,
             d().cell(sml, 1, "reliability", "null").bytes(),
@@ -372,10 +367,10 @@ fn cases() -> Vec<(Code, Vec<u8>)> {
         (
             Code::CvUnused,
             d().add_mtd(&[
-                "MTD\tcv[13]-label\tFOO",
-                "MTD\tcv[13]-full_name\tFoo",
-                "MTD\tcv[13]-version\t1",
-                "MTD\tcv[13]-uri\thttps://example.org/foo",
+                "MTD\tcv[12]-label\tFOO",
+                "MTD\tcv[12]-full_name\tFoo",
+                "MTD\tcv[12]-version\t1",
+                "MTD\tcv[12]-uri\thttps://example.org/foo",
             ])
             .bytes(),
         ),
@@ -659,7 +654,7 @@ fn more_cases() -> Vec<(Code, Vec<u8>)> {
     for email in ["@x.org", "a@", "a@org", "a@.org", "a@x.org.", "a b@x.org"] {
         cases.push((Code::Email, d().set("contact[1]-email", email).bytes()));
     }
-    for value in ["2020-01-01Tnoon", "today\u{54}12:00:00"] {
+    for value in ["2020-01-01Tnoon", "todayT12:00:00"] {
         let typed = d()
             .set("study_variable_group[1]-datatype", "xsd:dateTime")
             .set("study_variable[1]", value);
@@ -858,8 +853,26 @@ fn json_cases_trigger_their_codes() {
 }
 
 #[test]
+fn invalid_value_is_reported_on_model() {
+    let mut model = mztab_m::parse(BASE).mztab;
+    if let Some(table) = &mut model.smf
+        && let Some(row) = table.rows.first_mut()
+    {
+        row.exp_mass_to_charge = mztab_m::Cell::Invalid(mztab_m::Raw::new("abc"));
+    }
+    let findings = validate::structure(&model, &Config::default());
+    assert_eq!(
+        findings.iter().map(|f| f.code).collect::<Vec<_>>(),
+        [Code::InvalidValue]
+    );
+}
+
+#[test]
 fn every_code_has_a_case() {
     let mut covered: Vec<Code> = cases().into_iter().map(|(code, _)| code).collect();
+    // InvalidValue is triggered directly on a constructed/mutated model above
+    // because TSV syntax validation flags invalid lexemes earlier (`MZT-S*`).
+    covered.push(Code::InvalidValue);
     #[cfg(feature = "json")]
     covered.extend(JSON_CASES.iter().map(|(code, _)| *code));
     // Without the feature, the JSON codes cannot be triggered.

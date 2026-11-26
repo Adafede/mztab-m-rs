@@ -18,7 +18,12 @@ const TERMS: &[Entry] = &[
     ),
     ("MS:1000129", "negative scan", false, &[]),
     ("MS:1000130", "positive scan", false, &[]),
-    ("MS:1000133", "CID", false, &["MS:1000044"]),
+    (
+        "MS:1000133",
+        "collision-induced dissociation",
+        false,
+        &["MS:1000044"],
+    ),
     ("MS:1000253", "electron multiplier", false, &["MS:1000026"]),
     ("MS:1000451", "mass analyzer", false, &[]),
     ("MS:1000458", "source", false, &[]),
@@ -35,11 +40,18 @@ const TERMS: &[Entry] = &[
     ("MS:1000561", "data file checksum type", false, &[]),
     ("MS:1000569", "SHA-1", false, &["MS:1000561"]),
     ("MS:1000584", "mzML format", false, &["MS:1000560"]),
+    ("MS:1000624", "inductive detector", false, &["MS:1000026"]),
     (
         "MS:1000767",
         "native spectrum identifier format",
         false,
         &[],
+    ),
+    (
+        "MS:1000768",
+        "Thermo nativeID format",
+        false,
+        &["MS:1000767"],
     ),
     (
         "MS:1000774",
@@ -56,6 +68,7 @@ const TERMS: &[Entry] = &[
     ("MS:1001060", "search type", false, &[]),
     ("MS:1001456", "analysis software", false, &["MS:1000531"]),
     ("MS:1001477", "SpectraST", false, &["MS:1001456"]),
+    ("MS:1001530", "mzML unique identifier", false, &[]),
     ("MS:1001833", "quantitation analysis summary", false, &[]),
     (
         "MS:1001834",
@@ -63,6 +76,7 @@ const TERMS: &[Entry] = &[
         false,
         &["MS:1001833"],
     ),
+    ("MS:1001911", "Q Exactive", false, &["MS:1000483"]),
     ("MS:1002879", "Progenesis QI", false, &["MS:1001456"]),
     ("MS:1002882", "study variable average function", false, &[]),
     ("MS:1002883", "median", false, &["MS:1002882"]),
@@ -73,6 +87,7 @@ const TERMS: &[Entry] = &[
         &[],
     ),
     ("MS:1002885", "standard error", false, &["MS:1002884"]),
+    ("MS:1002962", "mean", false, &["MS:1002882"]),
     (
         "MS:1002888",
         "small molecule confidence measure",
@@ -132,7 +147,7 @@ impl TermLookup for Mini {
             obsolete: *obsolete,
             value_type: value_type(accession),
             synonyms: if *accession == "MS:1000133" {
-                &["collision-induced dissociation"]
+                &["CID"]
             } else {
                 &[]
             },
@@ -140,11 +155,17 @@ impl TermLookup for Mini {
     }
 
     fn is_descendant(&self, accession: &str, ancestor: &str) -> bool {
-        entry(accession).is_some_and(|(_, _, _, parents)| {
-            parents
-                .iter()
-                .any(|p| *p == ancestor || self.is_descendant(p, ancestor))
-        })
+        fn walk(current: &str, ancestor: &str, depth: usize) -> bool {
+            if depth == 0 {
+                return false;
+            }
+            entry(current).is_some_and(|(_, _, _, parents)| {
+                parents
+                    .iter()
+                    .any(|p| *p == ancestor || walk(p, ancestor, depth - 1))
+            })
+        }
+        walk(accession, ancestor, TERMS.len())
     }
 
     fn version(&self, prefix: &str) -> Option<&str> {

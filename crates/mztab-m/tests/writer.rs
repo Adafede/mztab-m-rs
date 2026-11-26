@@ -434,12 +434,16 @@ impl core::fmt::Write for FailAfter {
 #[test]
 fn output_errors_are_reported() {
     let param = without_layout(parse("MTD\tquantification_method\t[,,x,]\n").mztab);
-    let midway = &mut FailAfter { limit: 30 };
-    assert_eq!(
-        mztab_m::write(&param, midway),
-        Err(WriteError::Fmt),
-        "fails inside a parameter"
-    );
+    let expected = to_string(&param).expect("writable").len();
+    for limit in 0..=expected {
+        let mut sink = FailAfter { limit };
+        let res = mztab_m::write(&param, &mut sink);
+        if limit < expected {
+            assert_eq!(res, Err(WriteError::Fmt), "fails at limit {limit}");
+        } else {
+            assert_eq!(res, Ok(()), "succeeds at limit {limit}");
+        }
+    }
     let mztab = parse("MTD\tmzTab-ID\tx\n").mztab;
     assert_eq!(
         mztab_m::write(&mztab, &mut Broken),

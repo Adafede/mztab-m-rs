@@ -43,34 +43,68 @@ fn main() {
         ("medium", "2.0/LDA_v2.11.1_MTBLS396.mzTab"),
         ("large", "2.1/xcms+MsIO_0.0.11_MTBLS4381_onlySMF.mztab"),
     ] {
-        let text = std::fs::read_to_string(format!("{EXAMPLES}/{path}")).unwrap_or_default();
+        let full_path = format!("{EXAMPLES}/{path}");
+        #[expect(
+            clippy::expect_used,
+            reason = "benchmark setup: missing corpus file means submodule is uninitialized"
+        )]
+        let text = std::fs::read_to_string(&full_path)
+            .expect("readable corpus file (init git submodules)");
         let size = text.len();
-        row(name, size, "parse", measure(|| drop(mztab_m::parse(&text))));
+        row(
+            name,
+            size,
+            "parse",
+            measure(|| {
+                drop(core::hint::black_box(mztab_m::parse(
+                    core::hint::black_box(&text),
+                )));
+            }),
+        );
         row(
             name,
             size,
             "parse_owned",
-            measure(|| drop(mztab_m::parse(&text).into_owned())),
+            measure(|| {
+                drop(core::hint::black_box(
+                    mztab_m::parse(core::hint::black_box(&text)).into_owned(),
+                ));
+            }),
         );
         let parsed = mztab_m::parse(&text);
         row(
             name,
             size,
             "write",
-            measure(|| drop(mztab_m::to_string(&parsed.mztab))),
+            measure(|| {
+                drop(core::hint::black_box(mztab_m::to_string(
+                    core::hint::black_box(&parsed.mztab),
+                )));
+            }),
         );
         let config = Config::default();
         row(
             name,
             size,
             "structure",
-            measure(|| drop(validate::structure(&parsed.mztab, &config))),
+            measure(|| {
+                drop(core::hint::black_box(validate::structure(
+                    core::hint::black_box(&parsed.mztab),
+                    core::hint::black_box(&config),
+                )));
+            }),
         );
         row(
             name,
             size,
             "semantic",
-            measure(|| drop(validate::semantic(&parsed.mztab, &config, &NoTerms))),
+            measure(|| {
+                drop(core::hint::black_box(validate::semantic(
+                    core::hint::black_box(&parsed.mztab),
+                    core::hint::black_box(&config),
+                    &NoTerms,
+                )));
+            }),
         );
     }
     // About 1 GB, generated and read in 64 KiB chunks: never in memory.
@@ -85,14 +119,17 @@ fn main() {
         let mut events = 0_u64;
         for chunk in spec.chunks(65_536) {
             bytes += chunk.len();
-            reader.push(chunk.as_bytes(), &mut |_| events += 1);
+            reader.push(core::hint::black_box(chunk.as_bytes()), &mut |_| {
+                events += 1;
+            });
         }
         reader.finish(&mut |_| events += 1);
         assert!(events > 0, "events");
     });
     row("synthetic (streamed)", bytes, "stream_64k", streamed);
     assert!(
-        streamed.0 < 64 * 1024 * 1024,
-        "streaming memory is bounded by the longest line, not the file"
+        streamed.0 < 2 * 1024 * 1024,
+        "streaming memory is bounded by the longest line, not the file: {:?}",
+        streamed.0
     );
 }

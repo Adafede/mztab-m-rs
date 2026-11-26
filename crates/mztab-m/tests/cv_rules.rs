@@ -144,13 +144,55 @@ fn strip_comments(xml: &str) -> String {
     out
 }
 
+/// Unescapes standard XML character entities inside an attribute value.
+fn unescape_xml(value: &str) -> String {
+    value
+        .replace("&quot;", "\"")
+        .replace("&apos;", "'")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&amp;", "&")
+}
+
 /// The value of attribute `name` in a start tag.
 fn attr(tag: &str, name: &str) -> String {
-    let tag = format!(" {tag}");
-    let key = format!(" {name}=\"");
-    let start = tag.find(&key).expect("attribute present") + key.len();
-    let rest = tag.get(start..).expect("in bounds");
-    rest.split_once('"').expect("closed attribute").0.to_owned()
+    let tag = tag.trim_end_matches('/');
+    let mut found = None;
+    let mut rest = tag;
+    while !rest.is_empty() {
+        rest = rest.trim_start();
+        if let Some(after_name) = rest.strip_prefix(name) {
+            let after_eq = after_name.trim_start();
+            if let Some(after_eq) = after_eq.strip_prefix('=') {
+                let after_ws = after_eq.trim_start();
+                if let Some(inner) = after_ws.strip_prefix('"') {
+                    found = Some(unescape_xml(
+                        inner.split_once('"').expect("closed attribute").0,
+                    ));
+                    break;
+                }
+                if let Some(inner) = after_ws.strip_prefix('\'') {
+                    found = Some(unescape_xml(
+                        inner.split_once('\'').expect("closed attribute").0,
+                    ));
+                    break;
+                }
+            }
+        }
+        // Skip past the next quoted attribute value (or whitespace token).
+        if let Some((_, after_dq)) = rest.split_once('"')
+            && let Some((_, tail)) = after_dq.split_once('"')
+        {
+            rest = tail;
+        } else if let Some((_, after_sq)) = rest.split_once('\'')
+            && let Some((_, tail)) = after_sq.split_once('\'')
+        {
+            rest = tail;
+        } else {
+            break;
+        }
+    }
+    found.expect("attribute present")
 }
 
 /// The value `table` pairs with `key`; every key of the mapping is known.

@@ -14,11 +14,15 @@ const FORMAT: &str = include_str!(
 const FIELD_REFERENCE: &str =
     include_str!("../../../third_party/mzTab-M/specification_documents/mzTab_m_2_1_schema.adoc");
 
-/// Whether `doc` declares `[[anchor]]` or `[[anchor, title]]`.
+/// Whether `doc` declares `[[anchor]]` or `[[anchor, title]]` without
+/// crossing newlines or nested brackets (e.g. `[[[biblio]]]`).
 fn has_anchor(doc: &str, anchor: &str) -> bool {
     doc.match_indices("[[")
+        .filter(|(at, _)| *at == 0 || doc.as_bytes().get(at - 1) == Some(&b'\n'))
         .filter_map(|(at, _)| doc.get(at + 2..))
+        .filter(|rest| !rest.starts_with('['))
         .filter_map(|rest| rest.split_once("]]").map(|(id, _)| id))
+        .filter(|id| !id.contains('\n') && !id.contains('['))
         .any(|id| id.split(',').next() == Some(anchor))
 }
 
@@ -46,6 +50,10 @@ fn anchor_matcher_is_exact() {
     assert!(has_anchor(doc, "table-1"), "anchor with title");
     assert!(!has_anchor(doc, "a"), "no prefix match");
     assert!(!has_anchor(doc, "CV Terms"), "title is not an id");
+    assert!(
+        !has_anchor(doc, "biblio") && !has_anchor(doc, "[biblio"),
+        "bibliography entries are not section anchors"
+    );
     assert!(
         !has_anchor("[[unterminated", "unterminated"),
         "needs closing brackets"

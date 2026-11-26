@@ -5,10 +5,10 @@ MTD	mzTab-profile	M+S+F+E
 MTD	title	Everything
 MTD	description	A fixture that uses every key.
 MTD	sample_processing[1]	[MSIO, MSIO:0000146, centrifugation, ]|[MSIO, MSIO:0000141, metabolite extraction, ]
-MTD	instrument[1]-name	[MS, MS:1000483, Thermo Fisher Scientific instrument model, ]
+MTD	instrument[1]-name	[MS, MS:1001911, Q Exactive, ]
 MTD	instrument[1]-source	[MS, MS:1000073, electrospray ionization, ]
 MTD	instrument[1]-analyzer[1]	[MS, MS:1000484, orbitrap, ]
-MTD	instrument[1]-detector	[MS, MS:1000253, electron multiplier, ]
+MTD	instrument[1]-detector	[MS, MS:1000624, inductive detector, ]
 MTD	software[1]	[MS, MS:1002879, Progenesis QI, 3.0]
 MTD	software[1]-setting[1]	Mass tolerance = 5 ppm
 MTD	publication[1]	pubmed:21063943|doi:10.1007/978-1-60761-987-1_6|uri:https://example.org/p
@@ -21,21 +21,26 @@ MTD	external_study_uri[1]	https://example.org/external
 MTD	quantification_method	[MS, MS:1001834, LC-MS label-free quantitation analysis, ]
 MTD	sample[1]	Plasma A
 MTD	sample[1]-species[1]	[NCBITaxon, NCBITaxon:9606, Homo sapiens, ]
-MTD	sample[1]-tissue[1]	[BTO, BTO:0000131, blood plasma, ]
-MTD	sample[1]-cell_type[1]	[CL, CL:0000000, cell, ]
-MTD	sample[1]-disease[1]	[DOID, DOID:4, disease, ]
-MTD	sample[1]-description	Fasting plasma
+MTD	sample[1]-tissue[1]	[BTO, BTO:0000759, liver, ]
+MTD	sample[1]-cell_type[1]	[CL, CL:0000182, hepatocyte, ]
+MTD	sample[1]-disease[1]	[PRIDE, PRIDE:0000018, Disease free, ]
+MTD	sample[1]-description	Fasting liver biopsy
 MTD	sample[1]-custom[1]	[, , storage, -80 C]
 MTD	ms_run[1]-location	file:///data/run1.mzML
 MTD	ms_run[1]-instrument_ref	instrument[1]
 MTD	ms_run[1]-format	[MS, MS:1000584, mzML format, ]
-MTD	ms_run[1]-id_format	[MS, MS:1000774, multiple peak list nativeID format, ]
-MTD	ms_run[1]-fragmentation_method[1]	[MS, MS:1000133, CID, ]
+MTD	ms_run[1]-id_format	[MS, MS:1000768, Thermo nativeID format, ]
+MTD	ms_run[1]-fragmentation_method[1]	[MS, MS:1000133, collision-induced dissociation, ]
 MTD	ms_run[1]-scan_polarity[1]	[MS, MS:1000130, positive scan, ]
 MTD	ms_run[1]-hash	de9f2c7fd25e1b3afad3e85a0bd17d9b100db4b3
 MTD	ms_run[1]-hash_method	[MS, MS:1000569, SHA-1, ]
 MTD	ms_run[1]-parameters	[, , gradient, 30 min]
 MTD	ms_run[1]-usi_identifier	mzspec:PXD000001:run1
+MTD	ms_run[2]-location	file:///data/run2.mzML
+MTD	ms_run[2]-instrument_ref	instrument[1]
+MTD	ms_run[2]-format	[MS, MS:1000584, mzML format, ]
+MTD	ms_run[2]-id_format	[MS, MS:1000768, Thermo nativeID format, ]
+MTD	ms_run[2]-scan_polarity[1]	[MS, MS:1000130, positive scan, ]
 MTD	assay[1]	Run 1
 MTD	assay[1]-custom[1]	[, , injection, 1]
 MTD	assay[1]-external_uri	https://example.org/assay/1
@@ -43,18 +48,21 @@ MTD	assay[1]-sample_ref	sample[1]
 MTD	assay[1]-ms_run_ref	ms_run[1]
 MTD	assay[1]-protocol_refs	protocol[1]
 MTD	assay[1]-parameters	[, , dilution, 1:10]
+MTD	assay[2]	Run 2
+MTD	assay[2]-sample_ref	sample[1]
+MTD	assay[2]-ms_run_ref	ms_run[2]
 MTD	study_variable[1]	Control
-MTD	study_variable[1]-assay_refs	assay[1]
-MTD	study_variable[1]-ms_run_refs	ms_run[1]
+MTD	study_variable[1]-assay_refs	assay[1]|assay[2]
+MTD	study_variable[1]-ms_run_refs	ms_run[1]|ms_run[2]
 MTD	study_variable[1]-description	Control group
-MTD	study_variable[1]-average_function	[MS, MS:1002883, median, ]
+MTD	study_variable[1]-average_function	[MS, MS:1002962, mean, ]
 MTD	study_variable[1]-variation_function	[MS, MS:1002885, standard error, ]
 MTD	study_variable[1]-factors	[, , dose, 0]
-MTD	study_variable_group[1]	[STATO, STATO:0000087, independent variable, ]
+MTD	study_variable_group[1]	[, , treatment, ]
 MTD	study_variable_group[1]-description	Treatment
 MTD	study_variable_group[1]-type	[STATO, STATO:0000252, categorical variable, ]
 MTD	study_variable_group[1]-datatype	xsd:string
-MTD	study_variable_group[1]-unit	[UO, UO:0000186, dimensionless unit, ]
+MTD	study_variable_group[1]-unit	[UO, UO:0000010, second, ]
 MTD	study_variable_group[1]-study_variable_refs	study_variable[1]
 MTD	protocol[1]-name	Extraction
 MTD	protocol[1]-type	[OBI, OBI:0302884, extraction, ]
@@ -73,10 +81,10 @@ MTD	cv[3]-label	CL
 MTD	cv[3]-full_name	Cell Ontology
 MTD	cv[3]-version	2024-01-04
 MTD	cv[3]-uri	http://purl.obolibrary.org/obo/cl.obo
-MTD	cv[4]-label	DOID
-MTD	cv[4]-full_name	Human Disease Ontology
-MTD	cv[4]-version	2024-01-31
-MTD	cv[4]-uri	http://purl.obolibrary.org/obo/doid.obo
+MTD	cv[4]-label	CHEBI
+MTD	cv[4]-full_name	Chemical Entities of Biological Interest
+MTD	cv[4]-version	230
+MTD	cv[4]-uri	http://purl.obolibrary.org/obo/chebi.obo
 MTD	cv[5]-label	MIRIAM
 MTD	cv[5]-full_name	MIRIAM Registry
 MTD	cv[5]-version	2024-01-01
@@ -105,15 +113,11 @@ MTD	cv[11]-label	UO
 MTD	cv[11]-full_name	Unit Ontology
 MTD	cv[11]-version	2023-05-25
 MTD	cv[11]-uri	http://purl.obolibrary.org/obo/uo.obo
-MTD	cv[12]-label	XLMOD
-MTD	cv[12]-full_name	Cross-linker and derivatization agent ontology
-MTD	cv[12]-version	2019-10-28
-MTD	cv[12]-uri	https://raw.githubusercontent.com/HUPO-PSI/xlmod-CV/main/XLMOD.obo
 MTD	database[1]	[MIRIAM, MIR:00100079, HMDB, ]
 MTD	database[1]-prefix	HMDB
 MTD	database[1]-version	5.0
 MTD	database[1]-uri	https://hmdb.ca
-MTD	derivatization_agent[1]	[XLMOD, XLMOD:07013, MSTFA, ]
+MTD	derivatization_agent[1]	[CHEBI, CHEBI:85064, "2,2,2-trifluoro-N-methyl-N-(trimethylsilyl)acetamide", ]
 MTD	small_molecule-quantification_unit	[PRIDE, PRIDE:0000330, Arbitrary quantification unit, ]
 MTD	small_molecule_feature-quantification_unit	[PRIDE, PRIDE:0000330, Arbitrary quantification unit, ]
 MTD	small_molecule-identification_reliability	[MS, MS:1002896, compound identification confidence level, ]
@@ -123,14 +127,14 @@ MTD	colunit-small_molecule	best_id_confidence_value=[UO, UO:0000186, dimensionle
 MTD	colunit-small_molecule_feature	retention_time_in_seconds=[UO, UO:0000010, second, ]
 MTD	colunit-small_molecule_evidence	opt_ms_run[1]_mass_error=[UO, UO:0000169, parts per million, ]
 
-SMH	SML_ID	SMF_ID_REFS	database_identifier	chemical_formula	smiles	inchi	chemical_name	uri	theoretical_neutral_mass	adduct_ions	reliability	best_id_confidence_measure	best_id_confidence_value	abundance_assay[1]	abundance_study_variable[1]	abundance_variation_study_variable[1]	opt_global_note
-SML	1	1|2	HMDB:HMDB0000122|null	C6H12O6|null	OC1OC(CO)C(O)C(O)C1O|null	InChI=1S/C6H12O6|null	Glucose|null	https://hmdb.ca/metabolites/HMDB0000122|null	180.0634|null	[M+H]1+|null	2	[MS, MS:1002890, fragmentation score, ]	0.95	1234.5	1234.5	0.1	first
-SML	2	2	null	null	null	null	null	null	null	null	4	null	0.5	null	null	null	null
+SMH	SML_ID	SMF_ID_REFS	database_identifier	chemical_formula	smiles	inchi	chemical_name	uri	theoretical_neutral_mass	adduct_ions	reliability	best_id_confidence_measure	best_id_confidence_value	abundance_assay[1]	abundance_assay[2]	abundance_study_variable[1]	abundance_variation_study_variable[1]	opt_global_note
+SML	1	1|2	HMDB:HMDB0000122|null	C6H12O6|null	OC1OC(CO)C(O)C(O)C1O|null	InChI=1S/C6H12O6/c7-1-2-3(8)4(9)5(10)6(11)12-2/h2-11H,1H2|null	Glucose|null	https://hmdb.ca/metabolites/HMDB0000122|null	180.0634|null	[M+H]1+|null	2	[MS, MS:1002890, fragmentation score, ]	0.9	1234.4	1234.6	1234.5	0.1	first
+SML	2	2	null	null	null	null	null	null	null	null	4	[MS, MS:1002890, fragmentation score, ]	0.0	null	null	null	null	null
 
-SFH	SMF_ID	SME_ID_REFS	SME_ID_REF_ambiguity_code	adduct_ion	isotopomer	exp_mass_to_charge	charge	retention_time_in_seconds	retention_time_in_seconds_start	retention_time_in_seconds_end	abundance_assay[1]	opt_assay[1]_area
-SMF	1	1|2	1	[M+H]1+	[, , monoisotopic, ]	181.0707	1	300.5	295.0	306.0	1234.5	10
-SMF	2	null	null	null	null	203.0526	-1	NaN	null	null	null	null
+SFH	SMF_ID	SME_ID_REFS	SME_ID_REF_ambiguity_code	adduct_ion	isotopomer	exp_mass_to_charge	charge	retention_time_in_seconds	retention_time_in_seconds_start	retention_time_in_seconds_end	abundance_assay[1]	abundance_assay[2]	opt_assay[1]_area
+SMF	1	1|2	1	[M+H]1+	[, , monoisotopic, ]	181.0709	1	300.5	295.0	306.0	1234.4	1234.6	10
+SMF	2	null	null	null	null	203.0526	1	NaN	null	null	null	null	null
 
 SEH	SME_ID	evidence_input_id	database_identifier	chemical_formula	smiles	inchi	chemical_name	uri	derivatized_form	adduct_ion	exp_mass_to_charge	charge	theoretical_mass_to_charge	spectra_ref	identification_method	ms_level	id_confidence_measure[1]	rank	opt_ms_run[1]_mass_error	opt_study_variable[1]_flag
-SME	1	scan=100	HMDB:HMDB0000122	C6H12O6	OC1OC(CO)C(O)C(O)C1O	InChI=1S/C6H12O6	Glucose	https://hmdb.ca/metabolites/HMDB0000122	null	[M+H]1+	181.0707	1	181.0707	ms_run[1]:index=100|ms_run[1]:index=101	[MS, MS:1001477, SpectraST, ]	[MS, MS:1000511, ms level, 2]	0.9	1	1.2	yes
-SME	2	scan=200	null	null	null	null	null	null	[XLMOD, XLMOD:07013, MSTFA, ]	null	203.0526	-1	203.0526	ms_run[1]:index=200	[MS, MS:1001477, SpectraST, ]	[MS, MS:1000511, ms level, 2]	null	2	null	null
+SME	1	scan=100	HMDB:HMDB0000122	C6H12O6	OC1OC(CO)C(O)C(O)C1O	InChI=1S/C6H12O6/c7-1-2-3(8)4(9)5(10)6(11)12-2/h2-11H,1H2	Glucose	https://hmdb.ca/metabolites/HMDB0000122	null	[M+H]1+	181.0709	1	181.0707	ms_run[1]:controllerType=0 controllerNumber=1 scan=100|ms_run[1]:controllerType=0 controllerNumber=1 scan=101	[MS, MS:1001477, SpectraST, ]	[MS, MS:1000511, ms level, 2]	0.9	1	1.1	yes
+SME	2	scan=200	null	null	null	null	null	null	[CHEBI, CHEBI:51088, trimethylsilyl group, 3]	null	181.0709	1	181.0707	ms_run[1]:controllerType=0 controllerNumber=1 scan=200	[MS, MS:1001477, SpectraST, ]	[MS, MS:1000511, ms level, 2]	null	2	null	null
