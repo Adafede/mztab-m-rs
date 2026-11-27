@@ -261,11 +261,9 @@ pub(super) fn write_cell(
     }
 }
 
-/// The TSV text of a table cell.
+/// The TSV text of a structured or non-trivial table cell.
 pub(super) fn cell_text(node: &Node<'_>, col: Col, at: &Path, tsv: &mut Tsv) -> Option<String> {
     match (&node.value, col) {
-        (Value::Null, _) => Some("null".to_string()),
-        (Value::String(s), _) => Some(s.to_string()),
         (Value::Number(n), Col::Text | Col::Number) => Some(plain(n)),
         (Value::Number(n), Col::Integer) => Some(plain_int(n).unwrap_or_else(|| plain(n))),
         (Value::Object(_), Col::Param) => param_text(node, at, tsv),

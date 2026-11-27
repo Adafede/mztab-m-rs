@@ -98,12 +98,23 @@ mod tests {
             "quotes only matter in parameter lists"
         );
 
-        let mut seen = Vec::new();
-        let completed = visit_list("a|b|c", false, |_, item| {
-            seen.push(item);
-            item != "b"
-        });
-        assert!(!completed, "early stop returns false");
-        assert_eq!(seen, ["a", "b"], "stopped after second item");
+        let collect_until = |s| {
+            let mut seen = Vec::new();
+            let completed = visit_list(s, false, |_, item| {
+                seen.push(item);
+                item != "b"
+            });
+            (completed, seen)
+        };
+        assert_eq!(
+            collect_until("a|b|c"),
+            (false, Vec::from(["a", "b"])),
+            "early stop returns false after second item"
+        );
+        assert_eq!(
+            collect_until("a|c"),
+            (true, Vec::from(["a", "c"])),
+            "full visit returns true with all items"
+        );
     }
 }

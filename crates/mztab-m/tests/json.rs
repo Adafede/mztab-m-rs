@@ -452,6 +452,26 @@ fn table_row_text_errors_report_first_invalid_cell() {
             .collect::<Vec<_>>(),
         ["/smallMoleculeFeature/0/adduct_ion"]
     );
+
+    // An `opt` entry with a non-string/number/null `value` invokes the lazy path,
+    // and an `opt` entry omitting `value` emits `null`.
+    let opt_edges = json::parse(
+        r#"{"smallMoleculeFeature": [{"smf_id": 1, "opt": [
+            {"identifier": "global_bad", "value": true},
+            {"identifier": "global_missing"}
+        ]}]}"#,
+    );
+    assert!(
+        opt_edges.findings.iter().any(|f| f.code == Code::JsonShape
+            && f.location == pointer("/smallMoleculeFeature/0/opt/0/value")),
+        "lazy opt value error path: {:?}",
+        opt_edges.findings
+    );
+    let tsv = mztab_m::to_string(&opt_edges.mztab).expect("writable");
+    assert!(
+        tsv.contains("\tnull\tnull\n"),
+        "missing opt value -> null: {tsv}"
+    );
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -976,6 +996,7 @@ fn malformed_params_and_spectra_refs_fall_back_to_json_strings() {
         "MTD\tmzTab-version\t2.1.0-M\n",
         "MTD\tmzTab-ID\tX\n",
         "MTD\tsample_processing[1]\tnot-a-param\n",
+        "MTD\tsample_processing[2]\tnot-a-param|also-bad\n",
         "SEH\tSME_ID\tspectra_ref\n",
         "SME\t1\tbad-ref\n",
     );
@@ -983,7 +1004,8 @@ fn malformed_params_and_spectra_refs_fall_back_to_json_strings() {
     model.layout = SourceLayout::default();
     let text = json::to_string(&model).expect("writable");
     assert!(
-        text.contains(r#""sample_processing":"not-a-param""#),
+        text.contains(r#""sample_processing":"not-a-param""#)
+            && text.contains(r#""sample_processing":"not-a-param|also-bad""#),
         "param list fallback: {text}"
     );
     assert!(

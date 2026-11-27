@@ -283,7 +283,7 @@ fn emit_row(
     if let Some(cell_idx) = first_bad {
         let at = tsv
             .row_path(table_index, row_index, &opt_indices, cell_idx)
-            .unwrap_or_else(|| here.clone());
+            .unwrap_or_default();
         tsv.report(Code::JsonText, &at, Detail::None);
         return;
     }
