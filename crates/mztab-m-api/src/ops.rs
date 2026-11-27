@@ -20,6 +20,16 @@ pub fn read(bytes: &[u8], format: Format) -> Parsed<'static> {
     }
 }
 
+/// Reads a document, borrowing TSV text from `bytes` where possible. Never
+/// fails: problems are findings.
+#[must_use]
+pub fn read_borrowed(bytes: &[u8], format: Format) -> Parsed<'_> {
+    match format {
+        Format::Tsv => mztab_m::parse_bytes(bytes),
+        Format::Json => json::parse_bytes(bytes),
+    }
+}
+
 /// The reader's findings and those of each layer up to the settings'
 /// layer, with the settings' severities and raw OBO 1.4 vocabulary texts.
 /// A value that failed to type is reported once, by the reader.
@@ -37,7 +47,7 @@ pub fn validate(parsed: &Parsed<'_>, settings: &Settings, obo: &[&str]) -> Findi
 /// Reads and validates `bytes`, formatting findings as a JSON array.
 #[must_use]
 pub fn validate_json(bytes: &[u8], format: Format, obo: &[&str], settings: &Settings) -> String {
-    let parsed = read(bytes, format);
+    let parsed = read_borrowed(bytes, format);
     findings_json(&validate(&parsed, settings, obo))
 }
 
@@ -71,7 +81,7 @@ fn write_canonical(mztab: &MzTab<'_>, format: Format) -> Result<String, Error> {
 /// `obo`, and returns the records: the one call a binding needs.
 #[must_use]
 pub fn check(bytes: &[u8], format: Format, obo: &[&str], settings: &Settings) -> Vec<Record> {
-    let parsed = read(bytes, format);
+    let parsed = read_borrowed(bytes, format);
     records(&validate(&parsed, settings, obo))
 }
 
@@ -82,7 +92,7 @@ pub fn check(bytes: &[u8], format: Format, obo: &[&str], settings: &Settings) ->
 ///
 /// [`Error::Write`] if the document cannot be written in `to`.
 pub fn convert(bytes: &[u8], from: Format, to: Format, lossy: bool) -> Result<String, Error> {
-    write(&read(bytes, from).mztab, to, lossy).map(|(text, _)| text)
+    write(&read_borrowed(bytes, from).mztab, to, lossy).map(|(text, _)| text)
 }
 
 /// Parses an OBO 1.4 text and returns the number of unique terms it defines.

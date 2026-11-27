@@ -153,9 +153,11 @@ fn validate_reports_and_exits_by_severity() {
         "ugly.mztab",
     ];
     assert_eq!(exec(&mut io, &args), FINDINGS, "info fails at info");
+    assert_eq!(io.err, "0 errors, 0 warnings, 1 infos\n", "info count");
     let mut io = fake();
     let args = ["validate", "--fail-on", "warning", "ugly.mztab"];
     assert_eq!(exec(&mut io, &args), FINDINGS, "warning fails at warning");
+    assert_eq!(io.err, "0 errors, 1 warnings, 0 infos\n", "warning count");
 }
 
 #[test]

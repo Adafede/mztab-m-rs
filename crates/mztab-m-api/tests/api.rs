@@ -4,7 +4,9 @@
 use wasm_bindgen_test::wasm_bindgen_test as test;
 
 use mztab_m::{Code, Severity};
-use mztab_m_api::{Error, Fact, Format, Layer, Settings, check, convert, facts, facts_json, read};
+use mztab_m_api::{
+    Error, Fact, Format, Layer, Settings, check, convert, facts, facts_json, read, read_borrowed,
+};
 
 const BASE: &str = include_str!("../../mztab-m/tests/golden/full.canonical.mztab");
 const BASE_JSON: &str = include_str!("../../mztab-m/tests/golden/full.json");
@@ -333,5 +335,16 @@ fn bom_sniff_and_invalid_utf8_json_findings() {
         Settings::default().set_code("MZT-X002=off", "off"),
         Err(Error::Code("MZT-X002=off".to_owned())),
         "set_code does not split on `=`"
+    );
+
+    assert_eq!(
+        read_borrowed(BASE.as_bytes(), Format::Tsv),
+        read(BASE.as_bytes(), Format::Tsv),
+        "read_borrowed matches read for TSV"
+    );
+    assert_eq!(
+        read_borrowed(BASE_JSON.as_bytes(), Format::Json),
+        read(BASE_JSON.as_bytes(), Format::Json),
+        "read_borrowed matches read for JSON"
     );
 }

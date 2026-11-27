@@ -139,7 +139,7 @@ fn inspect<'py>(
 ) -> PyResult<Bound<'py, PyDict>> {
     let bytes = bytes(text)?;
     let format = self::format(format, &bytes)?;
-    let parsed = mztab_m_api::read(&bytes, format);
+    let parsed = mztab_m_api::read_borrowed(&bytes, format);
     let d = PyDict::new(py);
     for (key, fact) in mztab_m_api::facts(&parsed) {
         match fact {

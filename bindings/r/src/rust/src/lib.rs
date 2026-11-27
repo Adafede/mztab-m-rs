@@ -23,6 +23,10 @@ fn outcome<T: Into<Robj>>(result: Result<T>) -> List {
     }
 }
 
+fn api_err(e: impl std::fmt::Display) -> Error {
+    Error::Other(e.to_string())
+}
+
 /// Extracts UTF-8 string or raw bytes directly, preserving invalid UTF-8 and NUL.
 fn extract_bytes(text: &Robj) -> Result<&[u8]> {
     if let Some(raw) = text.as_raw_slice() {
@@ -40,7 +44,7 @@ fn extract_bytes(text: &Robj) -> Result<&[u8]> {
 fn format(given: Nullable<&str>, bytes: &[u8]) -> Result<Format> {
     match given {
         Nullable::Null => Ok(Format::sniff("", bytes)),
-        Nullable::NotNull(s) => s.parse::<Format>().map_err(|e| Error::Other(e.to_string())),
+        Nullable::NotNull(s) => s.parse::<Format>().map_err(api_err),
     }
 }
 
@@ -53,9 +57,9 @@ fn count_robj(n: usize) -> Robj {
 }
 
 /// Text or NA.
-fn text(values: impl Iterator<Item = Option<String>>) -> Strings {
+fn text<'a>(values: impl Iterator<Item = Option<&'a str>>) -> Strings {
     values
-        .map(|v| v.map_or_else(Rstr::na, |s| Rstr::from(s.as_str())))
+        .map(|v| v.map_or_else(Rstr::na, Rstr::from))
         .collect()
 }
 
@@ -116,7 +120,7 @@ fn validate(
         }
         settings = settings
             .set_code(code.as_ref(), level.as_ref())
-            .map_err(|e| Error::Other(e.to_string()))?;
+            .map_err(api_err)?;
     }
     let mut obo = Vec::with_capacity(vocabularies.len());
     for entry in vocabularies.iter() {
@@ -128,24 +132,24 @@ fn validate(
         obo.push(entry.as_ref());
     }
     let records = mztab_m_api::check(bytes, format, &obo, &settings);
-    let column = |f: fn(&mztab_m_api::Record) -> Option<String>| text_column(&records, f);
+    let column = |f: fn(&mztab_m_api::Record) -> Option<&str>| text_column(&records, f);
     Ok(list!(
-        code = column(|r| Some(r.code.to_owned())),
-        severity = column(|r| Some(r.severity.to_owned())),
-        layer = column(|r| Some(r.layer.to_owned())),
+        code = column(|r| Some(r.code)),
+        severity = column(|r| Some(r.severity)),
+        layer = column(|r| Some(r.layer)),
         line = integers(records.iter().map(|r| r.line)),
         column = integers(records.iter().map(|r| r.column)),
         cell = integers(records.iter().map(|r| r.cell)),
-        location = column(|r| Some(r.location.clone())),
-        summary = column(|r| Some(r.summary.to_owned())),
-        detail = column(|r| r.detail.clone()),
-        spec = column(|r| Some(r.spec.clone()))
+        location = column(|r| Some(r.location.as_str())),
+        summary = column(|r| Some(r.summary)),
+        detail = column(|r| r.detail.as_deref()),
+        spec = column(|r| Some(r.spec.as_str()))
     ))
 }
 
 fn text_column(
     records: &[mztab_m_api::Record],
-    f: fn(&mztab_m_api::Record) -> Option<String>,
+    f: fn(&mztab_m_api::Record) -> Option<&str>,
 ) -> Strings {
     text(records.iter().map(f))
 }
@@ -159,10 +163,8 @@ fn mztabm_convert(text: Robj, to: &str, lossy: bool, format: Nullable<&str>) -> 
 fn convert(text: &Robj, to: &str, lossy: bool, format: Nullable<&str>) -> Result<String> {
     let bytes = extract_bytes(text)?;
     let from = self::format(format, bytes)?;
-    let to = to
-        .parse::<Format>()
-        .map_err(|e| Error::Other(e.to_string()))?;
-    mztab_m_api::convert(bytes, from, to, lossy).map_err(|e| Error::Other(e.to_string()))
+    let to = to.parse::<Format>().map_err(api_err)?;
+    mztab_m_api::convert(bytes, from, to, lossy).map_err(api_err)
 }
 
 /// The canonical form of `text`, in its own format.
@@ -174,7 +176,7 @@ fn mztabm_canonical(text: Robj, format: Nullable<&str>) -> List {
 fn canonical(text: &Robj, format: Nullable<&str>) -> Result<String> {
     let bytes = extract_bytes(text)?;
     let format = self::format(format, bytes)?;
-    mztab_m_api::convert(bytes, format, format, false).map_err(|e| Error::Other(e.to_string()))
+    mztab_m_api::convert(bytes, format, format, false).map_err(api_err)
 }
 
 /// A summary of `text`, as a named list.
@@ -186,7 +188,7 @@ fn mztabm_inspect(text: Robj, format: Nullable<&str>) -> List {
 fn inspect(text: &Robj, format: Nullable<&str>) -> Result<List> {
     let bytes = extract_bytes(text)?;
     let format = self::format(format, bytes)?;
-    let parsed = mztab_m_api::read(bytes, format);
+    let parsed = mztab_m_api::read_borrowed(bytes, format);
     let facts = mztab_m_api::facts(&parsed);
     let names: Vec<&str> = facts.iter().map(|(k, _)| *k).collect();
     let values: Vec<Robj> = facts

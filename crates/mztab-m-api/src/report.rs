@@ -3,7 +3,7 @@
 use alloc::borrow::ToOwned as _;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
-use core::fmt;
+use core::fmt::{self, Write as _};
 
 use mztab_m::{Code, Findings, Location, Parsed, Severity, json};
 
@@ -102,17 +102,18 @@ pub enum Fact {
 }
 
 impl Fact {
-    /// The fact as a JSON value.
-    fn to_json(&self) -> String {
+    /// Writes the fact as a JSON value directly into `out`.
+    fn write_json(&self, out: &mut String) {
         match self {
-            Self::Text(None) | Self::Rows(None) => "null".to_owned(),
+            Self::Text(None) | Self::Rows(None) => out.push_str("null"),
             Self::Text(Some(text)) => {
-                let mut out = String::new();
                 // Writing into a `String` cannot fail.
-                json::write_string(&mut out, text).unwrap_or_default();
-                out
+                json::write_string(out, text).unwrap_or_default();
             }
-            Self::Count(n) | Self::Rows(Some(n)) => n.to_string(),
+            Self::Count(n) | Self::Rows(Some(n)) => {
+                // Writing into a `String` cannot fail.
+                write!(out, "{n}").unwrap_or_default();
+            }
         }
     }
 }
@@ -184,7 +185,7 @@ pub fn facts_json(parsed: &Parsed<'_>) -> String {
         out.push('"');
         out.push_str(key);
         out.push_str("\":");
-        out.push_str(&value.to_json());
+        value.write_json(&mut out);
     }
     out.push('}');
     out

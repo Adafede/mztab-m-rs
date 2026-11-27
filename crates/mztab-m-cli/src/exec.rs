@@ -1,5 +1,7 @@
 //! Subcommand execution via [`mztab_m_api`].
 
+use core::fmt::Write as _;
+
 use mztab_m_api::{Format, Parsed, Severity, Stripped};
 
 use super::args::{Action, Command, ConvertOpts, FmtOpts, ValidateOpts};
@@ -7,9 +9,9 @@ use super::{FINDINGS, Failure, Io, OK};
 
 struct Loaded<'a> {
     file: &'a str,
-    bytes: Vec<u8>,
+    bytes: &'a [u8],
     format: Format,
-    parsed: Parsed<'static>,
+    parsed: Parsed<'a>,
 }
 
 pub(crate) fn execute(cmd: &Command, io: &mut dyn Io) -> Result<u8, Failure> {
@@ -20,10 +22,10 @@ pub(crate) fn execute(cmd: &Command, io: &mut dyn Io) -> Result<u8, Failure> {
         .source
         .input
         .unwrap_or_else(|| Format::sniff(&cmd.source.file, &bytes));
-    let parsed = mztab_m_api::read(&bytes, format);
+    let parsed = mztab_m_api::read_borrowed(&bytes, format);
     let loaded = Loaded {
         file: &cmd.source.file,
-        bytes,
+        bytes: &bytes,
         format,
         parsed,
     };
@@ -40,11 +42,7 @@ fn write_output(path: &str, text: &str, io: &mut dyn Io) -> Result<(), Failure> 
         .map_err(|e| Failure::Failed(format!("cannot write `{path}`: {e}")))
 }
 
-fn run_validate(
-    parsed: &Parsed<'static>,
-    opts: &ValidateOpts,
-    io: &mut dyn Io,
-) -> Result<u8, Failure> {
+fn run_validate(parsed: &Parsed<'_>, opts: &ValidateOpts, io: &mut dyn Io) -> Result<u8, Failure> {
     let mut texts = Vec::new();
     for path in &opts.cv {
         let bytes = io
@@ -62,17 +60,18 @@ fn run_validate(
         io.out(&out);
     } else {
         let mut out = String::new();
+        let (mut errors, mut warnings, mut infos) = (0_usize, 0_usize, 0_usize);
         for f in &findings {
-            out.push_str(&f.to_string());
-            out.push('\n');
+            writeln!(out, "{f}").unwrap_or_default();
+            match f.severity {
+                Severity::Error => errors += 1,
+                Severity::Warning => warnings += 1,
+                Severity::Info => infos += 1,
+            }
         }
         io.out(&out);
-        let count = |s| findings.iter().filter(|f| f.severity == s).count();
         io.err(&format!(
-            "{} errors, {} warnings, {} infos\n",
-            count(Severity::Error),
-            count(Severity::Warning),
-            count(Severity::Info)
+            "{errors} errors, {warnings} warnings, {infos} infos\n"
         ));
     }
     let failing = opts
@@ -95,11 +94,7 @@ fn run_fmt(loaded: &Loaded<'_>, opts: &FmtOpts, io: &mut dyn Io) -> Result<u8, F
     Ok(OK)
 }
 
-fn run_convert(
-    parsed: &Parsed<'static>,
-    opts: &ConvertOpts,
-    io: &mut dyn Io,
-) -> Result<u8, Failure> {
+fn run_convert(parsed: &Parsed<'_>, opts: &ConvertOpts, io: &mut dyn Io) -> Result<u8, Failure> {
     let (text, dropped) = mztab_m_api::write(&parsed.mztab, opts.to, opts.lossy)
         .map_err(|e| Failure::Failed(e.to_string()))?;
     if dropped != Stripped::default() {
@@ -112,16 +107,13 @@ fn run_convert(
     Ok(OK)
 }
 
-fn run_inspect(parsed: &Parsed<'static>, output_json: bool, io: &mut dyn Io) -> u8 {
+fn run_inspect(parsed: &Parsed<'_>, output_json: bool, io: &mut dyn Io) -> u8 {
     let out = if output_json {
         format!("{}\n", mztab_m_api::facts_json(parsed))
     } else {
         let mut out = String::new();
         for (key, value) in mztab_m_api::facts(parsed) {
-            out.push_str(key);
-            out.push_str(": ");
-            out.push_str(&value.to_string());
-            out.push('\n');
+            writeln!(out, "{key}: {value}").unwrap_or_default();
         }
         out
     };
