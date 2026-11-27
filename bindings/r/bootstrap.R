@@ -4,22 +4,53 @@
 # compile `../../../../crates/` directly via `bindings/r/src/Makevars` and do
 # not need this directory committed.
 
+TOML_HEADER_RE <- "^\\s*(\\[\\[?)([^\\]]+)(\\]\\]?)\\s*(#.*)?$"
+
+parse_toml_header <- function(line) {
+  if (!grepl(TOML_HEADER_RE, line, perl = TRUE)) {
+    return(NULL)
+  }
+  list(
+    is_array = sub(TOML_HEADER_RE, "\\1", line, perl = TRUE) == "[[",
+    section = trimws(sub(TOML_HEADER_RE, "\\2", line, perl = TRUE)),
+    trailing = sub(TOML_HEADER_RE, "\\4", line, perl = TRUE)
+  )
+}
+
+append_section_header <- function(out, header_line) {
+  if (length(out) > 0L) {
+    out <- c(out, "")
+  }
+  c(out, header_line)
+}
+
+append_body_line <- function(state, line) {
+  if (grepl("^\\s*($|#)", line, perl = TRUE)) {
+    state$pending <- c(
+      state$pending,
+      if (grepl("^\\s*$", line, perl = TRUE)) "" else line
+    )
+  } else {
+    if (length(state$pending) > 0L) {
+      state$out <- c(state$out, state$pending)
+      state$pending <- character()
+    }
+    state$out <- c(state$out, line)
+  }
+  state
+}
+
 parse_workspace_package <- function(root_lines) {
-  header_re <- "^\\s*(\\[\\[?)([^\\]]+)(\\]\\]?)\\s*(#.*)?$"
   in_ws_pkg <- FALSE
   vals <- list()
 
   for (line in root_lines) {
-    if (grepl(header_re, line, perl = TRUE)) {
-      is_array <- sub(header_re, "\\1", line, perl = TRUE) == "[["
-      section <- trimws(sub(header_re, "\\2", line, perl = TRUE))
-      in_ws_pkg <- !is_array && section == "workspace.package"
+    hdr <- parse_toml_header(line)
+    if (!is.null(hdr)) {
+      in_ws_pkg <- !hdr$is_array && hdr$section == "workspace.package"
       next
     }
-    if (!in_ws_pkg) {
-      next
-    }
-    if (grepl("^\\s*($|#)", line, perl = TRUE)) {
+    if (!in_ws_pkg || grepl("^\\s*($|#)", line, perl = TRUE)) {
       next
     }
     if (grepl("^\\s*([A-Za-z0-9_-]+)\\s*=\\s*(.+)$", line, perl = TRUE)) {
@@ -33,80 +64,58 @@ parse_workspace_package <- function(root_lines) {
 }
 
 extract_workspace_lints <- function(root_lines) {
-  header_re <- "^\\s*(\\[\\[?)([^\\]]+)(\\]\\]?)\\s*(#.*)?$"
-  out <- character()
+  state <- list(out = character(), pending = character())
   keep <- FALSE
-  pending <- character()
 
   for (line in root_lines) {
-    if (grepl(header_re, line, perl = TRUE)) {
-      is_array <- sub(header_re, "\\1", line, perl = TRUE) == "[["
-      section <- trimws(sub(header_re, "\\2", line, perl = TRUE))
-      trailing <- sub(header_re, "\\4", line, perl = TRUE)
-      pending <- character()
-
-      if (!is_array && startsWith(section, "workspace.lints.")) {
-        promoted <- sub("^workspace\\.", "", section, perl = TRUE)
+    hdr <- parse_toml_header(line)
+    if (!is.null(hdr)) {
+      state$pending <- character()
+      if (!hdr$is_array && startsWith(hdr$section, "workspace.lints.")) {
+        promoted <- sub("^workspace\\.", "", hdr$section, perl = TRUE)
         keep <- TRUE
-        header_line <- paste0("[", promoted, "]", if (nzchar(trailing)) paste0(" ", trailing) else "")
-        if (length(out) > 0L) {
-          out <- c(out, "")
-        }
-        out <- c(out, header_line)
+        header_line <- paste0("[", promoted, "]", if (nzchar(hdr$trailing)) paste0(" ", hdr$trailing) else "")
+        state$out <- append_section_header(state$out, header_line)
       } else {
         keep <- FALSE
       }
     } else if (keep) {
-      if (grepl("^\\s*($|#)", line, perl = TRUE)) {
-        pending <- c(pending, if (grepl("^\\s*$", line, perl = TRUE)) "" else line)
-      } else {
-        if (length(pending) > 0L) {
-          out <- c(out, pending)
-          pending <- character()
-        }
-        out <- c(out, line)
-      }
+      state <- append_body_line(state, line)
     }
   }
 
-  out
+  state$out
 }
 
 build_standalone_manifest <- function(crate_toml, ws_pkg, lint_lines) {
   lines <- readLines(crate_toml, warn = FALSE)
-  header_re <- "^\\s*(\\[\\[?)([^\\]]+)(\\]\\]?)\\s*(#.*)?$"
   ws_field_re <- "^\\s*([A-Za-z0-9_-]+)\\.workspace\\s*=\\s*true\\s*(#.*)?$"
 
-  out <- character()
+  state <- list(out = character(), pending = character())
   current_section <- ""
   keep_section <- FALSE
   skip_include <- FALSE
-  pending <- character()
 
   for (line in lines) {
-    if (grepl(header_re, line, perl = TRUE)) {
-      is_array <- sub(header_re, "\\1", line, perl = TRUE) == "[["
-      section <- trimws(sub(header_re, "\\2", line, perl = TRUE))
-      current_section <- section
+    hdr <- parse_toml_header(line)
+    if (!is.null(hdr)) {
+      current_section <- hdr$section
       skip_include <- FALSE
-      pending <- character()
+      state$pending <- character()
 
-      is_target_non_dev <- !is_array &&
-        grepl("^target\\.", section, perl = TRUE) &&
-        !grepl("\\.dev-dependencies(\\.|$)", section, perl = TRUE)
+      is_target_non_dev <- !hdr$is_array &&
+        grepl("^target\\.", hdr$section, perl = TRUE) &&
+        !grepl("\\.dev-dependencies(\\.|$)", hdr$section, perl = TRUE)
       is_kept_table <- grepl(
         "^(package$|lib(\\.|$)|features(\\.|$)|(build-)?dependencies(\\.|$))",
-        section,
+        hdr$section,
         perl = TRUE
       )
-      keep_section <- (!is_array || section == "lib") &&
+      keep_section <- (!hdr$is_array || hdr$section == "lib") &&
         (is_kept_table || is_target_non_dev)
 
       if (keep_section) {
-        if (length(out) > 0L) {
-          out <- c(out, "")
-        }
-        out <- c(out, line)
+        state$out <- append_section_header(state$out, line)
       }
     } else if (keep_section) {
       if (skip_include) {
@@ -117,7 +126,7 @@ build_standalone_manifest <- function(crate_toml, ws_pkg, lint_lines) {
       }
       if (current_section == "package") {
         if (grepl("^\\s*include\\s*=\\s*\\[", line, perl = TRUE)) {
-          pending <- character()
+          state$pending <- character()
           if (!grepl("\\]\\s*(#.*)?$", line, perl = TRUE)) {
             skip_include <- TRUE
           }
@@ -132,18 +141,11 @@ build_standalone_manifest <- function(crate_toml, ws_pkg, lint_lines) {
           line <- paste0(key, " = ", val)
         }
       }
-      if (grepl("^\\s*($|#)", line, perl = TRUE)) {
-        pending <- c(pending, if (grepl("^\\s*$", line, perl = TRUE)) "" else line)
-      } else {
-        if (length(pending) > 0L) {
-          out <- c(out, pending)
-          pending <- character()
-        }
-        out <- c(out, line)
-      }
+      state <- append_body_line(state, line)
     }
   }
 
+  out <- state$out
   if (length(lint_lines) > 0L) {
     if (length(out) > 0L) {
       out <- c(out, "")
