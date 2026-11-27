@@ -1,7 +1,6 @@
 //! `MTD` TSV lines → validated JSCH JSON `metadata` string and element id map.
 
 use alloc::collections::{BTreeMap, BTreeSet};
-use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
@@ -145,18 +144,20 @@ impl<'d, 't> Metadata<'d, 't> {
     }
 
     fn write_element(&mut self, element: &Element, w: &mut JsonWriter<'_>) -> fmt::Result {
-        let keys = self.take_indexed(element.tsv);
-        let ids: BTreeSet<u32> = keys.iter().map(|t| t.index).collect();
-        self.ids.insert(element.tsv, ids.iter().copied().collect());
-        if ids.is_empty() {
+        let mut by_id: BTreeMap<u32, Vec<Taken<'t>>> = BTreeMap::new();
+        for key in self.take_indexed(element.tsv) {
+            by_id.entry(key.index).or_default().push(key);
+        }
+        self.ids
+            .insert(element.tsv, by_id.keys().copied().collect());
+        if by_id.is_empty() {
             return w.raw("null");
         }
         w.char('[')?;
-        for (idx, id) in ids.iter().enumerate() {
+        for (idx, (id, mine)) in by_id.iter().enumerate() {
             if idx > 0 {
                 w.char(',')?;
             }
-            let mine: Vec<&Taken<'_>> = keys.iter().filter(|t| t.index == *id).collect();
             write!(w.out(), "{{\"id\":{id}")?;
             if let Some((json, shape)) = element.value {
                 w.char(',')?;
@@ -167,7 +168,7 @@ impl<'d, 't> Metadata<'d, 't> {
                     None => w.raw("null")?,
                 }
             }
-            self.write_element_props(element, &mine, w)?;
+            self.write_element_props(element, mine, w)?;
             w.char('}')?;
         }
         w.char(']')
@@ -176,25 +177,25 @@ impl<'d, 't> Metadata<'d, 't> {
     fn write_element_props(
         &mut self,
         element: &Element,
-        mine: &[&Taken<'_>],
+        mine: &[Taken<'_>],
         w: &mut JsonWriter<'_>,
     ) -> fmt::Result {
         for (json, tsv, shape) in element.props {
             w.char(',')?;
             w.str(json)?;
             w.char(':')?;
-            let sub = format!("-{tsv}");
             if matches!(shape, Shape::Indexed | Shape::Strings) {
                 let items: Vec<Taken<'_>> = mine
                     .iter()
                     .filter_map(|t| {
-                        let (name, n, tail) = split_key(t.rest)?;
-                        (name == sub && tail.is_empty()).then_some(Taken { index: n, ..**t })
+                        let rest = t.rest.strip_prefix('-')?;
+                        let (name, n, tail) = split_key(rest)?;
+                        (name == *tsv && tail.is_empty()).then_some(Taken { index: n, ..*t })
                     })
                     .collect();
                 self.write_positioned(&items, *shape == Shape::Strings, w)?;
             } else {
-                match mine.iter().find(|t| t.rest == sub) {
+                match mine.iter().find(|t| t.rest.strip_prefix('-') == Some(*tsv)) {
                     Some(t) => w.shaped(t.value, *shape)?,
                     None => w.raw("null")?,
                 }
