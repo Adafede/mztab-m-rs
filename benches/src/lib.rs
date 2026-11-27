@@ -13,6 +13,8 @@
 
 use core::fmt::Write as _;
 
+use mztab_m::{SmeColumn, SmfColumn, SmlColumn};
+
 /// Proton mass in daltons (`m_p / u`), CODATA 2022:
 /// <https://physics.nist.gov/cgi-bin/cuu/Value?mpu>.
 const PROTON_MASS_DA: f64 = 1.007_276_466_578_9;
@@ -112,64 +114,6 @@ const TRAILING_METADATA: &[&str] = &[
     "MTD\tsmall_molecule_feature-quantification_unit\t[PRIDE, PRIDE:0000330, Arbitrary quantification unit, ]",
     "MTD\tid_confidence_measure[1]\t[MS, MS:1002890, fragmentation score, ]",
 ];
-
-const SML_COLUMNS: &[&str] = &[
-    "SML_ID",
-    "SMF_ID_REFS",
-    "database_identifier",
-    "chemical_formula",
-    "smiles",
-    "inchi",
-    "chemical_name",
-    "uri",
-    "theoretical_neutral_mass",
-    "adduct_ions",
-    "reliability",
-    "best_id_confidence_measure",
-    "best_id_confidence_value",
-];
-
-const SMF_COLUMNS: &[&str] = &[
-    "SMF_ID",
-    "SME_ID_REFS",
-    "SME_ID_REF_ambiguity_code",
-    "adduct_ion",
-    "isotopomer",
-    "exp_mass_to_charge",
-    "charge",
-    "retention_time_in_seconds",
-    "retention_time_in_seconds_start",
-    "retention_time_in_seconds_end",
-];
-
-const SME_COLUMNS: &[&str] = &[
-    "SME_ID",
-    "evidence_input_id",
-    "database_identifier",
-    "chemical_formula",
-    "smiles",
-    "inchi",
-    "chemical_name",
-    "uri",
-    "derivatized_form",
-    "adduct_ion",
-    "exp_mass_to_charge",
-    "charge",
-    "theoretical_mass_to_charge",
-    "spectra_ref",
-    "identification_method",
-    "ms_level",
-    "id_confidence_measure[1]",
-    "rank",
-];
-
-const fn table_columns(prefix: &str) -> &'static [&'static str] {
-    match prefix.as_bytes() {
-        b"SMH" => SML_COLUMNS,
-        b"SFH" => SMF_COLUMNS,
-        _ => SME_COLUMNS,
-    }
-}
 
 /// Deterministic `SplitMix64` generator.
 #[derive(Clone, Debug)]
@@ -347,9 +291,28 @@ impl Spec {
         let assays = self.effective_assays();
         let sv_count = self.study_variables();
         let mut line = String::from(prefix);
-        for column in table_columns(prefix) {
-            line.push('\t');
-            line.push_str(column);
+        match prefix.as_bytes() {
+            b"SMH" => {
+                for column in SmlColumn::ALL {
+                    line.push('\t');
+                    line.push_str(column.label());
+                }
+            }
+            b"SFH" => {
+                for column in SmfColumn::ALL {
+                    line.push('\t');
+                    line.push_str(column.label());
+                }
+            }
+            _ => {
+                for column in SmeColumn::ALL {
+                    if *column == SmeColumn::Rank {
+                        line.push_str("\tid_confidence_measure[1]");
+                    }
+                    line.push('\t');
+                    line.push_str(column.label());
+                }
+            }
         }
         if prefix != "SEH" {
             for n in 1..=assays {
