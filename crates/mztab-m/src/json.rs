@@ -47,6 +47,21 @@ pub fn parse(input: &str) -> Parsed<'static> {
     read::parse(input)
 }
 
+/// Reads JSCH JSON from raw bytes. Invalid UTF-8 produces a
+/// [`Utf8`](crate::Code::Utf8) finding at the offending line and column before
+/// parsing lossy UTF-8.
+///
+/// ```
+/// use mztab_m::{Code, json};
+///
+/// let parsed = json::parse_bytes(b"{\"a\":\"\xff\"}");
+/// assert!(parsed.findings.iter().any(|f| f.code == Code::Utf8));
+/// ```
+#[must_use]
+pub fn parse_bytes(input: &[u8]) -> Parsed<'static> {
+    read::parse_bytes(input)
+}
+
 /// Writes `mztab` as compact JSCH JSON.
 ///
 /// # Errors

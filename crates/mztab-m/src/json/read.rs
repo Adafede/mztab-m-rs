@@ -64,6 +64,29 @@ pub(super) fn parse(input: &str) -> Parsed<'static> {
     }
 }
 
+/// Reads JSCH JSON bytes, reporting invalid UTF-8 before parsing lossy UTF-8.
+pub(super) fn parse_bytes(input: &[u8]) -> Parsed<'static> {
+    match core::str::from_utf8(input) {
+        Ok(text) => parse(text),
+        Err(error) => {
+            let lossy = String::from_utf8_lossy(input);
+            let mut parsed = parse(&lossy);
+            let valid = input.get(..error.valid_up_to()).unwrap_or_default();
+            let text = core::str::from_utf8(valid).unwrap_or_default();
+            let (line, column) = line_column(text, text.len());
+            let mut findings = Findings::new();
+            findings.push(Finding::new(
+                Code::Utf8,
+                Location::text(line, column),
+                Detail::None,
+            ));
+            findings.extend(parsed.findings.into_vec());
+            parsed.findings = findings;
+            parsed
+        }
+    }
+}
+
 /// The document's `comment` items as a layout of `COM` lines only: written
 /// as TSV they follow the metadata (D-075).
 fn comments(root: &Node<'_>, tsv: &mut Tsv) -> crate::model::layout::SourceLayout<'static> {
@@ -137,9 +160,12 @@ fn collect(findings: Vec<Finding>) -> Findings {
 /// The 1-based line and column (in characters) of byte `at`.
 fn line_column(text: &str, at: usize) -> (u32, u32) {
     let before = text.get(..at).unwrap_or(text);
-    let line = before.matches('\n').count() + 1;
+    let line = before.matches('\n').count().saturating_add(1);
     let start = before.rfind('\n').map_or(0, |n| n + 1);
-    let column = before.get(start..).map_or(0, |s| s.chars().count()) + 1;
+    let column = before
+        .get(start..)
+        .map_or(0, |s| s.chars().count())
+        .saturating_add(1);
     let n = |x: usize| u32::try_from(x).unwrap_or(u32::MAX);
     (n(line), n(column))
 }

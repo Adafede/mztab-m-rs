@@ -3,10 +3,9 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use mztab_m::cv::NoTerms;
 use mztab_m::validate;
-use mztab_m::{
-    Code, Detail, Finding, Findings, IntoOwned as _, Location, MzTab, Parsed, Stripped, json,
-};
+use mztab_m::{Findings, IntoOwned as _, MzTab, Parsed, Stripped, json};
 use mztab_m_obo::Ontology;
 
 use super::report::records;
@@ -17,31 +16,7 @@ use super::{Error, Format, Layer, Record, Settings, findings_json};
 pub fn read(bytes: &[u8], format: Format) -> Parsed<'static> {
     match format {
         Format::Tsv => mztab_m::parse_bytes(bytes).into_owned(),
-        Format::Json => match core::str::from_utf8(bytes) {
-            Ok(text) => json::parse(text),
-            Err(error) => {
-                let lossy = String::from_utf8_lossy(bytes);
-                let mut parsed = json::parse(&lossy);
-                let valid = bytes.get(..error.valid_up_to()).unwrap_or_default();
-                let text = core::str::from_utf8(valid).unwrap_or_default();
-                let line = text.matches('\n').count().saturating_add(1);
-                let start = text.rfind('\n').map_or(0, |n| n + 1);
-                let column = text
-                    .get(start..)
-                    .map_or(0, |s| s.chars().count())
-                    .saturating_add(1);
-                let to_u32 = |x: usize| u32::try_from(x).unwrap_or(u32::MAX);
-                let mut findings = Findings::new();
-                findings.push(Finding::new(
-                    Code::Utf8,
-                    Location::text(to_u32(line), to_u32(column)),
-                    Detail::None,
-                ));
-                findings.extend(parsed.findings.into_vec());
-                parsed.findings = findings;
-                parsed
-            }
-        },
+        Format::Json => json::parse_bytes(bytes),
     }
 }
 
@@ -50,28 +25,13 @@ pub fn read(bytes: &[u8], format: Format) -> Parsed<'static> {
 /// A value that failed to type is reported once, by the reader.
 #[must_use]
 pub fn validate(parsed: &Parsed<'_>, settings: &Settings, obo: &[&str]) -> Findings {
-    let config = &settings.config;
-    let mut out = Findings::new();
-    for mut finding in parsed.findings.iter().cloned() {
-        if let Some(severity) = config.severity_of(finding.code) {
-            finding.severity = severity;
-            out.push(finding);
-        }
-    }
-    if settings.layer >= Layer::Structure {
-        let structure = validate::structure(&parsed.mztab, config).into_vec();
-        out.extend(
-            structure
-                .into_iter()
-                .filter(|f| f.code != Code::InvalidValue),
-        );
-    }
     if settings.layer >= Layer::Semantic {
         let vocabularies: Vec<Ontology<'_>> = obo.iter().map(|t| Ontology::parse(t)).collect();
         let terms = vocabularies.as_slice();
-        out.extend(validate::semantic(&parsed.mztab, config, &terms).into_vec());
+        validate::parsed(parsed, settings.layer, &settings.config, &terms)
+    } else {
+        validate::parsed(parsed, settings.layer, &settings.config, &NoTerms)
     }
-    out
 }
 
 /// Reads and validates `bytes`, formatting findings as a JSON array.

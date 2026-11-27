@@ -32,12 +32,14 @@ mod tables;
 use alloc::borrow::Cow;
 use alloc::collections::BTreeMap;
 use alloc::string::ToString as _;
+use alloc::vec::Vec;
 
 use crate::cv::TermLookup;
 use crate::diag::code::Code;
 use crate::diag::finding::{Detail, Finding, Findings};
-use crate::diag::severity::Severity;
+use crate::diag::severity::{Layer, Severity};
 use crate::model::document::MzTab;
+use crate::read::event::Parsed;
 use report::Report;
 
 /// Validation settings: per-code severity overrides and disabled codes.
@@ -136,6 +138,57 @@ pub fn semantic(mztab: &MzTab<'_>, config: &Config, terms: &dyn TermLookup) -> F
     config.apply(report.into_findings())
 }
 
+fn check_layers(
+    mut findings: Vec<Finding>,
+    mztab: &MzTab<'_>,
+    up_to: Layer,
+    config: &Config,
+    terms: &dyn TermLookup,
+) -> Findings {
+    if up_to >= Layer::Structure {
+        let mut report = Report::new(mztab);
+        let rules = report.rule_set;
+        metadata::check(mztab, rules, &mut report);
+        tables::check(mztab, rules, &mut report);
+        if up_to >= Layer::Semantic {
+            semantic::check(mztab, terms, &mut report);
+        }
+        findings.extend(
+            report
+                .into_findings()
+                .into_iter()
+                .filter(|f| f.code != Code::InvalidValue),
+        );
+    }
+    config.apply(findings)
+}
+
+/// Validates an already-parsed document through `up_to`, preserving its reader
+/// findings and reporting values that failed to type once.
+///
+/// ```
+/// use mztab_m::{Layer, cv::NoTerms, parse, validate::{self, Config}};
+///
+/// let doc = parse("MTD\tmzTab-version\t2.1\n");
+/// let findings = validate::parsed(&doc, Layer::Syntax, &Config::default(), &NoTerms);
+/// assert!(findings.iter().all(|f| f.code.layer() == Layer::Syntax));
+/// ```
+#[must_use]
+pub fn parsed(
+    parsed: &Parsed<'_>,
+    up_to: Layer,
+    config: &Config,
+    terms: &dyn TermLookup,
+) -> Findings {
+    check_layers(
+        parsed.findings.iter().cloned().collect(),
+        &parsed.mztab,
+        up_to,
+        config,
+        terms,
+    )
+}
+
 /// [`syntax`], [`structure`] and [`semantic()`] on a text. Values that failed
 /// to type are reported once, by the reader, not again as
 /// [`Code::InvalidValue`].
@@ -153,19 +206,13 @@ pub fn semantic(mztab: &MzTab<'_>, config: &Config, terms: &dyn TermLookup) -> F
 #[must_use]
 pub fn all(input: &str, config: &Config, terms: &dyn TermLookup) -> Findings {
     let parsed = crate::read::builder::parse(input);
-    let mut findings = parsed.findings.into_vec();
-    let mut report = Report::new(&parsed.mztab);
-    let rules = report.rule_set;
-    metadata::check(&parsed.mztab, rules, &mut report);
-    tables::check(&parsed.mztab, rules, &mut report);
-    semantic::check(&parsed.mztab, terms, &mut report);
-    findings.extend(
-        report
-            .into_findings()
-            .into_iter()
-            .filter(|f| f.code != Code::InvalidValue),
-    );
-    config.apply(findings)
+    check_layers(
+        parsed.findings.into_vec(),
+        &parsed.mztab,
+        Layer::Semantic,
+        config,
+        terms,
+    )
 }
 
 /// An owned label for a finding detail.

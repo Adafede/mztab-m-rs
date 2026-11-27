@@ -1321,3 +1321,29 @@ fn json_comments_and_sorted_ids() {
         "ids sorted & deduped: {sfh:?}"
     );
 }
+
+#[test]
+fn parse_bytes_reports_invalid_utf8_at_line_and_column() {
+    let valid = json::parse_bytes(br#"{"metadata":{"mzTab-version":"2.1.0-M"}}"#);
+    assert!(valid.findings.is_empty(), "{:?}", valid.findings);
+
+    let single = json::parse_bytes(b"{\"a\":\"\xff\"}");
+    assert_eq!(
+        single
+            .findings
+            .iter()
+            .next()
+            .map(|f| (&f.code, &f.location)),
+        Some((&Code::Utf8, &Location::text(1, 7))),
+        "single-line UTF-8 finding: {:?}",
+        single.findings
+    );
+
+    let multi = json::parse_bytes(b"{\"a\":\n\"\xff\"}");
+    assert_eq!(
+        multi.findings.iter().next().map(|f| (&f.code, &f.location)),
+        Some((&Code::Utf8, &Location::text(2, 2))),
+        "multiline UTF-8 finding: {:?}",
+        multi.findings
+    );
+}

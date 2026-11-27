@@ -459,3 +459,37 @@ fn theoretical_neutral_mass_and_missing_ambiguity_col() {
         "missing ambiguity column should not emit AmbiguityCode: {findings:?}"
     );
 }
+
+#[test]
+fn validate_parsed_matches_layer_functions() {
+    use mztab_m::Layer;
+    use mztab_m::cv::NoTerms;
+
+    let broken = "MTD\tmzTab-version\t2.1\nMTD\tinstrument[1]-name\t[MS, MS:1, x, ]\n";
+    let doc = parse(broken);
+    let config = Config::default().with_severity(Code::MissingField, Severity::Warning);
+
+    assert_eq!(
+        validate::parsed(&doc, Layer::Syntax, &config, &NoTerms),
+        validate::syntax(broken, &config),
+        "syntax layer"
+    );
+    let structure_parsed = validate::parsed(&doc, Layer::Structure, &config, &NoTerms);
+    let mut expected_structure = validate::syntax(broken, &config).into_vec();
+    expected_structure.extend(
+        validate::structure(&doc.mztab, &config)
+            .into_vec()
+            .into_iter()
+            .filter(|f| f.code != Code::InvalidValue),
+    );
+    assert_eq!(
+        structure_parsed.into_vec(),
+        expected_structure,
+        "structure layer"
+    );
+    assert_eq!(
+        validate::parsed(&doc, Layer::Semantic, &config, &NoTerms),
+        validate::all(broken, &config, &NoTerms),
+        "semantic layer matches all"
+    );
+}
