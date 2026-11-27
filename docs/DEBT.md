@@ -29,6 +29,7 @@ exclusions (`.cargo/mutants.toml`) and no `refquiem: allow` markers.
 | `bindings/r/src/rust/src/lib.rs` `count_robj` | `clippy::cast_precision_loss` | R double numeric represents integer counts above i32::MAX up to 2^53 exactly | Stays while extendr lacks u64 scalar conversion |
 | `benches/benches/heap.rs` (crate) | `clippy::print_stdout` | the bench prints its report table | Bench output; stays |
 | `benches/benches/heap.rs` (missing corpus) | `clippy::expect_used` | benchmark setup: missing corpus file means submodule is uninitialized | Stays |
+| `benches/src/lib.rs` `synthetic_chemistry_and_stats_are_consistent` | `clippy::too_many_lines` | one row walk checks abundances, statistics and m/z together | Test code; stays |
 | `benches/benches/heap.rs` `row` | `clippy::cast_precision_loss` | a ratio for display | Stays |
 | `benches/benches/throughput.rs` (missing corpus) | `clippy::expect_used` | benchmark setup: missing corpus file means submodule is uninitialized | Stays |
 | `mk.local` `task_miri` | `miri` gate override (`mztab-m --lib` and `mztab-m-obo`) | Workspace forbids `unsafe_code`; `mztab-m-cli` spawns subprocesses unsupported by Miri and the 35 MB corpus / 2,000-case proptests exceed nightly time budgets under Miri | If Miri becomes fast enough for the corpus and proptests and `mztab-m-cli` is scoped via `MIRI_PACKAGES` |

@@ -6,23 +6,23 @@ MTD	software[1]	[MS, MS:1002879, Progenesis QI, 3.0]
 MTD	quantification_method	[MS, MS:1001834, LC-MS label-free quantitation analysis, ]
 MTD	ms_run[1]-location	file:///data/run1.mzML
 MTD	ms_run[1]-format	[MS, MS:1000584, mzML format, ]
-MTD	ms_run[1]-id_format	[MS, MS:1001530, mzML unique identifier, ]
+MTD	ms_run[1]-id_format	[MS, MS:1000776, scan number only nativeID format, ]
 MTD	ms_run[1]-scan_polarity[1]	[MS, MS:1000130, positive scan, ]
 MTD	ms_run[2]-location	file:///data/run2.mzML
 MTD	ms_run[2]-format	[MS, MS:1000584, mzML format, ]
-MTD	ms_run[2]-id_format	[MS, MS:1001530, mzML unique identifier, ]
+MTD	ms_run[2]-id_format	[MS, MS:1000776, scan number only nativeID format, ]
 MTD	ms_run[2]-scan_polarity[1]	[MS, MS:1000130, positive scan, ]
 MTD	ms_run[3]-location	file:///data/run3.mzML
 MTD	ms_run[3]-format	[MS, MS:1000584, mzML format, ]
-MTD	ms_run[3]-id_format	[MS, MS:1001530, mzML unique identifier, ]
+MTD	ms_run[3]-id_format	[MS, MS:1000776, scan number only nativeID format, ]
 MTD	ms_run[3]-scan_polarity[1]	[MS, MS:1000130, positive scan, ]
 MTD	ms_run[4]-location	file:///data/run4.mzML
 MTD	ms_run[4]-format	[MS, MS:1000584, mzML format, ]
-MTD	ms_run[4]-id_format	[MS, MS:1001530, mzML unique identifier, ]
+MTD	ms_run[4]-id_format	[MS, MS:1000776, scan number only nativeID format, ]
 MTD	ms_run[4]-scan_polarity[1]	[MS, MS:1000130, positive scan, ]
 MTD	ms_run[5]-location	file:///data/run5.mzML
 MTD	ms_run[5]-format	[MS, MS:1000584, mzML format, ]
-MTD	ms_run[5]-id_format	[MS, MS:1001530, mzML unique identifier, ]
+MTD	ms_run[5]-id_format	[MS, MS:1000776, scan number only nativeID format, ]
 MTD	ms_run[5]-scan_polarity[1]	[MS, MS:1000130, positive scan, ]
 MTD	assay[1]	assay 1
 MTD	assay[1]-ms_run_ref	ms_run[1]

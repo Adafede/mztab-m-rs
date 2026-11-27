@@ -13,8 +13,9 @@
 
 use core::fmt::Write as _;
 
-/// CODATA 2022 proton mass in daltons (`m_p / u`).
-const PROTON_MASS_DA: f64 = 1.007_276_466_621;
+/// Proton mass in daltons (`m_p / u`), CODATA 2022:
+/// <https://physics.nist.gov/cgi-bin/cuu/Value?mpu>.
+const PROTON_MASS_DA: f64 = 1.007_276_466_578_9;
 
 /// Reference metabolite template paired with exact monoisotopic neutral mass.
 struct Metabolite {
@@ -291,7 +292,7 @@ impl Spec {
             [
                 format!("MTD\tms_run[{n}]-location\tfile:///data/run{n}.mzML\n"),
                 format!("MTD\tms_run[{n}]-format\t[MS, MS:1000584, mzML format, ]\n"),
-                format!("MTD\tms_run[{n}]-id_format\t[MS, MS:1001530, mzML unique identifier, ]\n"),
+                format!("MTD\tms_run[{n}]-id_format\t[MS, MS:1000776, scan number only nativeID format, ]\n"),
                 format!("MTD\tms_run[{n}]-scan_polarity[1]\t[MS, MS:1000130, positive scan, ]\n"),
             ]
         });
@@ -380,7 +381,7 @@ impl Spec {
         let mol = Self::molecule(n);
         let theo = mol.neutral_mass_da + PROTON_MASS_DA;
         let mut rng = self.rng(n, STREAM_MASS_ERROR);
-        // Bounded +-5 ppm experimental mass error relative to theoretical m/z.
+        // Mass error in [-5, +5] ppm before both m/z values are rounded to 4 dp.
         let ppm = (rng.uniform_f64(10_001) - 5_000.0) / 1_000.0;
         let exp = theo * ppm.mul_add(1e-6, 1.0);
         (exp, theo)
@@ -491,6 +492,10 @@ mod tests {
     }
 
     #[test]
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one row walk checks abundances, statistics and m/z together"
+    )]
     fn synthetic_chemistry_and_stats_are_consistent() {
         let spec = Spec {
             assays: 5,
@@ -554,6 +559,69 @@ mod tests {
                 .to_f64();
             let mean1 = g1.iter().sum::<f64>() / 3.0;
             assert!((sv1 - mean1).abs() < 1e-3, "sv1 mean matches assays");
+
+            let g2: Vec<f64> = [1_usize, 3]
+                .into_iter()
+                .filter_map(|a| {
+                    row_sml
+                        .abundance
+                        .get(a)?
+                        .value()
+                        .map(mztab_m::Decimal::to_f64)
+                })
+                .collect();
+            let cell = |i: usize| {
+                row_sml
+                    .abundance
+                    .get(i)
+                    .and_then(|c| c.value())
+                    .expect("sv cell")
+                    .to_f64()
+            };
+            let mean2 = g2.iter().sum::<f64>() / 2.0;
+            assert!((cell(6) - mean2).abs() < 1e-3, "sv2 mean matches assays");
+            // Standard error of the mean with the n-1 sample variance.
+            let se = |g: &[f64], mean: f64| {
+                let n = f64::from(u32::try_from(g.len()).expect("small group"));
+                (g.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (n - 1.0) / n).sqrt()
+            };
+            assert!(
+                (cell(7) - se(&g1, mean1)).abs() < 1e-3,
+                "sv1 standard error"
+            );
+            assert!(
+                (cell(8) - se(&g2, mean2)).abs() < 1e-3,
+                "sv2 standard error"
+            );
+
+            let neutral = row_sml
+                .theoretical_neutral_mass
+                .value()
+                .and_then(|list| list.first())
+                .and_then(|c| c.value())
+                .expect("neutral mass")
+                .to_f64();
+            let theo = row_sme
+                .theoretical_mass_to_charge
+                .value()
+                .expect("theoretical m/z")
+                .to_f64();
+            let exp = row_sme
+                .exp_mass_to_charge
+                .value()
+                .expect("experimental m/z")
+                .to_f64();
+            // [M+H]+ m/z = M + m_p; 4-dp rounding of M and m/z bounds the gap.
+            assert!(
+                (theo - (neutral + super::PROTON_MASS_DA)).abs() < 1e-4,
+                "[M+H]+ m/z"
+            );
+            // 5 ppm plus 1e-4 of rounding on each m/z value.
+            let ppm = (exp - theo) / theo * 1e6;
+            assert!(
+                ppm.abs() <= (2e-4 / theo).mul_add(1e6, 5.0),
+                "mass error {ppm} ppm"
+            );
         }
     }
 
