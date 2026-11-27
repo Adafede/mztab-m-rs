@@ -125,9 +125,9 @@ fn table_semantic_findings_point_at_their_cell() {
             13,
         ),
         (
-            "SME\t2\t",
-            "[CHEBI, CHEBI:51088, trimethylsilyl group, 3]",
-            "[MS, MS:1000130, positive scan, ]",
+            "SME\t1\t",
+            "\tnull\t[M+H]1+",
+            "\t[MS, MS:1000130, positive scan, ]\t[M+H]1+",
             Code::CvRule,
             10,
         ),

@@ -380,7 +380,7 @@ fn table_findings_on_read_models_point_at_text() {
         at(Code::NullValue),
         [
             Location::text(135, 27).with_cell(7),
-            Location::text(139, 106).with_cell(13),
+            Location::text(139, 65).with_cell(13),
         ],
         "SMF and SME cells"
     );

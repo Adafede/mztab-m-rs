@@ -19,7 +19,7 @@ MTD	contact[1]-orcid	0000-0002-1825-0097
 MTD	uri[1]	https://example.org/study
 MTD	external_study_uri[1]	https://example.org/external
 MTD	quantification_method	[MS, MS:1001834, LC-MS label-free quantitation analysis, ]
-MTD	sample[1]	Plasma A
+MTD	sample[1]	Liver A
 MTD	sample[1]-species[1]	[NCBITaxon, NCBITaxon:9606, Homo sapiens, ]
 MTD	sample[1]-tissue[1]	[BTO, BTO:0000759, liver, ]
 MTD	sample[1]-cell_type[1]	[CL, CL:0000182, hepatocyte, ]
@@ -137,4 +137,4 @@ SMF	2	null	null	null	null	203.0526	1	NaN	null	null	null	null	null
 
 SEH	SME_ID	evidence_input_id	database_identifier	chemical_formula	smiles	inchi	chemical_name	uri	derivatized_form	adduct_ion	exp_mass_to_charge	charge	theoretical_mass_to_charge	spectra_ref	identification_method	ms_level	id_confidence_measure[1]	rank	opt_ms_run[1]_mass_error	opt_study_variable[1]_flag
 SME	1	scan=100	HMDB:HMDB0000122	C6H12O6	OC1OC(CO)C(O)C(O)C1O	InChI=1S/C6H12O6/c7-1-2-3(8)4(9)5(10)6(11)12-2/h2-11H,1H2	Glucose	https://hmdb.ca/metabolites/HMDB0000122	null	[M+H]1+	181.0709	1	181.0707	ms_run[1]:controllerType=0 controllerNumber=1 scan=100|ms_run[1]:controllerType=0 controllerNumber=1 scan=101	[MS, MS:1001477, SpectraST, ]	[MS, MS:1000511, ms level, 2]	0.9	1	1.1	yes
-SME	2	scan=200	null	null	null	null	null	null	[CHEBI, CHEBI:51088, trimethylsilyl group, 3]	null	181.0709	1	181.0707	ms_run[1]:controllerType=0 controllerNumber=1 scan=200	[MS, MS:1001477, SpectraST, ]	[MS, MS:1000511, ms level, 2]	null	2	null	null
+SME	2	scan=200	null	null	null	null	null	null	null	null	181.0709	1	181.0707	ms_run[1]:controllerType=0 controllerNumber=1 scan=200	[MS, MS:1001477, SpectraST, ]	[MS, MS:1000511, ms level, 2]	null	2	null	null
