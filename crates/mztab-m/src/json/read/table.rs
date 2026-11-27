@@ -5,8 +5,8 @@ use alloc::format;
 use alloc::string::{String, ToString as _};
 use alloc::vec::Vec;
 
-use super::emit::cell_text;
-use super::{Tsv, items};
+use super::emit::write_cell;
+use super::{ColKind, Tsv, items};
 use crate::diag::code::Code;
 use crate::diag::finding::Detail;
 use crate::diag::location::Path;
@@ -42,14 +42,14 @@ fn row_key(table: &Table, key: &str) -> Option<Key> {
 }
 
 /// A header column of the transcoded table.
-enum Column {
+enum Column<'a> {
     Stable(&'static str, Col),
     /// Array index, position in the array.
     Array(usize, usize),
-    Opt(String),
+    Opt(&'a str),
 }
 
-pub(super) fn table_lines(table: &Table, node: &Node<'_>, at: &Path, tsv: &mut Tsv) {
+pub(super) fn table_lines(table: &'static Table, node: &Node<'_>, at: &Path, tsv: &mut Tsv) {
     if !matches!(node.value, Value::Array(_)) {
         tsv.report(Code::JsonShape, at, Detail::Expected("an array"));
         return;
@@ -61,9 +61,10 @@ pub(super) fn table_lines(table: &Table, node: &Node<'_>, at: &Path, tsv: &mut T
         let names = standard_header(table, |element| {
             tsv.ids.get(element).cloned().unwrap_or_default()
         });
-        let mut header = Vec::from([(table.header.to_string(), at.clone())]);
-        header.extend(names.into_iter().map(|name| (name, at.clone())));
-        tsv.line(&header);
+        tsv.push_uniform_line(
+            core::iter::once(table.header).chain(names.iter().map(String::as_str)),
+            at,
+        );
         return;
     }
     if !rows
@@ -76,11 +77,36 @@ pub(super) fn table_lines(table: &Table, node: &Node<'_>, at: &Path, tsv: &mut T
         return;
     }
     let columns = infer_columns(table, &rows, tsv);
-    let mut header: Vec<(String, Path)> = Vec::from([(table.header.to_string(), at.clone())]);
-    header.extend(columns.iter().map(|(name, _)| (name.clone(), at.clone())));
-    tsv.line(&header);
-    for (_, row, here) in &rows {
-        emit_row(table, &columns, row, here, tsv);
+    tsv.push_uniform_line(
+        core::iter::once(table.header).chain(columns.iter().map(|(name, _)| name.as_str())),
+        at,
+    );
+    let mut opt_slot = 0_usize;
+    let col_kinds: Vec<ColKind> = columns
+        .iter()
+        .map(|(_, col)| match col {
+            Column::Stable(json_key, _) => ColKind::Stable(json_key),
+            Column::Array(a, p) => {
+                let json = table.arrays.get(*a).map_or("", |(json, ..)| json);
+                ColKind::Array(json, u32::try_from(*p).unwrap_or(u32::MAX))
+            }
+            Column::Opt(_) => {
+                let slot = opt_slot;
+                opt_slot += 1;
+                ColKind::Opt(slot)
+            }
+        })
+        .collect();
+    let table_index = tsv.push_table(table, col_kinds);
+    let mut row_buf = String::new();
+    let emit = RowEmit {
+        table,
+        table_index,
+        columns: &columns,
+        opt_count: opt_slot,
+    };
+    for (row_index, row, here) in &rows {
+        emit_row(&emit, *row_index, row, here, tsv, &mut row_buf);
     }
 }
 
@@ -90,11 +116,11 @@ struct ArrayCol {
     prefix: &'static str,
 }
 
-fn infer_columns(
+fn infer_columns<'a>(
     table: &Table,
-    rows: &[(u32, &Node<'_>, Path)],
+    rows: &[(u32, &'a Node<'a>, Path)],
     tsv: &Tsv,
-) -> Vec<(String, Column)> {
+) -> Vec<(String, Column<'a>)> {
     let mut max_len = alloc::vec![0usize; table.arrays.len()];
     for (_, row, _) in rows {
         let Value::Object(members) = &row.value else {
@@ -110,7 +136,7 @@ fn infer_columns(
         }
     }
 
-    let mut columns: Vec<(String, Column)> = Vec::new();
+    let mut columns: Vec<(String, Column<'a>)> = Vec::new();
     let mut seen = BTreeSet::new();
     let mut seen_opts = BTreeSet::new();
     for (_, row, _) in rows {
@@ -120,12 +146,12 @@ fn infer_columns(
         for (key, value) in members {
             match row_key(table, key) {
                 Some(Key::Stable(tsv_name, json_key, col)) => {
-                    if seen.insert(key.to_string()) {
+                    if seen.insert(key.as_ref()) {
                         columns.push((tsv_name.to_string(), Column::Stable(json_key, col)));
                     }
                 }
                 Some(Key::Array(index, element, prefix)) => {
-                    if matches!(value.value, Value::Array(_)) && seen.insert(key.to_string()) {
+                    if matches!(value.value, Value::Array(_)) && seen.insert(key.as_ref()) {
                         let array = ArrayCol {
                             index,
                             element,
@@ -144,7 +170,7 @@ fn infer_columns(
 }
 
 fn push_array_columns(
-    columns: &mut Vec<(String, Column)>,
+    columns: &mut Vec<(String, Column<'_>)>,
     array: &ArrayCol,
     len: usize,
     tsv: &Tsv,
@@ -162,10 +188,10 @@ fn push_array_columns(
     }
 }
 
-fn push_opt_columns(
-    columns: &mut Vec<(String, Column)>,
-    names: &mut BTreeSet<String>,
-    value: &Node<'_>,
+fn push_opt_columns<'a>(
+    columns: &mut Vec<(String, Column<'a>)>,
+    names: &mut BTreeSet<&'a str>,
+    value: &'a Node<'a>,
 ) {
     let Value::Array(opts) = &value.value else {
         return;
@@ -173,20 +199,30 @@ fn push_opt_columns(
     for opt in opts {
         if let Some(name) = opt_name(opt)
             && !name.contains(['\t', '\n', '\r'])
-            && names.insert(name.clone())
+            && names.insert(name)
         {
             columns.push((format!("opt_{name}"), Column::Opt(name)));
         }
     }
 }
 
+struct RowEmit<'a> {
+    table: &'static Table,
+    table_index: usize,
+    columns: &'a [(String, Column<'a>)],
+    opt_count: usize,
+}
+
 fn emit_row(
-    table: &Table,
-    columns: &[(String, Column)],
+    emit: &RowEmit<'_>,
+    row_index: u32,
     row: &Node<'_>,
     here: &Path,
     tsv: &mut Tsv,
+    row_buf: &mut String,
 ) {
+    let (table, table_index, columns, opt_count) =
+        (emit.table, emit.table_index, emit.columns, emit.opt_count);
     let Value::Object(members) = &row.value else {
         tsv.report(Code::JsonShape, here, Detail::Expected("an object"));
         return;
@@ -210,11 +246,117 @@ fn emit_row(
             _ => {}
         }
     }
-    let mut cells = Vec::from([(table.row.to_string(), here.clone())]);
-    for (_, column) in columns {
-        cells.push(row_cell(table, column, &by_key, here, tsv));
+    let mut by_opt: BTreeMap<&str, (u32, &Node<'_>)> = BTreeMap::new();
+    if opt_count != 0
+        && let Some(Value::Array(opts)) = by_key.get("opt").map(|n| &n.value)
+    {
+        for (n, opt) in opts.iter().enumerate() {
+            if let Some(name) = opt_name(opt) {
+                let idx = u32::try_from(n).unwrap_or(u32::MAX);
+                by_opt.entry(name).or_insert((idx, opt));
+            }
+        }
     }
-    tsv.line(&cells);
+
+    row_buf.clear();
+    row_buf.push_str(table.row);
+    let mut sink = CellSink {
+        opt_indices: Vec::with_capacity(opt_count),
+        tsv,
+        row_buf,
+        here,
+    };
+    let mut first_bad: Option<usize> = None;
+    let last_col = columns.len().saturating_sub(1);
+    for (col_idx, (_, column)) in columns.iter().enumerate() {
+        sink.row_buf.push('\t');
+        let cell_start = sink.row_buf.len();
+        write_row_cell(table, column, &by_key, &by_opt, &mut sink);
+        let cell_slice = sink.row_buf.get(cell_start..).unwrap_or_default();
+        let bad = cell_slice.contains(['\t', '\n'])
+            || (col_idx == last_col && cell_slice.ends_with('\r'));
+        if bad && first_bad.is_none() {
+            first_bad = Some(col_idx + 1);
+        }
+    }
+    let opt_indices = sink.opt_indices;
+    if let Some(cell_idx) = first_bad {
+        let at = tsv
+            .row_path(table_index, row_index, &opt_indices, cell_idx)
+            .unwrap_or_else(|| here.clone());
+        tsv.report(Code::JsonText, &at, Detail::None);
+        return;
+    }
+    tsv.push_row_line(table_index, row_index, opt_indices, row_buf);
+}
+
+struct CellSink<'a, 'b> {
+    opt_indices: Vec<Option<u32>>,
+    tsv: &'a mut Tsv,
+    row_buf: &'a mut String,
+    here: &'b Path,
+}
+
+fn write_row_cell(
+    table: &Table,
+    column: &Column<'_>,
+    by_key: &BTreeMap<&str, &Node<'_>>,
+    by_opt: &BTreeMap<&str, (u32, &Node<'_>)>,
+    sink: &mut CellSink<'_, '_>,
+) {
+    match column {
+        Column::Stable(json_key, col) => {
+            if let Some(value) = by_key.get(json_key).copied() {
+                write_cell(
+                    value,
+                    *col,
+                    || sink.here.clone().key(*json_key),
+                    sink.tsv,
+                    sink.row_buf,
+                );
+            } else {
+                sink.row_buf.push_str("null");
+            }
+        }
+        Column::Array(a, p) => {
+            let json = table.arrays.get(*a).map_or("", |(json, ..)| json);
+            let item = match by_key.get(json).map(|n| &n.value) {
+                Some(Value::Array(items)) => items.get(*p),
+                _ => None,
+            };
+            if let Some(item) = item {
+                let index = u32::try_from(*p).unwrap_or(u32::MAX);
+                write_cell(
+                    item,
+                    Col::Number,
+                    || sink.here.clone().key(json).index(index),
+                    sink.tsv,
+                    sink.row_buf,
+                );
+            } else {
+                sink.row_buf.push_str("null");
+            }
+        }
+        Column::Opt(name) => {
+            if let Some((opt_idx, opt)) = by_opt.get(name).copied() {
+                sink.opt_indices.push(Some(opt_idx));
+                if let Some(val) = opt.get("value") {
+                    write_cell(
+                        val,
+                        Col::Text,
+                        || sink.here.clone().key("opt").index(opt_idx).key("value"),
+                        sink.tsv,
+                        sink.row_buf,
+                    );
+                } else {
+                    sink.row_buf.push_str("null");
+                }
+            } else {
+                sink.opt_indices.push(None);
+                sink.row_buf.push_str("null");
+            }
+        }
+    }
 }
 
 fn validate_array_field(
@@ -280,62 +422,9 @@ fn validate_opt_field(value: &Node<'_>, row_at: &Path, tsv: &mut Tsv) {
     }
 }
 
-fn opt_name(opt: &Node<'_>) -> Option<String> {
+fn opt_name<'n>(opt: &'n Node<'_>) -> Option<&'n str> {
     match opt.get("identifier").map(|n| &n.value) {
-        Some(Value::String(s)) => Some(s.to_string()),
+        Some(Value::String(s)) => Some(s.as_ref()),
         _ => None,
-    }
-}
-
-fn row_cell(
-    table: &Table,
-    column: &Column,
-    by_key: &BTreeMap<&str, &Node<'_>>,
-    at: &Path,
-    tsv: &mut Tsv,
-) -> (String, Path) {
-    let null = || "null".to_string();
-    match column {
-        Column::Stable(json_key, col) => {
-            let value = by_key.get(json_key).copied();
-            let here = at.clone().key(*json_key);
-            let text = value
-                .and_then(|value| cell_text(value, *col, &here, tsv))
-                .unwrap_or_else(null);
-            (text, here)
-        }
-        Column::Array(a, p) => {
-            let json = table.arrays.get(*a).map_or("", |(json, ..)| json);
-            let index = u32::try_from(*p).unwrap_or(u32::MAX);
-            let here = at.clone().key(json).index(index);
-            let item = match by_key.get(json).map(|n| &n.value) {
-                Some(Value::Array(items)) => items.get(*p),
-                _ => None,
-            };
-            let text = item
-                .and_then(|value| cell_text(value, Col::Number, &here, tsv))
-                .unwrap_or_else(null);
-            (text, here)
-        }
-        Column::Opt(name) => {
-            let opts = match by_key.get("opt").map(|n| &n.value) {
-                Some(Value::Array(opts)) => opts.as_slice(),
-                _ => &[],
-            };
-            let found = opts
-                .iter()
-                .enumerate()
-                .find(|(_, o)| opt_name(o).as_deref() == Some(name.as_str()));
-            let Some((n, opt)) = found else {
-                return (null(), at.clone().key("opt"));
-            };
-            let index = u32::try_from(n).unwrap_or(u32::MAX);
-            let here = at.clone().key("opt").index(index).key("value");
-            let text = opt
-                .get("value")
-                .and_then(|value| cell_text(value, Col::Text, &here, tsv))
-                .unwrap_or_else(null);
-            (text, here)
-        }
     }
 }

@@ -423,6 +423,37 @@ fn invalid_values_travel_as_strings() {
     assert_eq!(back.mztab, model, "same model, invalid cells included");
 }
 
+#[test]
+fn table_row_text_errors_report_first_invalid_cell() {
+    let mid_tab = json::parse(
+        r#"{"smallMoleculeFeature": [
+            {"smf_id": 1, "adduct_ion": "a\tb", "charge": 1, "opt": [{"identifier": "global_x", "value": "c\nd"}]},
+            {"smf_id": 2, "adduct_ion": "a\r"}
+        ]}"#,
+    );
+    let mid_locs: Vec<String> = mid_tab
+        .findings
+        .iter()
+        .filter(|f| f.code == Code::JsonText)
+        .map(|f| f.location.to_string())
+        .collect();
+    assert_eq!(
+        mid_locs,
+        ["/smallMoleculeFeature/0/adduct_ion"],
+        "{mid_locs:?}"
+    );
+    let last_cr = json::parse(r#"{"smallMoleculeFeature": [{"smf_id": 1, "adduct_ion": "a\r"}]}"#);
+    assert_eq!(
+        last_cr
+            .findings
+            .iter()
+            .filter(|f| f.code == Code::JsonText)
+            .map(|f| f.location.to_string())
+            .collect::<Vec<_>>(),
+        ["/smallMoleculeFeature/0/adduct_ion"]
+    );
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 #[path = "support/corpus.rs"]
 mod corpus_files;

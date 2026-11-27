@@ -238,6 +238,29 @@ pub(super) fn plain(lexeme: &str) -> String {
     }
 }
 
+/// Appends a table cell's TSV text directly to `buf` without allocating on
+/// plain literals (`null`, strings, plain numbers/integers).
+pub(super) fn write_cell(
+    node: &Node<'_>,
+    col: Col,
+    at: impl FnOnce() -> Path,
+    tsv: &mut Tsv,
+    buf: &mut String,
+) {
+    match (&node.value, col) {
+        (Value::Null, _) => buf.push_str("null"),
+        (Value::String(s), _) => buf.push_str(s),
+        (Value::Number(n), Col::Text | Col::Number) if !n.contains(['e', 'E']) => buf.push_str(n),
+        (Value::Number(n), Col::Integer) if !n.contains(['.', 'e', 'E']) && *n != "-0" => {
+            buf.push_str(n);
+        }
+        _ => match cell_text(node, col, &at(), tsv) {
+            Some(s) => buf.push_str(&s),
+            None => buf.push_str("null"),
+        },
+    }
+}
+
 /// The TSV text of a table cell.
 pub(super) fn cell_text(node: &Node<'_>, col: Col, at: &Path, tsv: &mut Tsv) -> Option<String> {
     match (&node.value, col) {
@@ -287,5 +310,59 @@ const fn col_expected(col: Col) -> &'static str {
         Col::Numbers => "an array of numbers",
         Col::Integers => "an array of integers",
         Col::SpectraRefs => "an array of spectra references",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use alloc::borrow::Cow;
+    use alloc::string::String;
+    use core::cell::Cell;
+
+    use super::super::Tsv;
+    use super::write_cell;
+    use crate::diag::code::Code;
+    use crate::diag::location::Path;
+    use crate::json::schema::Col;
+    use crate::json::value::{Node, Value};
+
+    #[test]
+    fn write_cell_fast_path_skips_pointer_construction() {
+        let check = |value, col, expected: &str, expect_at: bool| {
+            let mut tsv = Tsv::default();
+            let mut buf = String::new();
+            let called = Cell::new(false);
+            let node = Node { value };
+            write_cell(
+                &node,
+                col,
+                || {
+                    called.set(true);
+                    Path::new().key("x")
+                },
+                &mut tsv,
+                &mut buf,
+            );
+            assert_eq!(buf, expected, "value mismatch");
+            assert_eq!(
+                called.get(),
+                expect_at,
+                "path laziness mismatch for {expected}"
+            );
+            tsv
+        };
+
+        check(Value::Null, Col::Number, "null", false);
+        check(Value::String(Cow::Borrowed("abc")), Col::Text, "abc", false);
+        check(Value::Number("1.5"), Col::Number, "1.5", false);
+        check(Value::Number("1.5"), Col::Text, "1.5", false);
+        check(Value::Number("42"), Col::Integer, "42", false);
+        check(Value::Number("-0"), Col::Number, "-0", false);
+
+        check(Value::Number("1e2"), Col::Number, "100", true);
+        check(Value::Number("1.0"), Col::Integer, "1", true);
+        check(Value::Number("-0"), Col::Integer, "0", true);
+        let bad = check(Value::Bool(true), Col::Number, "null", true);
+        assert!(bad.findings.iter().any(|f| f.code == Code::JsonShape));
     }
 }

@@ -28,7 +28,7 @@ pub(super) fn metadata_lines(node: &Node<'_>, at: &Path, tsv: &mut Tsv) {
         match item {
             Item::Field(_, tsv_key, shape) => {
                 if let Some(text) = text(value, *shape, &here, tsv) {
-                    mtd(tsv, (*tsv_key).to_string(), text, &here);
+                    mtd(tsv, tsv_key, &text, &here);
                 }
             }
             Item::Element(element) => element_lines(element, value, &here, tsv),
@@ -52,7 +52,7 @@ fn colunit_lines(key: &str, value: &Node<'_>, here: &Path, tsv: &mut Tsv) {
             _ => shape_error(tsv, &there, "a column unit mapping"),
         };
         if let Some(text) = text {
-            mtd(tsv, key.to_string(), text, &there);
+            mtd(tsv, key, &text, &there);
         }
     }
 }
@@ -91,7 +91,7 @@ fn element_lines(element: &Element, node: &Node<'_>, at: &Path, tsv: &mut Tsv) {
             if let Some(value) = object.get(json).filter(|n| !n.is_null()) {
                 let there = here.clone().key(json);
                 if let Some(text) = text(value, shape, &there, tsv) {
-                    mtd(tsv, base.clone(), text, &there);
+                    mtd(tsv, &base, &text, &there);
                 }
             }
         }
@@ -129,13 +129,18 @@ fn element_props(
             Shape::Strings => {
                 for (n, item, place) in items(value, &there, tsv) {
                     if let Some(text) = text(item, Shape::Text, &place, tsv) {
-                        mtd(tsv, format!("{key}[{}]", n.saturating_add(1)), text, &place);
+                        mtd(
+                            tsv,
+                            &format!("{key}[{}]", n.saturating_add(1)),
+                            &text,
+                            &place,
+                        );
                     }
                 }
             }
             _ => {
                 if let Some(text) = text(value, *shape, &there, tsv) {
-                    mtd(tsv, key, text, &there);
+                    mtd(tsv, &key, &text, &there);
                 }
             }
         }
@@ -153,7 +158,7 @@ fn indexed_lines(key: &str, node: &Node<'_>, at: &Path, tsv: &mut Tsv) -> Vec<u3
         // A `null` item only pads the array (D-071): no key.
         if let Some(text) = text(item, Shape::Param, &here, tsv) {
             ids.push(id);
-            mtd(tsv, format!("{key}[{id}]"), text, &here);
+            mtd(tsv, &format!("{key}[{id}]"), &text, &here);
         }
     }
     ids
