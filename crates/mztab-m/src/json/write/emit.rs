@@ -8,7 +8,7 @@ use crate::json::lexer::is_number;
 use crate::json::schema::{Col, Shape};
 use crate::json::value::write_string;
 use crate::param::Param;
-use crate::tsv::splitter::split_list;
+use crate::tsv::splitter::visit_list;
 
 /// Writes JSON directly to `out` without allocating an intermediate DOM.
 pub(super) struct JsonWriter<'a> {
@@ -145,13 +145,16 @@ impl<'a> JsonWriter<'a> {
     }
 
     fn try_params(&mut self, text: &str) -> fmt::Result {
-        let Ok(params) = split_list(text, true)
-            .into_iter()
-            .map(|(_, item)| Param::parse(item))
-            .collect::<Result<Vec<_>, _>>()
-        else {
+        let mut params = Vec::new();
+        let ok = visit_list(text, true, |_, item| {
+            Param::parse(item).is_ok_and(|param| {
+                params.push(param);
+                true
+            })
+        });
+        if !ok {
             return self.str(text);
-        };
+        }
         self.write_array(&params, |w, param| w.write_param(param, None))
     }
 

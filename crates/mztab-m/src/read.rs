@@ -101,9 +101,9 @@ mod tests {
             ending: LineEnding::Lf,
         };
         let parsed: Parsed<'_> = vec![
-            Event::Sml(info, SmlRow::empty()),
-            Event::Smf(info, SmfRow::empty()),
-            Event::Sme(info, SmeRow::empty()),
+            Event::Sml(info, SmlRow::with_capacity(0, 0, 0)),
+            Event::Smf(info, SmfRow::with_capacity(0, 0, 0)),
+            Event::Sme(info, SmeRow::with_capacity(0, 0, 0)),
         ]
         .into_iter()
         .collect();

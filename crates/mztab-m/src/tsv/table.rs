@@ -39,6 +39,22 @@ impl<S: Copy> Slot<S> {
     }
 }
 
+/// Header column slots plus counts of variable-width slot kinds for
+/// preallocating each parsed row's vectors.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct RowSlots<S> {
+    slots: Vec<Slot<S>>,
+    numbers: usize,
+    opt: usize,
+    unknown: usize,
+}
+
+impl<S> RowSlots<S> {
+    pub(crate) fn as_slice(&self) -> &[Slot<S>] {
+        &self.slots
+    }
+}
+
 /// The slots for a header: what each column holds.
 pub(crate) fn slots<S: Copy>(header: &Header<'_, S>) -> Vec<Slot<S>> {
     header.columns.iter().map(Slot::of).collect()
@@ -120,10 +136,11 @@ pub(crate) fn header<'a, S: Copy>(
     section: Section,
     cells: impl Iterator<Item = RawCell<'a>>,
     stable: fn(&str) -> Option<S>,
-) -> (Header<'a, S>, Vec<Slot<S>>) {
+) -> (Header<'a, S>, RowSlots<S>) {
     let mut seen = BTreeSet::new();
     let mut columns = Vec::new();
     let mut column_slots = Vec::new();
+    let (mut numbers, mut opt, mut unknown) = (0_usize, 0_usize, 0_usize);
     for cell in cells {
         let label = cell.text;
         let column = stable(label)
@@ -143,10 +160,25 @@ pub(crate) fn header<'a, S: Copy>(
             );
             Column::Unknown(Raw::new(label))
         };
-        column_slots.push(Slot::of(&column));
+        let slot = Slot::of(&column);
+        match slot {
+            Slot::Number => numbers += 1,
+            Slot::Opt => opt += 1,
+            Slot::Unknown => unknown += 1,
+            Slot::Stable(_) => {}
+        }
+        column_slots.push(slot);
         columns.push(column);
     }
-    (Header { columns }, column_slots)
+    (
+        Header { columns },
+        RowSlots {
+            slots: column_slots,
+            numbers,
+            opt,
+            unknown,
+        },
+    )
 }
 
 /// A table row the reader can fill column by column.
@@ -154,8 +186,8 @@ pub(crate) trait TableRow<'a>: Sized {
     /// The table's stable-column enum.
     type Column: Copy;
 
-    /// A row with every stable field `null` and no other cells.
-    fn empty() -> Self;
+    /// A row with every stable field `null` and preallocated slot vectors.
+    fn with_capacity(numbers: usize, opt: usize, unknown: usize) -> Self;
 
     /// Types `raw` into the stable field `column`.
     fn set(&mut self, column: Self::Column, cx: &mut Cx<'_>, raw: RawCell<'a>);
@@ -176,10 +208,11 @@ pub(crate) trait TableRow<'a>: Sized {
 /// Types a row against its header's slots. `cells` excludes the prefix.
 pub(crate) fn row<'a, R: TableRow<'a>>(
     cx: &mut Cx<'_>,
-    slots: &[Slot<R::Column>],
+    row_slots: &RowSlots<R::Column>,
     cells: impl Iterator<Item = RawCell<'a>>,
 ) -> R {
-    let mut row = R::empty();
+    let mut row = R::with_capacity(row_slots.numbers, row_slots.opt, row_slots.unknown);
+    let slots = row_slots.as_slice();
     let mut found = 0_usize;
     let mut first_extra = None;
     for (i, cell) in cells.enumerate() {
@@ -224,12 +257,12 @@ macro_rules! table_row {
         impl<'a> TableRow<'a> for $row<'a> {
             type Column = $col;
 
-            fn empty() -> Self {
+            fn with_capacity(numbers: usize, opt: usize, unknown: usize) -> Self {
                 Self {
                     $($field: Cell::Null,)+
-                    $numbers: Vec::new(),
-                    opt: Vec::new(),
-                    unknown: Vec::new(),
+                    $numbers: Vec::with_capacity(numbers),
+                    opt: Vec::with_capacity(opt),
+                    unknown: Vec::with_capacity(unknown),
                     extra: Vec::new(),
                 }
             }
@@ -356,5 +389,43 @@ mod tests {
             ],
             "each kind keeps its value"
         );
+    }
+
+    #[test]
+    fn row_slots_count_and_preallocate_row_vectors() {
+        use super::{header, row};
+        use crate::model::rows::SmlRow;
+        use crate::tsv::typing::{Cx, RawCell};
+        use crate::vocab::section::Section;
+
+        let mut findings = alloc::vec::Vec::new();
+        let line = "SMH\tSML_ID\tabundance_assay[1]\tabundance_assay[2]\topt_global_a\topt_global_b\tu1\tu2";
+        let mut cx = Cx {
+            line,
+            number: 1,
+            findings: &mut findings,
+        };
+        let cells = [
+            "SML_ID",
+            "abundance_assay[1]",
+            "abundance_assay[2]",
+            "opt_global_a",
+            "opt_global_b",
+            "u1",
+            "u2",
+        ]
+        .into_iter()
+        .enumerate()
+        .map(|(i, text)| RawCell {
+            text,
+            number: u32::try_from(i + 2).unwrap_or(u32::MAX),
+            offset: 0,
+        });
+        let (_, slots) = header(&mut cx, Section::Sml, cells, SmlColumn::from_label);
+        assert_eq!((slots.numbers, slots.opt, slots.unknown), (2, 2, 2));
+        let empty_row: SmlRow<'_> = row(&mut cx, &slots, core::iter::empty());
+        assert!(empty_row.abundance.capacity() >= 2);
+        assert!(empty_row.opt.capacity() >= 2);
+        assert!(empty_row.unknown.capacity() >= 2);
     }
 }

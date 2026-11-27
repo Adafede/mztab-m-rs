@@ -4,7 +4,7 @@
 use alloc::vec::Vec;
 use core::str::FromStr;
 
-use super::splitter::split_list;
+use super::splitter::visit_list;
 use crate::diag::code::Code;
 use crate::diag::finding::{Detail, Finding};
 use crate::diag::location::Location;
@@ -243,9 +243,10 @@ pub(super) fn list<'a, T>(
         Pre::Invalid(raw) => return Cell::Invalid(raw),
         Pre::Parse(..) => {}
     }
-    let items = split_list(raw.text, brackets)
-        .into_iter()
-        .map(|(at, text)| item(cx, raw.part(text, at)))
-        .collect();
+    let mut items = Vec::new();
+    visit_list(raw.text, brackets, |at, text| {
+        items.push(item(cx, raw.part(text, at)));
+        true
+    });
     Cell::Value(items)
 }

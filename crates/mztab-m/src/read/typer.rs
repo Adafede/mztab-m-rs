@@ -14,7 +14,7 @@ use crate::meta::key::MtdKey;
 use crate::model::layout::{LineEnding, LineInfo, Verbatim};
 use crate::model::rows::{SmeRow, SmfRow, SmlRow};
 use crate::model::table::{Header, SmeColumn, SmfColumn, SmlColumn};
-use crate::tsv::table::{self, Slot, TableRow};
+use crate::tsv::table::{self, RowSlots, TableRow};
 use crate::tsv::typing::Cx;
 use crate::value::text::Raw;
 use crate::vocab::section::{Section, TableSection};
@@ -34,9 +34,9 @@ pub(super) struct Typer {
     /// Whether the last metadata line is placed in the model (not unknown,
     /// not a duplicate).
     placed: bool,
-    sml: Option<Vec<Slot<SmlColumn>>>,
-    smf: Option<Vec<Slot<SmfColumn>>>,
-    sme: Option<Vec<Slot<SmeColumn>>>,
+    sml: Option<RowSlots<SmlColumn>>,
+    smf: Option<RowSlots<SmfColumn>>,
+    sme: Option<RowSlots<SmeColumn>>,
     findings: Vec<Finding>,
 }
 
@@ -107,9 +107,24 @@ impl Typer {
                 (Some((key, value)), true) => metadata_line(&mut out, *key, value.as_ref()),
                 _ => unknown_line(&mut out, &entry.key, &entry.value),
             },
-            Event::Sml(_, row) => row_line(&mut out, TableSection::Sml, self.sml.as_deref()?, row),
-            Event::Smf(_, row) => row_line(&mut out, TableSection::Smf, self.smf.as_deref()?, row),
-            Event::Sme(_, row) => row_line(&mut out, TableSection::Sme, self.sme.as_deref()?, row),
+            Event::Sml(_, row) => row_line(
+                &mut out,
+                TableSection::Sml,
+                self.sml.as_ref()?.as_slice(),
+                row,
+            ),
+            Event::Smf(_, row) => row_line(
+                &mut out,
+                TableSection::Smf,
+                self.smf.as_ref()?.as_slice(),
+                row,
+            ),
+            Event::Sme(_, row) => row_line(
+                &mut out,
+                TableSection::Sme,
+                self.sme.as_ref()?.as_slice(),
+                row,
+            ),
             // Header lines always render as written; blank, comment and
             // unrecognised lines are stored as written.
             _ => return None,
@@ -185,17 +200,17 @@ impl Typer {
                 || Event::Unrecognized(info, Raw::new(text)),
                 |h| Event::SmeHeader(info, h),
             ),
-            (Section::Sml, false) => row::<SmlRow<'a>>(&mut cx, self.sml.as_deref(), text)
+            (Section::Sml, false) => row::<SmlRow<'a>>(&mut cx, self.sml.as_ref(), text)
                 .map_or_else(
                     || Event::Unrecognized(info, Raw::new(text)),
                     |r| Event::Sml(info, r),
                 ),
-            (Section::Smf, false) => row::<SmfRow<'a>>(&mut cx, self.smf.as_deref(), text)
+            (Section::Smf, false) => row::<SmfRow<'a>>(&mut cx, self.smf.as_ref(), text)
                 .map_or_else(
                     || Event::Unrecognized(info, Raw::new(text)),
                     |r| Event::Smf(info, r),
                 ),
-            (Section::Sme, false) => row::<SmeRow<'a>>(&mut cx, self.sme.as_deref(), text)
+            (Section::Sme, false) => row::<SmeRow<'a>>(&mut cx, self.sme.as_ref(), text)
                 .map_or_else(
                     || Event::Unrecognized(info, Raw::new(text)),
                     |r| Event::Sme(info, r),
@@ -229,7 +244,7 @@ fn known_prefix_ignoring_case(prefix: &str) -> Option<&'static str> {
 /// Types a header line, unless the section already has one.
 fn header_slot<'a, S: Copy>(
     cx: &mut Cx<'_>,
-    slots: &mut Option<Vec<Slot<S>>>,
+    slots: &mut Option<RowSlots<S>>,
     section: Section,
     text: &'a str,
     stable: fn(&str) -> Option<S>,
@@ -246,7 +261,7 @@ fn header_slot<'a, S: Copy>(
 /// Types a row, unless its section has no header yet.
 fn row<'a, R: TableRow<'a>>(
     cx: &mut Cx<'_>,
-    slots: Option<&[Slot<R::Column>]>,
+    slots: Option<&RowSlots<R::Column>>,
     text: &'a str,
 ) -> Option<R> {
     let Some(slots) = slots else {

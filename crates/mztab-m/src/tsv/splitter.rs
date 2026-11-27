@@ -1,21 +1,24 @@
 //! Bracket- and quote-aware `|` list splitter shared by reader and writer.
 
-use alloc::vec::Vec;
-
-/// Splits a list cell at `|`. With `brackets`, a `|` inside `[…]` or inside
-/// double quotes does not split (parameter lists).
-pub(crate) fn split_list(text: &str, brackets: bool) -> Vec<(usize, &str)> {
-    let mut items = Vec::new();
+/// Calls `visit(offset, item)` for each `|`-separated item, stopping early
+/// and returning `false` if `visit` returns `false`. With `brackets`, a `|`
+/// inside `[…]` or inside double quotes does not split (parameter lists).
+pub(crate) fn visit_list<'a>(
+    text: &'a str,
+    brackets: bool,
+    mut visit: impl FnMut(usize, &'a str) -> bool,
+) -> bool {
     let mut start = 0;
     let mut splitter = Splitter::new(brackets);
     for (at, byte) in text.bytes().enumerate() {
         if splitter.step(byte) {
-            items.push((start, text.get(start..at).unwrap_or_default()));
+            if !visit(start, text.get(start..at).unwrap_or_default()) {
+                return false;
+            }
             start = at + 1;
         }
     }
-    items.push((start, text.get(start..).unwrap_or_default()));
-    items
+    visit(start, text.get(start..).unwrap_or_default())
 }
 
 /// The state of a list split: which `|` separate items. The reader splits
@@ -61,29 +64,46 @@ mod tests {
     #[cfg(target_arch = "wasm32")]
     use wasm_bindgen_test::wasm_bindgen_test as test;
 
-    use super::split_list;
+    use super::visit_list;
     use alloc::vec::Vec;
 
     #[test]
     fn list_splitting() {
-        let plain: Vec<_> = split_list("a|b||c", false);
+        let split = |s, brackets| -> Vec<_> {
+            let mut items = Vec::new();
+            assert!(visit_list(s, brackets, |at, item| {
+                items.push((at, item));
+                true
+            }));
+            items
+        };
+        let plain = split("a|b||c", false);
         assert_eq!(plain, [(0, "a"), (2, "b"), (4, ""), (5, "c")], "plain");
-        let params = split_list(r#"[a,b,"x|y",]|[,,"]|",v|w]"#, true);
+        let params = split(r#"[a,b,"x|y",]|[,,"]|",v|w]"#, true);
         assert_eq!(
             params,
             [(0, r#"[a,b,"x|y",]"#), (13, r#"[,,"]|",v|w]"#)],
             "bracket and quote aware"
         );
         assert_eq!(
-            split_list("]|[", true),
+            split("]|[", true),
             [(0, "]"), (2, "[")],
             "unbalanced close does not underflow"
         );
-        assert_eq!(split_list("", false), [(0, "")], "empty");
+        assert_eq!(split("", false), [(0, "")], "empty");
+        assert_eq!(split("a|", false), [(0, "a"), (2, "")], "trailing pipe");
         assert_eq!(
-            split_list("a\"|b", false),
+            split("a\"|b", false),
             [(0, "a\""), (3, "b")],
             "quotes only matter in parameter lists"
         );
+
+        let mut seen = Vec::new();
+        let completed = visit_list("a|b|c", false, |_, item| {
+            seen.push(item);
+            item != "b"
+        });
+        assert!(!completed, "early stop returns false");
+        assert_eq!(seen, ["a", "b"], "stopped after second item");
     }
 }
