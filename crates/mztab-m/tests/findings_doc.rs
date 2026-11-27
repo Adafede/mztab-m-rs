@@ -12,7 +12,7 @@ use wasm_bindgen_test::wasm_bindgen_test as test;
 use alloc::collections::BTreeMap;
 use core::fmt::Write as _;
 
-use mztab_m::{Code, Layer, Requirement, SPEC_COMMIT, SPEC_VERSION};
+use mztab_m::{Code, Layer, SPEC_COMMIT, SPEC_VERSION};
 
 const DIAG_RS: &str = include_str!("../src/diag/code.rs");
 const COMMITTED: &str = include_str!("../../../docs/findings.md");
@@ -62,14 +62,6 @@ fn escape_cell(text: &str) -> String {
     text.replace('|', "\\|")
 }
 
-const fn requirement_label(req: Requirement) -> &'static str {
-    match req {
-        Requirement::Must => "MUST",
-        Requirement::Should => "SHOULD",
-        Requirement::May => "MAY",
-    }
-}
-
 fn severity_cell(code: Code) -> String {
     match code {
         Code::EmptyTable => String::from("`error` / `warning` (MUST / SHOULD)"),
@@ -78,7 +70,7 @@ fn severity_cell(code: Code) -> String {
         _ => format!(
             "`{}` ({})",
             code.requirement().severity(),
-            requirement_label(code.requirement())
+            code.requirement().as_str()
         ),
     }
 }

@@ -13,6 +13,10 @@ fn digits(s: &str) -> bool {
     !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit())
 }
 
+fn is_positive_digits(s: &str) -> bool {
+    digits(s) && s.bytes().any(|b| (b'1'..=b'9').contains(&b))
+}
+
 fn signed_digits(s: &str) -> bool {
     digits(s.strip_prefix(['-', '+']).unwrap_or(s))
 }
@@ -244,9 +248,7 @@ pub(super) fn native_id_ok(accession: &str, reference: &str) -> Option<bool> {
                     && match kind {
                         NativeValue::IdRef => !v.is_empty(),
                         NativeValue::NonNegativeInt => digits(v),
-                        NativeValue::PositiveInt => {
-                            digits(v) && v.bytes().any(|b| (b'1'..=b'9').contains(&b))
-                        }
+                        NativeValue::PositiveInt => is_positive_digits(v),
                     }
             })
         })
@@ -264,10 +266,7 @@ pub(super) fn xsd_matches(kind: &str, value: &str) -> Option<bool> {
         "unsignedInt" => value.parse::<u32>().is_ok(),
         "integer" => signed_digits(value),
         "nonNegativeInteger" => digits(value.strip_prefix('+').unwrap_or(value)),
-        "positiveInteger" => {
-            digits(value.strip_prefix('+').unwrap_or(value))
-                && value.bytes().any(|b| (b'1'..=b'9').contains(&b))
-        }
+        "positiveInteger" => is_positive_digits(value.strip_prefix('+').unwrap_or(value)),
         "decimal" => Decimal::parse(value).is_ok_and(|d| d.kind() == DecimalKind::Decimal),
         "float" | "double" => {
             matches!(value, "NaN" | "INF" | "-INF" | "+INF")

@@ -92,6 +92,15 @@ impl Rows<'_, '_, '_> {
         }
     }
 
+    pub(super) fn decimal_list(&mut self, cell: &Cell<'_, List<'_, Decimal<'_>>>, col: usize) {
+        let bad_item = cell
+            .value()
+            .is_some_and(|items| items.iter().any(bad_decimal));
+        if cell.invalid().is_some() || bad_item {
+            self.add(Code::InvalidValue, col, Detail::None);
+        }
+    }
+
     pub(super) fn numbers(&mut self, cells: &[Cell<'_, Decimal<'_>>], positions: &[usize]) {
         for (cell, &at) in cells.iter().zip(positions) {
             if bad_decimal(cell) {

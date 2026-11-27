@@ -110,11 +110,7 @@ impl<'d, 't> Metadata<'d, 't> {
         w.raw("{\"prefix\":\"MTD\"")?;
         for item in METADATA {
             w.char(',')?;
-            let json = match item {
-                Item::Field(json, ..) | Item::Indexed(json) | Item::Colunit(json) => *json,
-                Item::Element(e) => e.json,
-            };
-            w.str(json)?;
+            w.str(item.json_name())?;
             w.char(':')?;
             match item {
                 Item::Field(_, tsv, shape) => match self.take(tsv) {

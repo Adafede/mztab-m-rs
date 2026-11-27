@@ -19,10 +19,7 @@ pub(super) fn metadata_lines(node: &Node<'_>, at: &Path, tsv: &mut Tsv) {
     };
     let mut known = Vec::from(["prefix"]);
     for item in METADATA {
-        let name = match item {
-            Item::Field(json, ..) | Item::Indexed(json) | Item::Colunit(json) => *json,
-            Item::Element(e) => e.json,
-        };
+        let name = item.json_name();
         known.push(name);
         let Some(value) = node.get(name).filter(|n| !n.is_null()) else {
             continue;

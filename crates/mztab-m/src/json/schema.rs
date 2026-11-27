@@ -55,6 +55,16 @@ pub(super) enum Item {
     Colunit(&'static str),
 }
 
+impl Item {
+    /// The JSON property name under `metadata`.
+    pub(super) const fn json_name(&self) -> &'static str {
+        match self {
+            Self::Field(json, ..) | Self::Indexed(json) | Self::Colunit(json) => json,
+            Self::Element(e) => e.json,
+        }
+    }
+}
+
 use Shape::{Indexed, Param, Params, Publication, Ref, Refs, Strings, Text, TextOrParam};
 
 pub(super) const METADATA: &[Item] = &[

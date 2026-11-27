@@ -153,15 +153,7 @@ fn check_row(row: &SmlRow<'_>, ctx: &SmlCtx, r: &mut Rows<'_, '_, '_>) {
 
 fn check_masses_and_conf(row: &SmlRow<'_>, ctx: &SmlCtx, r: &mut Rows<'_, '_, '_>) {
     let c = &ctx.cols;
-    let masses = &row.theoretical_neutral_mass;
-    let bad_item = masses.value().is_some_and(|items| {
-        items
-            .iter()
-            .any(|i| i.invalid().is_some() || i.value().is_some_and(|d| !d.kind().is_conforming()))
-    });
-    if masses.invalid().is_some() || bad_item {
-        r.add(Code::InvalidValue, c.theoretical_neutral_mass, Detail::None);
-    }
+    r.decimal_list(&row.theoretical_neutral_mass, c.theoretical_neutral_mass);
     r.valid(&row.reliability, c.reliability);
     r.valid(
         &row.best_id_confidence_measure,

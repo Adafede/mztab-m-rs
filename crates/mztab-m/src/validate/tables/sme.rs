@@ -131,29 +131,19 @@ pub(super) fn sme_rows(mztab: &MzTab<'_>, rules: RuleSet, report: &mut Report<'_
 fn check_row(row: &SmeRow<'_>, ctx: &SmeCtx<'_, '_>, r: &mut Rows<'_, '_, '_>) {
     let c = &ctx.cols;
     let error = Severity::Error;
-    for (is_null, col) in [
-        (row.sme_id.is_null(), c.sme_id),
-        (row.evidence_input_id.is_null(), c.evidence_input_id),
-        (row.exp_mass_to_charge.is_null(), c.exp_mass_to_charge),
-        (row.charge.is_null(), c.charge),
-        (
-            row.theoretical_mass_to_charge.is_null(),
-            c.theoretical_mass_to_charge,
-        ),
-        (row.spectra_ref.is_null(), c.spectra_ref),
-        (row.identification_method.is_null(), c.identification_method),
-        (row.ms_level.is_null(), c.ms_level),
-        (row.rank.is_null(), c.rank),
-    ] {
-        if is_null && col < r.header_len {
-            r.report.add_at(
-                Code::NullValue,
-                error,
-                crate::validate::report::Site::Cell(r.section, r.row, col),
-                Detail::None,
-            );
-        }
-    }
+    r.not_null(&row.sme_id, c.sme_id, error);
+    r.not_null(&row.evidence_input_id, c.evidence_input_id, error);
+    r.not_null(&row.exp_mass_to_charge, c.exp_mass_to_charge, error);
+    r.not_null(&row.charge, c.charge, error);
+    r.not_null(
+        &row.theoretical_mass_to_charge,
+        c.theoretical_mass_to_charge,
+        error,
+    );
+    r.not_null(&row.spectra_ref, c.spectra_ref, error);
+    r.not_null(&row.identification_method, c.identification_method, error);
+    r.not_null(&row.ms_level, c.ms_level, error);
+    r.not_null(&row.rank, c.rank, error);
     r.valid(&row.sme_id, c.sme_id);
     for (cell, col) in [
         (&row.evidence_input_id, c.evidence_input_id),
