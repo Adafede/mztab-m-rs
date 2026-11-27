@@ -1,6 +1,7 @@
 //! Table header shape checks: emptiness, mandatory columns, canonical order,
 //! `opt_` placement, and metadata cross-references.
 
+use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
 use crate::diag::code::Code;
@@ -96,6 +97,12 @@ pub(super) fn table_shape<S: Copy + Ord + core::fmt::Display, R>(
     check_shape(&ctx, &header_kinds, report);
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum ExpectedKind {
+    Abundance(AbundanceColumn),
+    IdConfidence(IdConfidenceMeasureId),
+}
+
 fn check_shape(ctx: &ShapeCtx<'_, '_>, header_kinds: &[Kind], report: &mut Report<'_, '_>) {
     if report.rule_set == RuleSet::V2_1 && ctx.empty {
         // DECISIONS D-019: an error when the profile is declared, a
@@ -112,23 +119,26 @@ fn check_shape(ctx: &ShapeCtx<'_, '_>, header_kinds: &[Kind], report: &mut Repor
             Detail::None,
         );
     }
+    let present: BTreeSet<ExpectedKind> = header_kinds
+        .iter()
+        .filter_map(|k| match *k {
+            Kind::Abundance(a) => Some(ExpectedKind::Abundance(a)),
+            Kind::IdConfidence(i) => Some(ExpectedKind::IdConfidence(i)),
+            _ => None,
+        })
+        .collect();
     for (kind, name) in expected_columns(ctx.mztab, ctx.section) {
-        let present = header_kinds.iter().any(|k| match (k, kind) {
-            (Kind::Abundance(a), Kind::Abundance(b)) => *a == b,
-            (Kind::IdConfidence(a), Kind::IdConfidence(b)) => *a == b,
-            _ => false,
-        });
-        if !present {
+        if !present.contains(&kind) {
             report.add(Code::MissingColumn, Site::Header(ctx.section), name);
         }
     }
     check_order_and_refs(ctx, header_kinds, report);
 }
 
-fn expected_columns(mztab: &MzTab<'_>, section: TableSection) -> Vec<(Kind, Detail)> {
+fn expected_columns(mztab: &MzTab<'_>, section: TableSection) -> Vec<(ExpectedKind, Detail)> {
     let m = &mztab.metadata;
     let mut expected = Vec::new();
-    let abundance = |column| (Kind::Abundance(column), label(column));
+    let abundance = |column| (ExpectedKind::Abundance(column), label(column));
     if matches!(section, TableSection::Sml | TableSection::Smf) {
         expected.extend(
             m.assay
@@ -152,7 +162,7 @@ fn expected_columns(mztab: &MzTab<'_>, section: TableSection) -> Vec<(Kind, Deta
         expected.extend(
             m.id_confidence_measure
                 .keys()
-                .map(|id| (Kind::IdConfidence(id), label(id))),
+                .map(|id| (ExpectedKind::IdConfidence(id), label(id))),
         );
     }
     expected

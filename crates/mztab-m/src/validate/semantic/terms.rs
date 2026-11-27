@@ -47,8 +47,7 @@ pub(super) fn declarations(
     });
     let col_labels = columns.iter().map(|c| (cv::prefix(c.accession), c.site));
     for (cv_label, site) in param_labels.chain(col_labels) {
-        let known = declared.iter().any(|(_, l)| *l == cv_label);
-        if labels.insert(cv_label) && !known {
+        if labels.insert(cv_label) && !declared.iter().any(|(_, l)| *l == cv_label) {
             report.add(Code::CvUndeclared, site, label(cv_label));
         }
     }

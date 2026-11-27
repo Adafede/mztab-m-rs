@@ -40,6 +40,7 @@ pub(crate) enum Site {
 pub(crate) struct Report<'m, 'a> {
     mztab: &'m MzTab<'a>,
     pub(crate) rule_set: RuleSet,
+    has_source_items: bool,
     findings: Vec<Finding>,
     /// Lazily built: source line numbers of keys, headers and rows.
     lines: Option<Lines>,
@@ -63,9 +64,15 @@ impl<'m, 'a> Report<'m, 'a> {
             .as_ref()
             .and_then(|cell| cell.value())
             .map_or(RuleSet::V2_1, |v| v.rule_set());
+        let has_source_items = mztab
+            .layout
+            .lines
+            .iter()
+            .any(|l| !matches!(l.content, LineContent::Extra(_)));
         Self {
             mztab,
             rule_set,
+            has_source_items,
             findings: Vec::new(),
             lines: None,
         }
@@ -154,11 +161,7 @@ impl<'m, 'a> Report<'m, 'a> {
     fn locate(&mut self, site: Site) -> Location {
         // No source lines for items (none at all, or only comments, as a
         // JSON-read model has): locate by model path.
-        let lines = &self.mztab.layout.lines;
-        if lines
-            .iter()
-            .all(|l| matches!(l.content, LineContent::Extra(_)))
-        {
+        if !self.has_source_items {
             return model_path(site);
         }
         let lines = self.lines();
